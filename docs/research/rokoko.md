@@ -121,3 +121,52 @@ Smartgloves II ──USB/Wi-Fi──> rokoko-sdk :12276 ──> rkk-hand-solver 
 - **No Coil Pro means no wrist position.** Fallbacks: fix the wrist at a nominal pose and drive only orientation plus fingers; translate with keyboard or gamepad; use camera-based wrist tracking (see `jetson.md`); or use the Smartsuit through Studio (body FK, drifts). **Ask Rokoko on site for a Coil Pro.** The challenge lists it as available.
 - **To do first:** get the SDK licence (form, then id.rokoko.com) → `rokoko-sdk --auto-stream-usb` → `rgmp_stream.py --port 12277` to see the joints → map 25 points into Dex3 in sim.
 - **Open questions for the Rokoko and Aalto mentors:** Can we borrow a Coil Pro? Where is the Aalto Inspire integration code? Is Linux Arm64 OK on Ubuntu 24.04 (JetPack 7)? Officially only 22.04 is listed.
+
+---
+
+## 6. Using the gloves to make training data for a model like π0 (Aalto challenge context)
+
+### The gloves drive the robot in the simulation, not the real one
+- **Real robot:** under the Aalto challenge, teams never get direct access to the real robot (no control link, no SSH, no robot network), per `RULES_AND_SCORING.md` §6. Only Aalto's runner moves it.
+- **Sim:** the Isaac sim listens on the same message channels as the real G1, so glove → retargeting → joint targets drives the **simulated** G1, and we record those runs as demos.
+- **The only real-G1 glove control** offered is in the separate Rokoko main challenge ("in coordination with" the Aalto team). We can enter only one main challenge.
+- **The Coil Pro supplies wrist position in space**, which the arm needs (see §1). In sim teleop there's no metal robot next to the operator, but metal tables and laptops near the Coil can still distort it.
+
+### Why the gloves are a control device, not the dataset itself
+π0 learns from **robot** demos: the robot's camera images and joint states, paired with its joint targets. A recording of a human hand alone has no robot camera views, so it can't be used directly. Recording while the gloves drive the sim robot produces demos in the same format as Aalto's real ones:
+- LeRobot v3.0
+- 28-value state and 28 absolute joint targets at 30 Hz
+- 3 cameras + depth
+- the instruction
+
+Aalto's own demos were made the same way, but on the real robot with VR-headset hand tracking.
+
+### Pipeline (untested end to end)
+```
+Rokoko gloves + Coil Pro ─> Rokoko SDK (26 hand joints per hand, 83 Hz)
+   ─> retarget: 5 human fingers → 3 Dex3 fingers (xr_teleoperate's unitree_dex3.yml)
+   ─> arm IK: wrist pose → 7 arm joints (xr_teleoperate)
+   ─> joint targets at 30 Hz → Isaac sim (same message channels as the real G1)
+   ─> record obs + actions (Aalto's record_demos.py / to_lerobot.py) ─> LeRobot dataset
+   ─> optional: curate on Qualia (flags bad takes)
+   ─> fine-tune π0 / π0.5 on glove demos + Aalto's real demos
+```
+
+### Why it could improve the model
+1. **More data where it's scarce.** Aalto ships ~20 real demos per rung, raw. Imitation models generalise better with more varied examples.
+2. **Coverage.** The held-out sim and the finals vary positions, rotations (±45°), counts (3–5), lighting and instructions. We can record across random layouts with `AALTO_DR=train` on. Generality is 25% of the judging.
+3. **Hard cases.** Aalto's baseline mostly fails on triangles (the pinch slips) and on the 2-minute limit. A human can demo good triangle grasps and fast two-arm sorting.
+4. **Recoveries.** Scripted demos never fail, so models never learn to re-grasp. Humans do it naturally; Aalto included deliberately messy recovery demos for this reason.
+5. **Rung 2 (+2 points per object).** We can record with many instruction phrasings. The finals' unseen-instruction episode is weighted ×1.5.
+6. **Same style as the real demos.** Both are human hand teleop, so they mix more consistently than scripted motions.
+
+### Why it might not help
+- **Sim ≠ real.** Images and contact physics differ (Dex3 friction isn't fitted yet), and the real-robot result is 40% of the score. Mixing in Aalto's real demos and varying the sim visuals reduces the risk.
+- **Bad demos hurt.** Laggy or jerky teleop (the sim runs at ~0.7× real time) teaches jerky motion. Too-fast motion teaches the model to break the speed limits, and the sim gate allows 0 violations. Aalto capped their teleop at 0.9 rad/s (arms) / 3 rad/s (fingers).
+- **Throughput.** A 120 s sim episode takes ~220 s of wall time. Estimate: roughly 10–20 demos per hour per operator including resets (untested).
+- **Cheaper volume exists.** Scripted demos using the sim's true object positions (allowed for data generation, not in the submission) cost almost nothing. Gloves add most where scripts can't: recoveries, human-like grasps, hard cases.
+
+### How to know if it helps
+1. Train the same model twice: without and with the glove demos.
+2. Score both in sim with domain randomisation on.
+3. Log both in `eval/RESULTS.md`.

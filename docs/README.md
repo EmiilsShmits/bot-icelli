@@ -10,7 +10,7 @@ Everything the team knows, in plain Markdown. Code-specific notes live in each w
 | [DECISIONS.md](DECISIONS.md) | Open team decisions + append-only log of agreed choices | The team agrees on something |
 | [TEAM.md](TEAM.md) | People, skills, who does what, hardware we have | Roles or hardware change |
 | [runbooks/](runbooks/) | Step-by-step how-tos: [Verda + sim setup](runbooks/verda-sim-setup.md), [submitting](runbooks/submit.md) | A procedure changes |
-| [research/](research/) | Research notes: [Aalto robot + sim](research/aalto-humanoid.md), [APIs + credits](research/apis-and-credits.md), [Rokoko gloves](research/rokoko.md), [Jetson](research/jetson.md) | We learn something worth keeping |
+| [research/](research/) | Research notes: [Aalto overview](research/aalto-challenge-overview.md), [Aalto robot + sim](research/aalto-humanoid.md), [Nemotron + π0](research/nemotron-and-pi0.md), [APIs + credits](research/apis-and-credits.md), [Rokoko gloves](research/rokoko.md), [Jetson](research/jetson.md) | We learn something worth keeping |
 | [challenges/](challenges/README.md) | Full text of all 38 Junction challenges (archive) | — |
 
 **Registries** (live next to the code that produces them):

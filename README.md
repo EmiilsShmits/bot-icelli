@@ -4,7 +4,7 @@ We're working on Aalto's challenge: make **Väiski**, a Unitree G1 humanoid with
 
 > **New here? Read in this order:**
 > 1. this file
-> 2. [`docs/research/aalto-humanoid.md`](docs/research/aalto-humanoid.md): the robot, sim and official rules
+> 2. [`docs/research/aalto-challenge-overview.md`](docs/research/aalto-challenge-overview.md): the challenge in plain language (details: [`aalto-humanoid.md`](docs/research/aalto-humanoid.md))
 > 3. [`docs/DECISIONS.md`](docs/DECISIONS.md): what's agreed and what's still open
 > 4. the README of the folder you'll work in
 >
