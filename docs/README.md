@@ -7,7 +7,7 @@ Everything the team knows, in plain Markdown. Code-specific notes live in each w
 | [BRIEF.md](BRIEF.md) | Our agreed brief: challenge focus, stacked tech challenges, what we optimise for. **Blank until the team agrees** | The team agrees on it |
 | [PLAN.md](PLAN.md) | Approach, scope, milestones, demo/pitch | We change direction |
 | [PROGRESS.md](PROGRESS.md) | Team-level status, blockers, gotchas, log | End of every work block |
-| [DECISIONS.md](DECISIONS.md) | Append-only log of non-obvious choices and why | Any choice others would ask "why?" about |
+| [DECISIONS.md](DECISIONS.md) | Open team decisions + append-only log of agreed choices | The team agrees on something |
 | [TEAM.md](TEAM.md) | People, skills, who does what, hardware we have | Roles or hardware change |
 | [runbooks/](runbooks/) | Step-by-step how-tos: [Verda + sim setup](runbooks/verda-sim-setup.md), [submitting](runbooks/submit.md) | A procedure changes |
 | [research/](research/) | Research notes: [Aalto robot + sim](research/aalto-humanoid.md), [APIs + credits](research/apis-and-credits.md), [Rokoko gloves](research/rokoko.md), [Jetson](research/jetson.md) | We learn something worth keeping |

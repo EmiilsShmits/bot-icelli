@@ -1,10 +1,10 @@
 # policy/: the submission
 
-**Purpose:** the Docker image we hand in. A websocket policy server (Aalto protocol, port 8000) that wraps whichever model or planner is best.
-**Owner:** shared. **One integrator** merges changes here and does the hand-in.
+**Purpose:** the Docker image we hand in: a websocket policy server (Aalto protocol, port 8000). It currently holds a placeholder only.
+**Owner:** _TBD_
 
 ## Inputs → Outputs
-- **In:** a checkpoint from [`../training/MODELS.md`](../training/MODELS.md) (weights copied into `policy/weights/`, which is git-ignored).
+- **In:** _to be agreed_ (weights must be inside the image; `policy/weights/` is git-ignored).
 - **Out:** a linux/amd64 image pushed to GHCR/Docker Hub, **pinned by digest**, submitted through the form on Discord.
 
 ## Files
@@ -20,7 +20,7 @@
 ## How to run
 ```bash
 make setup          # once
-make check          # must PASS before merging here
+make check          # Aalto's replay test: shapes + >= 27 Hz
 make serve          # run the server on :8000
 make docker-build && make docker-check GPUS=none    # build + test the image (Docker running; slow on Apple silicon)
 ```
@@ -28,7 +28,7 @@ Hand-in: [`../docs/runbooks/submit.md`](../docs/runbooks/submit.md).
 
 ## Status
 - **Now:** placeholder `hold` policy; `make check` passes (100 calls, 0 errors, p50 latency ~4 ms)
-- **Next:** a loader for the first trained checkpoint; an instruction parser for rung 2 (offline)
+- **Next:** —
 - **Blockers:** —
 
 ## Gotchas

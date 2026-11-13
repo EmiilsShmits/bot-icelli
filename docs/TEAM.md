@@ -37,7 +37,7 @@ Skills summary from each member's LinkedIn profile (read 2026-11-13). Profession
 |---|---|---|
 | Model fine-tuning | `training/` | Emīls, Tiya |
 | Simulation | `sim/` | Marcus, Samer |
-| Datasets, submission, sim scoring | `data/`, `policy/`, `eval/` | shared (pick one integrator for `policy/`) |
+| Datasets, submission, sim scoring | `data/`, `policy/`, `eval/` | TBD |
 
 ## Hardware we have (as of Fri 13 Nov)
 
@@ -46,7 +46,7 @@ Skills summary from each member's LinkedIn profile (read 2026-11-13). Profession
 - **Intel Physical AI station**: not obtained, so that challenge is off the table
 - **Arduino boards**: not planning to use them
 
-Direction: **Aalto humanoid, mostly in simulation** (brief still to be agreed). The Rokoko gloves idea is parked; see `docs/research/rokoko.md` if it comes back.
+Direction: **Aalto humanoid, mostly in simulation** (brief still to be agreed). Gloves research: `docs/research/rokoko.md`.
 
 ## Team at a glance
 

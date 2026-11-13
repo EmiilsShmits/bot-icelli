@@ -7,7 +7,7 @@ Add a policy:
   1. Write a class in policy/policies/<name>.py that subclasses aaltonomous.deploy.policy_server.Policy
      and implements reset(instruction, task, seed) and act(obs) -> {"arm_q_target", "hand_q_target"}.
   2. Register it in POLICIES below.
-  3. Run `make check` (must PASS) before merging.
+  3. Run `make check`.
 
 Rules every policy must follow (see AGENTS.md): absolute joint targets, changes of at most
 1 rad/s for arms and 3 rad/s for hands per tick (0 clips allowed), >= 27 commands/s, and only `obs` as input.

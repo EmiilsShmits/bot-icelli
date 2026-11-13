@@ -1,40 +1,25 @@
 # training/: model fine-tuning
 
-**Purpose:** train the policy that maps `obs` (cameras, joints, instruction) to joint targets.
+**Purpose:** _to be agreed._
 **Owner:** Emīls, Tiya
 
 ## Inputs → Outputs
-- **In:** datasets from [`../data/DATASETS.md`](../data/DATASETS.md).
-- **Out:** checkpoints on private Hugging Face repos, each with a row in [`MODELS.md`](MODELS.md). `policy/` turns them into the submission.
-
-## The checkpoint contract
-A checkpoint is the weights plus a config that `policy/` can load without guessing. The config holds:
-- model type
-- normalisation stats
-- action horizon (chunk length)
-- cameras used
-- the dataset IDs it was trained on
-
-## Candidate methods (from Aalto's starter paths)
-| Method | Why | Cost |
-|---|---|---|
-| ACT / Diffusion Policy (LeRobot) | Small and fast; works with ~20–100 demos | Trains on one GPU |
-| SmolVLA (LeRobot) | Reads the instruction, which rung 2 needs | Moderate |
-| π0 / π0.5 (openpi), GR00T | Strongest priors; Aalto ships a GR00T-format copy | Fine-tuning needs 80 GB GPUs; inference fits the 32 GB finals GPU |
-
-**Constraints the model must meet:**
-- Return action **chunks** (`(k, 14)`), so the command rate stays ≥ 27 Hz.
-- Each step must stay within **1 rad/s (arms) / 3 rad/s (hands)**. The sim gate allows 0 clips.
+- **In:** _to be agreed._
+- **Out:** _to be agreed._
 
 ## How to run
-- Training configs go in `training/configs/`, scripts in `training/` as they're written.
-- Compute: Verda (€200 per team) and Modal ($100 per person).
+_Nothing yet._
 
 ## Status
 - **Now:** —
-- **Next:** pick the first method; get a training run going on Drop 0 as soon as it lands
-- **Blockers:** Drop 0 (Fri evening); GPU access
+- **Next:** —
+- **Blockers:** —
 
-## Gotchas
-- The demos are scarce (~20 per rung) and **raw**. Filter them before training.
-- The sim-to-real visual gap is the main risk. Use domain-randomised sim data and Drop 1 images.
+## Facts from Aalto's docs
+- **Method options** they list (any method is allowed): `third_party/aaltonomous-humanoid/aaltonomous/docs/participants/STARTER_PATHS.md`.
+- **Real demos:**
+  - ~20 per rung, **raw** (failed and messy episodes included; labels in `meta/aalto_episodes.jsonl`)
+  - LeRobot v3.0, plus a GR00T-format copy (RGB only)
+- **Fine-tuning compute:** large VLAs (π0 / π0.5, GR00T) need 80 GB GPUs to fine-tune. Inference must fit the 32 GB RTX 5090 at the finals.
+- **What a submitted policy must output:** absolute joint targets at 30 Hz, changing by at most 1 rad/s (arms) / 3 rad/s (hands), with ≥ 27 commands/s (chunks count per tick).
+- **Compute credits:** see `docs/research/apis-and-credits.md`.
