@@ -14,6 +14,62 @@ The repo docs are the source of truth and change during the event (versioned, ch
 - **Sim:** Isaac Sim 6.2 + Isaac Lab 3.0 (`unitree_sim_isaaclab`). It needs an **RTX-class GPU with ≥ 24 GB** (A100 / H100 won't render the cameras). It runs at ~0.7× real time.
 - **Real data:** about 20 teleop demos per rung, raw and in LeRobot format. They were recorded with **Meta Quest hand tracking through Unitree `xr_teleoperate`**. That matters for a Rokoko-gloves idea (see the end of this file).
 
+## 0. Official challenge page: facts only
+Source: https://hackjunction.app/participate/45/challenges/320 (full text in [`../challenges/main/aalto-university--aaltonomous-humanoid.md`](../challenges/main/aalto-university--aaltonomous-humanoid.md); re-checked 2026-11-13 23:29, unchanged).
+
+**Task**
+- **Robot:** Väiski, a G1 with legs and waist held stiff; two 7-DoF arms, two Dex3 three-finger hands.
+- **Objects:** 3–5 printed cubes / cylinders / triangular prisms, ~4.5 cm, red / yellow / blue, at random positions and angles.
+- **Boxes:** 3 identical orange boxes, 21 cm wide, fixed, in a row (left / centre / right), 5 cm apart, 40 cm from the torso, no markings.
+- **Time limit:** every object into the right box within **2 minutes**, with no human control.
+- **Modes:**
+  1. Fixed sorting: red → left, yellow → centre, blue → right.
+  2. Sort by instruction. Page example: "Sort the objects: red into right, blue into left, yellow into center." Expect unseen phrasings.
+  3. Stretch: each object through the matching hole in a lid on one box.
+- **Policy I/O:** sees the head camera (colour + depth), both wrist cameras, joint states and the instruction. Sends target positions for all arm and finger joints, 30 times a second.
+
+**How it works**
+- **Build in sim first:** ready-made Isaac Sim of the robot and the exact scene; GPU from Verda.
+- **Real-robot datasets:** published on Hugging Face during the event, with links on the Junction Discord.
+- **Submission:** a Docker image running a small policy server. Aalto's runner sends its commands to the sim or the robot through their safety filter.
+- **Finalists:** organisers evaluate submissions in sim on a scene version teams can't train on. Finalists run on the real robot on Sunday; the best real-robot score wins.
+- **Safety check** required for real-robot time: no crashes or safety stops, no commands over the joint and speed limits, ≥ 27 commands per second.
+
+**Judging criteria**
+| Criterion | Weight | Meaning |
+|---|---|---|
+| Real-world result | 40% | How well it works on the real robot |
+| Generality | 25% | Holds up when things change |
+| Originality | 20% | Freshness of idea and approach |
+| Presentation | 15% | Clarity of what you built and why it matters |
+
+**Prizes**
+- Winning team: €2,000 + a visit to the Aalto robotics lab.
+- Top ~5 teams (chosen by sim performance) run live on the real Unitree G1.
+
+**What they'd love to see** (from the page)
+- works when reality doesn't match the sim exactly
+- general ideas beyond one exact setup
+- doing a lot with very little real-world data
+
+**Approaches they name:** CV + classic programming, VLM/LLM planner calling own skills, imitation learning / VLA fine-tuning (LeRobot, π0, GR00T), RL in Isaac Lab, real2sim. They expect combinations to work best.
+
+**What they provide**
+- the real G1 at the venue
+- a sim Docker image (Isaac Sim + Isaac Lab + the scene)
+- Verda GPU compute
+- real-robot datasets
+- starter code: interface, safety filter, classical baseline, policy-server and Dockerfile templates, sim evaluator
+- researchers as mentors, plus ~30 Aalto Robotics Club volunteers
+
+**People and safety**
+- **Mentors:** Erkka Lehtonen and Viktor Solianoi, on site. Questions go to the Junction Discord.
+- **Safety:** teams never control the robot directly; Aalto's runner executes the image through their safety filter with staff at the e-stop.
+
+**Not on the page**
+- **Internet / network at the finals:** not mentioned. Aalto's repo docs say they provide no network (`FAQ.md`, `SUBMISSION.md`).
+- **The page header** showed "Status: Closed" and a countdown "T -12:32:15" at Fri 23:29 (≈ Sat 12:01). What either refers to is not stated. Ask.
+
 ## 1. Robot hardware
 
 | Part | Detail |
