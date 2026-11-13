@@ -1,0 +1,7 @@
+# What goes INTO the submission image (keep it small: startup must be < 120 s).
+# Add model deps here when a real policy lands, e.g. torch with CUDA 12.8:
+#   --extra-index-url https://download.pytorch.org/whl/cu128
+#   torch
+numpy
+msgpack
+websockets

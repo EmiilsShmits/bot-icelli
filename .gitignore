@@ -1,0 +1,45 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Python / builds
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+node_modules/
+dist/
+build/
+
+# Big files: datasets, weights, logs never go in git (use Hugging Face / the Verda volume)
+artifacts/
+runs/
+outputs/
+wandb/
+policy/weights/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.engine
+*.bin
+*.npz
+*.parquet
+*.mp4
+*.tar
+*.tar.gz
+*.tar.zst
+*.zip
+
+# Claude Code local settings
+.claude/settings.local.json

@@ -1,0 +1,6 @@
+# Local dev + tests (make setup installs this). Image deps first:
+-r requirements.txt
+# Needed by Aalto's test tools (replay, mock runner, safety filter):
+pyyaml
+opencv-python-headless
+pin          # Pinocchio (forward kinematics for the safety filter's workspace check)

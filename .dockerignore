@@ -1,0 +1,7 @@
+# Docker build context = repo root (make docker-build). Allowlist: only what the submission image needs.
+*
+!policy/
+!third_party/aaltonomous-humanoid/aaltonomous/__init__.py
+!third_party/aaltonomous-humanoid/aaltonomous/deploy/
+**/__pycache__
+**/*.pyc
