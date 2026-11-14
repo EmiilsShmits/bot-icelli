@@ -6,6 +6,8 @@ Changes against Aalto's reference image (`aaltonomous/baselines/classical/policy
   2. Wider HSV ranges, measured on Aalto's real head-camera frames (`docs/research/aalto-discord-notes.md`): the
      real orange objects (hue 11-13) and the pale yellow ones (hue 34-46) fall outside the stock ranges.
   3. Every target passes our shadow safety filter (`policy/guard.py`).
+  4. reset() never blocks (see reset()): Aalto's reference waits for a planning thread left over from the last
+     episode, which on a loaded machine got its next episode safe-stopped at step 0 (sim-gate FAIL).
 Perception, IK planner, grasps and timing are Aalto's code, unchanged.
 
 Env: AALTO_TIME_LIMIT (s, default 120), AALTO_ARM_VEL (planner speed), AALTO_PROFILE (config profile, default sim),
@@ -53,22 +55,54 @@ class ClassicalV1(Policy):
         self.guard = Guard(float(os.environ.get("GUARD_ARM_VEL", 0.98)), float(os.environ.get("GUARD_HAND_VEL", 2.7)))
         self.action_horizon = int(self.pol.cfg["motion"]["chunk"])
         self.mapping, self.mapping_source = {}, ""
+        self._pending_reset, self._stale_since = None, None
 
     def reset(self, instruction, task=None, seed=None):
-        # An episode can end mid-look: let that planning thread finish first (planner state is not thread-safe).
-        job, t0 = self.pol._job, time.monotonic()
-        while job is not None and job["result"] is None and time.monotonic() - t0 < 30.0:
-            time.sleep(0.02)
+        # Never block here. The runner starts the episode clock right after reset(), and 3 s of sim time without a
+        # command is a safe stop = sim-gate FAIL. Seen with Aalto's baseline (Sat 14 Nov, eval/RESULTS.md): an episode
+        # ended mid-plan, its reset() waited ~14 s for that planning thread on a loaded machine, and the next episode
+        # was stopped at step 0. The planner is not thread-safe, so a new episode must not start planning while the
+        # old thread runs: if it still runs, act() holds the arms until it is done, then applies this reset.
         if self.guard.shaped:
             log.info("previous episode: guard shaped %d of %d ticks", self.guard.shaped, self.guard.ticks)
         self.mapping, self.mapping_source = mapping_for(instruction, task)
-        self.pol.reset({"instruction": instruction, "mapping": self.mapping})
+        self._pending_reset = {"instruction": instruction, "mapping": self.mapping}
         self.guard.reset()
+        if self._planning():
+            self._stale_since = time.monotonic()
+            log.warning("previous episode's planning thread still running: holding until it finishes")
+        else:
+            self._apply_reset()
         log.info("reset task=%s seed=%s mapping=%s [%s] instruction=%r", task, seed, self.mapping,
                  self.mapping_source, instruction)
 
+    def _planning(self):
+        job = self.pol._job
+        return job is not None and job["result"] is None
+
+    def _apply_reset(self):
+        self.pol.reset(self._pending_reset)
+        self._pending_reset = None
+        if self._stale_since is not None:
+            log.info("old planning thread done after %.1f s: episode starts", time.monotonic() - self._stale_since)
+            self._stale_since = None
+
+    def _hold(self, obs):
+        """Hold the measured pose (clamped into the joint limits, as Aalto's first act() does)."""
+        sp, k = self.pol.spec, max(1, int(self.pol.cfg["motion"].get("hold_ticks", 1)))
+        a = np.clip(np.asarray(obs["arm_q"], float), sp.arm_lower, sp.arm_upper)
+        h = np.clip(np.asarray(obs["hand_q"], float), sp.hand_lower, sp.hand_upper)
+        return {"arm_q_target": np.repeat(a[None], k, 0), "hand_q_target": np.repeat(h[None], k, 0), "done": False}
+
     def act(self, obs):
-        a = self.pol.act(obs)
+        if self._pending_reset is not None:
+            if self._planning():
+                a = self._hold(obs)
+            else:
+                self._apply_reset()
+                a = self.pol.act(obs)
+        else:
+            a = self.pol.act(obs)
         arm, hand = self.guard(a["arm_q_target"], a["hand_q_target"], obs)
         return {"arm_q_target": arm.astype(np.float64), "hand_q_target": hand.astype(np.float64),
                 "done": bool(a.get("done", False))}

@@ -194,6 +194,31 @@ class TestHeadPose(unittest.TestCase):
 
 
 @unittest.skipUnless(HAVE_PIN, "needs pinocchio + the G1 URDF (sim machine or Docker build)")
+class TestResetNeverBlocks(unittest.TestCase):
+    """A planning thread left over from the last episode must not delay reset() (watchdog: 3 s of sim time)."""
+
+    def test_stale_planning_thread(self):
+        import time
+        from policies.classical_v1 import ClassicalV1
+        v = ClassicalV1()
+        v.reset(tasks.FIXED_INSTRUCTION, "sort_fixed")
+        job = {"obs": None, "result": None}
+        v.pol._job = job                                        # the old episode's look, still planning
+        t0 = time.monotonic()
+        v.reset(tasks.FIXED_INSTRUCTION, "sort_fixed")
+        self.assertLess(time.monotonic() - t0, 0.5)             # returns at once
+        obs = {"arm_q": v.pol.home.copy(), "hand_q": v.pol.post["open"].copy(), "t": 0.0}
+        a = v.act(obs)                                          # holds while the old thread runs
+        self.assertEqual(a["arm_q_target"].shape[1], 14)
+        self.assertTrue(np.allclose(a["arm_q_target"], a["arm_q_target"][0]))
+        self.assertIsNotNone(v._pending_reset)
+        job["result"] = ("none", None, 0)                       # old thread done
+        v.act(obs)                                              # reset applied, Aalto's policy takes over
+        self.assertIsNone(v._pending_reset)
+        self.assertIsNone(v.pol._job)
+
+
+@unittest.skipUnless(HAVE_PIN, "needs pinocchio + the G1 URDF (sim machine or Docker build)")
 class TestV12(unittest.TestCase):
     def test_fit_used_then_reset(self):
         from policies.classical_v12 import ClassicalV12
