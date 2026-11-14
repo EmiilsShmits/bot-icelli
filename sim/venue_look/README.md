@@ -92,7 +92,7 @@ Aalto's sim uses Unitree's sample wrist cameras (their calibration file is from 
 
 ## Status
 - **Now:** works on `bot-icelli-sim` (spot RTX PRO 6000, resumed Sat 14 Nov): 9/9 scene checks pass with everything in the table above, including the new wrist cameras, backgrounds and grey hands. Aalto's oracle sorts 71 % (10/14) with the scattered layouts, 88 % (7/8) with Aalto's own layout band (`eval/RESULTS.md` e-003, e-002).
-- **Also (Sat 14 Nov ~19:30, Samer + Claude):** running on `samer-v1-sim` as a third sim next to Aalto's nominal scene and `AALTO_DR=train` (`eval/venue_lane.sh`). Checked against a real head-camera frame: framing, bins with rim paper, table and the orange / yellow / purple objects match well; a bit cleaner than the real image, purple more saturated, hands lighter. It caught a bug: v1.2/v1.3's head-camera fit check rejected the correct 9.8° fit here (fixed in `policy/` v1.4).
+- **Also (Sat 14 Nov ~19:00, Samer + Claude):** running on `samer-v1-sim` as a third sim next to Aalto's nominal scene and `AALTO_DR=train` (`eval/venue_lane.sh`). Checked against a real head-camera frame: framing, bins with rim paper, table and the orange / yellow / purple objects match well; a bit cleaner than the real image, purple more saturated, hands lighter. It caught a bug: v1.2/v1.3's head-camera fit check rejected the correct 9.8° fit here (fixed in `policy/` v1.4).
 - **Next:** the hand-position offset (row 1b); a randomisation file with a wider head-camera jitter (about ±3°, ±3 cm, row 2).
 - **Blockers:** the red/blue colour mapping below is still a guess.
 

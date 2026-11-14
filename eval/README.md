@@ -27,7 +27,7 @@
 **Docker-path sim (Aalto's image):** start a policy server on :8000 (`make serve`, or `docker run -d --gpus all -p 8000:8000 <image>`), then `make eval TASK=sort_fixed TRIALS=20` (runs `aalto eval` inside the sim container; untested). Exit 0 = gate passed, 2 = failed.
 
 ## Status
-- **Now (Sat 14 Nov ~19:40, Samer + Claude):** on Samer's Verda machine (`samer-v1-sim`, spot RTX PRO 6000, FIN-03). Done: v1.2 and v1.3 nominal both 26/40, the same as the baseline (e-023, e-024); the oracle with `AALTO_DR=train` 32/40, the same as nominal (e-025). Running in three lanes (see above): sim A v1.1 nominal, then v1.3 and the baseline on sort_language; sim B v1.3 with randomisation (11/15 after 4 seeds; baseline 9/15 there), then v1.4; sim C the venue look: v1.3, the baseline, then v1.4.
+- **Now (Sat 14 Nov ~19:10, Samer + Claude):** on Samer's Verda machine (`samer-v1-sim`, spot RTX PRO 6000, FIN-03). Done: v1.2 and v1.3 nominal both 26/40, the same as the baseline (e-023, e-024); the oracle with `AALTO_DR=train` 32/40, the same as nominal (e-025). Running in three lanes (see above): sim A v1.1 nominal, then v1.3 and the baseline on sort_language; sim B v1.3 with randomisation (11/15 after 4 seeds; baseline 9/15 there), then v1.4; sim C the venue look: v1.3, the baseline, then v1.4.
 - **Next:** v1.4 nominal on sim A (not queued yet: sim A's queue was set up by another session). The old `queue.sh` (tmux `queue`) still waits to run a venue phase on sim A once every `compare.sh` is done; sim C covers that now.
 - **Blockers:** —
 

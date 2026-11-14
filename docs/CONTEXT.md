@@ -1,6 +1,6 @@
 # Team context: read this first
 
-**Last updated:** Sat 14 Nov 2026, ~19:45 Helsinki time, by Samer + Claude. If you change something this file describes, update it in the same commit.
+**Last updated:** Sat 14 Nov 2026, ~19:10 Helsinki time, by Samer + Claude. If you change something this file describes, update it in the same commit.
 
 **Every statement here is one of three kinds:**
 - **FACT**: measured by us, or said by the organisers. Each one names its source and time. Numbers come from `eval/RESULTS.md` and the linked files; check there before you build on one.
@@ -90,7 +90,7 @@ Other measurements:
   - **Cylinders, first grasp held:** baseline 53 %, oracle 89 %.
 - **Emīls's decision_oracle with camera-only perception + upgrades, venue look** (e-019, e-022): sort_fixed 21/27, sort_language 26/28 (Aalto's oracle with exact poses: 22/27, 20/28). Runs in-process inside Aalto's evaluator, not as a policy server.
 - **Marcus's ADK agent** (Gemini 4 Hydrogen calling oracle-based skills, camera perception; Modal, from `sim_out/` in his repo): nominal sort_fixed seeds 1000–1004: 14/20 and 17/20 in two runs (Aalto's baseline 16/20, his rule-based skill policy 16/20 on the same seeds there); sort_language seeds 1000–1002: 6/11 and 9/11. **With real colours and `--dr wide`** (`sim/scene_variant.py`): 7/21, 8/19 and 8/20, with 3–4 objects in a wrong bin per run (−1 each). Every move waits 3–4 s for the model.
-- **v1.2's head-camera re-fit rejected its own correct fit in the venue look** (Sat ~19:20, sim C): tilt 9.8°, reported "shift −8.3 cm" > the 6 cm limit, but the camera itself moved only 1.9 cm (the plane fit tilts the pose about the pelvis origin, the bin fit moves it back). v1.2/v1.3 then perceive the venue look with a camera ~10° off: on one frame v1.3 finds 11 "objects" (bins among them, at wrong heights), v1.4 (fixed) exactly the 6 objects. In the nominal and randomised sims all 25 logged fits were accepted, so this only bites in the venue look, and on the real robot if its camera is really tilted.
+- **v1.2's head-camera re-fit rejected its own correct fit in the venue look** (Sat ~19:00, sim C): tilt 9.8°, reported "shift −8.3 cm" > the 6 cm limit, but the camera itself moved only 1.9 cm (the plane fit tilts the pose about the pelvis origin, the bin fit moves it back). v1.2/v1.3 then perceive the venue look with a camera ~10° off: on one frame v1.3 finds 11 "objects" (bins among them, at wrong heights), v1.4 (fixed) exactly the 6 objects. In the nominal and randomised sims all 25 logged fits were accepted, so this only bites in the venue look, and on the real robot if its camera is really tilted.
 - Sim speed: one sim on the RTX PRO 6000 machine runs at 0.52× real time, two or three on one machine at 0.17–0.48×. Scores pace on the sim clock, so speed doesn't change results.
 
 ### 4.4 Submission candidates (`policy/`)
@@ -150,7 +150,7 @@ Other measurements:
 ## 7. Open questions (OPEN)
 - **Aalto:** the image deadline and hand-in form (expected tonight); whether they can pass an API key as an environment variable; how distractors are scored.
 - **Real camera:** is the camera mounted tilted, or is the torso leaning? This decides whether the head-pose re-fit is right on the real robot. Comparing the hands' projected and seen positions in the head camera could tell.
-- **Sim runs going (Sat ~19:45):** does v1.3 hold up with randomisation (11/15 after 4 seeds)? Does v1.4's grasp check pay off there and in the venue look? How does v1.4 in the venue look compare with decision_oracle in camera mode on the same seeds (21/27, e-019)?
+- **Sim runs going (Sat ~19:10):** does v1.3 hold up with randomisation (11/15 after 4 seeds)? Does v1.4's grasp check pay off there and in the venue look? How does v1.4 in the venue look compare with decision_oracle in camera mode on the same seeds (21/27, e-019)?
 - **Gemma inside the image:** size, and start-up within the 120 s limit, are untested.
 
 ## 8. Repo rules added today (FACT)

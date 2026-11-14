@@ -2,7 +2,7 @@
 
 Empty log, one row per scored sim run. The columns are a starting point; change them as the team needs.
 
-_Running on `samer-v1-sim`, Sat 14 Nov ~19:40 (Samer + Claude, rows to follow), three sims on one machine: sim A Aalto's nominal scene (v1.1 sort_fixed, then v1.3 and the baseline on sort_language); sim B `AALTO_DR=train` (v1.3, then v1.4, sort_fixed, seeds 1000–1009); sim C Emīls's venue look (v1.3, the baseline, then v1.4, sort_fixed, seeds 1000–1005 like e-004…e-022). Scripts: `eval/venue_lane.sh`, `eval/after.sh`._
+_Running on `samer-v1-sim`, Sat 14 Nov ~19:10 (Samer + Claude, rows to follow), three sims on one machine: sim A Aalto's nominal scene (v1.1 sort_fixed, then v1.3 and the baseline on sort_language); sim B `AALTO_DR=train` (v1.3, then v1.4, sort_fixed, seeds 1000–1009); sim C Emīls's venue look (v1.3, the baseline, then v1.4, sort_fixed, seeds 1000–1005 like e-004…e-022). Scripts: `eval/venue_lane.sh`, `eval/after.sh`._
 
 | ID | Date | Who | Policy (git sha / image digest) | Model (m-…) | Task | DR | Trials | Mean score | % sorted | Clips | Hz (sim / rt) | Gate | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
