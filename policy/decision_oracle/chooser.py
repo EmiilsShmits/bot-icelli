@@ -4,6 +4,8 @@
     DecisionChooser  Gemini Decision 1: ONE createDecision call per look, head-camera image + scene text, one
                      `choice` question per parameter whose criteria are the feasible values only (+ "default").
                      2 s timeout; any error / timeout / missing answer -> the default.
+    PreferFaceChooser the oracle's object, but a face grasp whenever one is planned.
+    MemoryChooser    face grasp first + never repeat an (arm, grasp) that failed on this object; untried objects first.
     RandomChooser    uniform over objects, then over that object's options and drop spots (seeded). Explores
                      movements the oracle never picks, to see which ones work.
 
@@ -87,6 +89,41 @@ class PreferFaceChooser:
         rank = {"face": 0, "face_alt": 1, "stock": 2}
         o = min(same, key=lambda x: (rank[_grasp_kind(x.grasp)], not x.is_default, x.duration))
         return o, o.drop, {"chooser": self.name, "fallback": None, "changed": o is not d}
+
+
+class MemoryChooser:
+    """Rule with a memory of failed picks (no API):
+      - objects that have not failed yet go first (the oracle's order among them), so easy ones are sorted before
+        time is spent on a hard one;
+      - never repeat an (arm, grasp) that already failed on this object while another checked option exists;
+      - for cubes and triangles prefer a face grasp, then the alternative triangle angles, then the stock claw.
+    Aalto's oracle retries with the same grasp; in our sim runs the stock claw held a triangle in 1 of 15 picks."""
+    name = "memory"
+    budget_s = 8.0
+    wants_history = True       # the policy then counts retries per object and passes ctx["history"]
+
+    def choose(self, options, ctx):
+        hist = ctx.get("history") or {}
+        order = {}
+        for i, o in enumerate(options):
+            order.setdefault(o.obj, i)
+        obj = min(order, key=lambda n: (len(hist.get(n, [])), order[n]))
+        fails = hist.get(obj, [])
+
+        def sig_fail(o):
+            return sum(1 for f in fails if f["arm"] == o.arm and f["grasp"] == o.grasp)
+
+        def kind_fail(o):
+            return sum(1 for f in fails if f["arm"] == o.arm and _grasp_kind(f["grasp"]) == _grasp_kind(o.grasp))
+
+        rank = {"face": 0, "face_alt": 1, "stock": 2}
+        same = [o for o in options if o.obj == obj]
+        o = min(same, key=lambda x: (sig_fail(x), x.route != "direct", kind_fail(x), rank[_grasp_kind(x.grasp)],
+                                     not x.is_default, x.duration))
+        d = next(x for x in options if x.is_default)
+        return o, o.drop, {"chooser": self.name, "fallback": None, "changed": o is not d,
+                           "failed_before": [f"{f['arm']}/{f['grasp']}" for f in fails],
+                           "repeat": sig_fail(o) > 0}
 
 
 class RandomChooser:
@@ -267,6 +304,8 @@ def make(name, seed=0):
         return DecisionChooser()
     if name == "prefer_face":
         return PreferFaceChooser()
+    if name == "memory":
+        return MemoryChooser()
     raise ValueError(name)
 
 

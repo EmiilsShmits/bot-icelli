@@ -247,6 +247,7 @@ class CameraPerception:
         self._n = 0
         self._obs = None
         self.last = []            # detections of the last fresh look
+        self._moved = None        # (name, radius): see expect_moved
         self.last_debug = {}
 
     def update(self, obs):
@@ -330,17 +331,24 @@ class CameraPerception:
                 dets.append(d)
         return dets, rejected
 
+    def expect_moved(self, name, radius=0.10):
+        """A failed pick pushes the object (1-3 cm, sometimes more, sometimes onto its side). At the next look a
+        detection of the same colour within `radius` of that track keeps its name, so its failure history survives."""
+        self._moved = (name, radius)
+
     def _track(self, dets, radius=0.03):
         """Stable names across looks: a detection within `radius` of a known track of the same colour keeps its name
         (and its shape, if the new view could not tell)."""
         free = list(self.tracks)
         tracks = []
+        moved, self._moved = self._moved, None
         for d in dets:
             best = None
             for t in free:
                 if t[1] == d.color:
                     e = float(np.linalg.norm(t[2] - d.top[:2]))
-                    if e < radius and (best is None or e < best[0]):
+                    r = moved[1] if moved is not None and t[0] == moved[0] else radius
+                    if e < r and (best is None or e < best[0]):
                         best = (e, t)
             if best is not None:
                 free.remove(best[1])

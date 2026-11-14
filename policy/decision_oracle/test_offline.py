@@ -4,7 +4,9 @@
 
 1. DefaultChooser + budget 0 picks exactly what Aalto's OraclePolicy picks (object, arm, plan length).
 2. Every enumerated option (budget 8 s) is a plan that passed the planner's checks with 0 dry-run clips.
-3. --decision IMG: one live Decision 1 call on the first layout, with IMG as the head image (prints the record).
+3. MemoryChooser never repeats a failed (arm, grasp) while another checked option exists; objects are given up
+   after max_tries failures.
+4. --decision IMG: one live Decision 1 call on the first layout, with IMG as the head image (prints the record).
 """
 from __future__ import annotations
 
@@ -55,6 +57,7 @@ def main(argv=None):
     scene = Scene.load()
     same = diff = none_both = 0
     n_opt, bad, t_enum, kinds = [], 0, [], collections.Counter()
+    mem_n = mem_changed = mem_bad = 0
     for i in range(a.layouts):
         rng = np.random.default_rng(a.seed + i)
         layout = tasks.sample_layout(rng, **scene.layout_kwargs())
@@ -88,6 +91,29 @@ def main(argv=None):
         print(f"layout {i}: {len(dets)} objects, {len(opts)} options in {t_enum[-1]:.1f} s "
               f"(default {info['t_default_s']} s, budget hit {info['budget_hit']}), "
               f"objects with options {len({o.obj for o in opts})}, no direct {info['no_direct']}", flush=True)
+        # failure memory: after the default option "fails", the memory chooser must not repeat it while another
+        # checked option exists (same object with another arm/grasp, or another object)
+        if opts:
+            mem = DecisionOraclePolicy(fc, chooser="memory", threaded=False, prefetch=False, log=None)
+            setup(mem)
+            mem._update_drop_offsets()
+            d0 = next(o for o in opts if o.is_default)
+            mem.hist[d0.obj] = [{"arm": d0.arm, "grasp": d0.grasp, "route": d0.route, "source": "test"}]
+            o2, i2 = mem.enum.feasible_options(mem.perception.detect(), mem.arm_cmd, mem.hand_cmd, budget_s=a.budget)
+            if o2:
+                c, _, rec = mem.chooser.choose(o2, {"history": mem.hist})
+                alt = [o for o in o2 if (o.obj, o.arm, o.grasp) != (d0.obj, d0.arm, d0.grasp)]
+                mem_n += 1
+                mem_changed += (c.obj, c.arm, c.grasp) != (d0.obj, d0.arm, d0.grasp)
+                if alt and (c.obj, c.arm, c.grasp) == (d0.obj, d0.arm, d0.grasp):
+                    mem_bad += 1
+                print(f"   memory: after {d0.obj} {d0.arm}/{d0.grasp} failed -> {c.obj} {c.arm}/{c.grasp} "
+                      f"({len(alt)} other options)", flush=True)
+            # 4 failures on every object -> nothing left to try
+            for d in dets:
+                mem.hist[d.name] = [{"arm": "left", "grasp": "stock", "route": "direct", "source": "test"}] * mem.max_tries
+            if mem.enum.candidates(mem.perception.detect()):
+                mem_bad += 1
         if a.decision and i == 0 and opts:
             ch = DecisionChooser()
             with open(a.decision, "rb") as f:
@@ -100,9 +126,10 @@ def main(argv=None):
     print(f"options per look: mean {np.mean(n_opt):.1f}  min {min(n_opt)}  max {max(n_opt)};  "
           f"enumeration s: mean {np.mean(t_enum):.1f} max {max(t_enum):.1f}")
     print(f"options that failed a check: {bad}")
+    print(f"memory chooser: changed the pick after a failure in {mem_changed}/{mem_n} layouts, rule violations {mem_bad}")
     for k, v in sorted(kinds.items()):
         print(f"  {k}: {v}")
-    return 0 if diff == 0 and bad == 0 else 1
+    return 0 if diff == 0 and bad == 0 and mem_bad == 0 else 1
 
 
 if __name__ == "__main__":

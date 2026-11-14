@@ -243,7 +243,14 @@ class OptionEnumerator:
             xy = d.top[:2]
             if any(np.linalg.norm(xy - f) < r for f in pol.failed):
                 continue
-            if sum(c for p, c in pol.attempts if np.linalg.norm(xy - p) < r) >= pol.cfg["policy"]["max_attempts"]:
+            if getattr(pol, "retry", "position") == "object":
+                # retries counted per object (failure memory), not per table position; the position rule stays as
+                # a backstop at twice the number of tries
+                if len(pol.hist.get(d.name, [])) >= pol.max_tries:
+                    continue
+                if sum(c for p, c in pol.attempts if np.linalg.norm(xy - p) < r) >= 2 * pol.max_tries:
+                    continue
+            elif sum(c for p, c in pol.attempts if np.linalg.norm(xy - p) < r) >= pol.cfg["policy"]["max_attempts"]:
                 continue
             d.bin = target_bin(pol.mapping, d)
             if d.bin is not None:
@@ -323,34 +330,68 @@ class OptionEnumerator:
 
         d_def = options[0].det
         others = [d for d in cands if d.name != d_def.name]
-        # 2a. one plan per other object (Aalto's rule): makes "which object" a real choice
-        for d in others:
-            if out_of_time():
-                break
+        hist = getattr(pol, "hist", {}) if getattr(pol, "retry", "position") == "object" else None
+
+        def plan_other(d):
+            """One plan for another object by Aalto's rule: makes "which object" a real choice."""
             if d.name in direct_done:
-                if not direct_done[d.name]:
-                    continue
+                return direct_done[d.name]
             p = pol.planner.plan(d, arm_q, hand_q, bin_name=d.bin, relocate=False)
             direct_done[d.name] = p.ok
             info["tried"].append({"obj": d.name, "arm": "auto", "grasp": "auto", "ok": bool(p.ok),
                                   "reason": p.reason[:160]})
             if p.ok:
                 add(self._option(d, p, p.side, grasp_label(p), "direct", self.default_drop(d.bin)))
+            return p.ok
+
+        def variants(d):
+            """Arm x grasp variants of one object."""
+            pairs = [(arm, g) for arm in ("left", "right") for g in grasp_variants(d, arm)]
+            if hist is not None:
+                # Aalto's rule already tried every face on its arm before it fell back to the stock claw
+                stock_arms = {o.arm for o in options if o.obj == d.name and o.grasp == GRASP_STOCK}
+                pairs = [(a, g) for a, g in pairs if not (a in stock_arms and g.startswith("face") and "p" not in g)]
+                # untried (arm, grasp) first, face grasps before the stock claw
+                fails = [(f["arm"], f["grasp"]) for f in hist.get(d.name, [])]
+                pairs.sort(key=lambda ag: (fails.count(ag), ag[1] == GRASP_STOCK, "p" in ag[1]))
+            for arm, grasp in pairs:
+                if out_of_time():
+                    break
+                if any(o.obj == d.name and o.arm == arm and o.grasp == grasp for o in options):
+                    continue
+                p, why = lib.plan_direct(d, arm, grasp, d.bin, arm_q, hand_q)
+                info["tried"].append({"obj": d.name, "arm": arm, "grasp": grasp, "ok": p is not None,
+                                      "reason": str(why)[:160]})
+                if p is not None:
+                    fa = dict(face_options(d, arm, parse_face(grasp)[1])).get(parse_face(grasp)[0]) \
+                        if grasp.startswith("face") else None
+                    add(self._option(d, p, arm, grasp, "direct", self.default_drop(d.bin), face_a=fa))
+
+        done_variants = set()
+        if hist is not None:
+            # failure memory: the chooser takes the object with the fewest failures, so spend the budget there
+            # first: find that object, then plan its grasp variants before anything else
+            def nf(d):
+                return len(hist.get(d.name, []))
+            target = d_def
+            for d in sorted(others, key=nf):
+                if nf(d) >= nf(d_def) or out_of_time():
+                    break
+                if plan_other(d):
+                    target = d
+                    break
+            info["target"] = target.name
+            variants(target)
+            done_variants.add(target.name)
+        # 2a. one plan per other object
+        for d in others:
+            if out_of_time():
+                break
+            plan_other(d)
         # 2b. arm x grasp variants, default object first
         for d in [d_def] + [d for d in others if direct_done.get(d.name)]:
-            for arm in ("left", "right"):
-                for grasp in grasp_variants(d, arm):
-                    if out_of_time():
-                        break
-                    if any(o.obj == d.name and o.arm == arm and o.grasp == grasp for o in options):
-                        continue
-                    p, why = lib.plan_direct(d, arm, grasp, d.bin, arm_q, hand_q)
-                    info["tried"].append({"obj": d.name, "arm": arm, "grasp": grasp, "ok": p is not None,
-                                          "reason": str(why)[:160]})
-                    if p is not None:
-                        fa = dict(face_options(d, arm, parse_face(grasp)[1])).get(parse_face(grasp)[0]) \
-                            if grasp.startswith("face") else None
-                        add(self._option(d, p, arm, grasp, "direct", self.default_drop(d.bin), face_a=fa))
+            if d.name not in done_variants:
+                variants(d)
         # 2c. relay for objects that have no direct plan at all (Aalto only relays when nothing else is plannable)
         for d in cands:
             if out_of_time():
