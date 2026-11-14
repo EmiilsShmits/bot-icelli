@@ -159,6 +159,20 @@ Offline check: `SafetyFilter.from_files()` then `filter(action, t)` returns whet
 - **Allowed:** any method and any public model or data, external APIs at your own risk.
 - **Not allowed:** privileged sim state in the submission, hard-coded layouts, tuning on the held-out variant.
 
+**Difficulty knobs** (`STARTER_PATHS.md`; Aalto: "Finals values are not announced"):
+
+| Knob | Easier | Harder | Now (code) |
+|---|---|---|---|
+| Objects per episode | 3 | 5 | 3–5 |
+| Instruction | colour only | colour + shape, negation, held-out paraphrases | colour only, 8 training templates; held-out templates exist |
+| Layout | spread out, yaw ±15° | min spacing, yaw ±45°, **distractor object** | yaw ±45°, ≥ 8 cm spacing, no distractors |
+| Time limit | 180 s | 90 s | 120 s |
+| Hole clearance (rung 3) | +15 mm | +3 mm | +10 mm |
+| Shapes with holes (rung 3) | circle only | all three | all three |
+
+- Known object types: 3 colours (red, yellow, blue) × 3 shapes (cube, cylinder, triangle) (`interface/tasks.py`).
+- Aalto doesn't say what a distractor looks like. A policy that only picks objects the instruction names doesn't need to know.
+
 ## 6. Submission contract
 
 | Item | Requirement |
@@ -228,3 +242,8 @@ Local test ladder:
 2. Is there a Coil Pro or Smartsuit we can borrow for wrist position? The hardware desk shows the gloves and the suit all checked out.
 3. Does `xr_teleoperate` take a custom hand-keypoint input, or do we write our own glove → IK → DDS bridge?
 4. Aalto and Rokoko are both **main** challenges, and we can enter only one. Which one fits a "gloves → demos → policy" project better? Rokoko judges teleop; Aalto judges only the autonomous policy.
+5. **Distractors** (for Aalto):
+   - If the finals use a distractor object, how is it scored if it ends up in a bin or knocked off?
+   - Does a known colour on an unknown shape (e.g. a red star) count as "a red object"?
+6. **Finals instructions** (for Aalto): will the finals use the "harder" instruction knob (colour + shape, negation), or only colour-only paraphrases?
+7. **Tech challenges** (for the Junction organisers): can one submission enter several tech challenges at once (e.g. Gemma + Gemini + Nemotron)?

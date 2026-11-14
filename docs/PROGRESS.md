@@ -7,6 +7,10 @@ _Update at the end of every session. Newest state at the top; keep it short._
 - **Also done:** repo structure for knowledge base + code (see `README.md`, `AGENTS.md`); Aalto starter repo linked as a submodule; placeholder policy server passes Aalto's plumbing test (`make check`)
 - **Sim runs (Sat 14 Nov):** Aalto sim installed bare-metal on Emīls's Verda RTX 6000 Ada (`bot-icelli-sim`, $1.59/h). 9/9 scene checks pass; oracle baseline scores 92 % on sort_fixed, gate PASS (`eval/RESULTS.md` e-001). Setup + fixes in `docs/runbooks/verda-sim-setup.md`. **Stop the machine when idle.**
 - **Venue look (Sat 14 Nov):** `sim/venue_look/` makes the sim resemble the real table (plywood, orange/yellow/purple objects, taped cardboard bins, black curtains). Switchable; default sim unchanged. **Open question for organisers:** the real objects are orange/yellow/purple, the docs say red/yellow/blue. Which is which?
+- **LLM ideas (Sat 14 Nov):**
+  - `docs/research/llm-vlm-uses.md` covers where an LLM/VLM could help: mainly an offline rung-2 instruction parser that could also fit the Gemma prize.
+  - Its overnight test plan is `training/instruction_parser/EXPERIMENT.md`.
+  - Aalto's "difficulty knobs" (possible harder finals: colour + shape, negation, a distractor object) are now in `docs/research/aalto-humanoid.md` §5.
 - **In progress:** working on the Aalto humanoid, mostly in sim. Team split: fine-tuning (Emīls, Tiya), simulation (Marcus, Samer)
 - **Next:** agree on the open items at the top of `docs/DECISIONS.md` (brief, approach, handoffs, storage, workflow, owners)
 - **Blockers:** open team decisions (see `docs/DECISIONS.md`). Open questions for mentors are listed at the end of `docs/research/aalto-humanoid.md` (real-G1 teleop access, Coil Pro/suit for wrist tracking)
@@ -35,3 +39,4 @@ _Anything hardcoded or faked, so nobody is surprised at demo time._
 - 2026-11-13 — Trimmed docs to facts only; team decisions moved to an open list in `docs/DECISIONS.md`.
 - 2026-11-14 — Verda sim machine up; Aalto sim installed bare-metal (3 install workarounds), 9/9 scene checks, oracle baseline 92 % / gate PASS. Camera snapshots in `artifacts/sim-snap/` (local).
 - 2026-11-14 — Built `sim/venue_look/` from a phone photo of the real table; 9/9 scene checks pass with it.
+- 2026-11-14 — Research notes on Nemotron uses, LLM/VLM uses, Gemma prize and credits; Aalto difficulty knobs added; Gemma instruction-parser experiment planned for overnight.

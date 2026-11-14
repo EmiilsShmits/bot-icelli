@@ -11,7 +11,7 @@
 _Nothing yet._
 
 ## Status
-- **Now:** —
+- **Now:** overnight experiment (Sat 14 Nov): can a small Gemma parse rung-2 instructions, including shape, negation and distractor wording? Plan in `instruction_parser/EXPERIMENT.md`, results in `instruction_parser/RESULTS.md`. Runs on two temporary Verda GPUs on Emīls's account.
 - **Next:** —
 - **Blockers:** —
 
