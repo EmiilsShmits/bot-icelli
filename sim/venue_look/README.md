@@ -39,7 +39,7 @@ bash aaltonomous/cloud/aalto.sh check                  # 9 PASS
 - **With randomisation:** add `AALTO_DR=train`. Aalto's jitter is applied around the venue colours.
 
 ## Status
-- **Now:** works on `bot-icelli-sim`: 9/9 scene checks pass. Appearance only; geometry is Aalto's. **The sim on that machine is currently running with the venue look.**
+- **Now:** works on `bot-icelli-sim`: 9/9 scene checks pass. Appearance only; geometry is Aalto's. The machine is hibernated since Sat 14 Nov 03:48 (disk kept; see the runbook to resume).
 - **Next:** —
 - **Blockers:** the colour mapping below is a guess.
 

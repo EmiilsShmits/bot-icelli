@@ -20,7 +20,7 @@
   - `…/cloud/QUICKSTART.md`
 
 ## Status
-- **Now:** Aalto sim runs bare-metal on a Verda RTX 6000 Ada (`bot-icelli-sim`, on Emīls's account; ask him for SSH access). 9/9 scene checks, oracle baseline 92 % (gate PASS). How: `docs/runbooks/verda-sim-setup.md`. A switchable venue look (plywood table, real object colours) is in `venue_look/`.
+- **Now:** Aalto sim was set up bare-metal on a Verda RTX 6000 Ada (`bot-icelli-sim`, Emīls's account). **The machine is hibernated since Sat 14 Nov 03:48** to stop billing; its disk with the full install is kept (volume `bot-icelli-os`). Resume steps are in the runbook. 9/9 scene checks, oracle baseline 92 % (gate PASS). How: `docs/runbooks/verda-sim-setup.md`. A switchable venue look (plywood table, real object colours) is in `venue_look/`.
 - **Next:** —
 - **Blockers:** sim speed is 0.31× real time on 10 vCPU (Aalto quotes ~0.7×).
 

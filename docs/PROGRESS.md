@@ -5,7 +5,7 @@ _Update at the end of every session. Newest state at the top; keep it short._
 ## Now
 - **Done:** project context scaffolding (CLAUDE.md, docs/); all 38 challenges saved to `docs/challenges/` with an overview table; sponsor codes moved to `.env.challenges`; hardware + API research in `docs/research/` (Aalto G1 robot/sim, all credits and APIs, Rokoko gloves, Jetson)
 - **Also done:** repo structure for knowledge base + code (see `README.md`, `AGENTS.md`); Aalto starter repo linked as a submodule; placeholder policy server passes Aalto's plumbing test (`make check`)
-- **Sim runs (Sat 14 Nov):** Aalto sim installed bare-metal on Emīls's Verda RTX 6000 Ada (`bot-icelli-sim`, $1.59/h). 9/9 scene checks pass; oracle baseline scores 92 % on sort_fixed, gate PASS (`eval/RESULTS.md` e-001). Setup + fixes in `docs/runbooks/verda-sim-setup.md`. **Stop the machine when idle.**
+- **Sim runs (Sat 14 Nov):** Aalto sim installed bare-metal on Emīls's Verda RTX 6000 Ada (`bot-icelli-sim`, $1.59/h). 9/9 scene checks pass; oracle baseline scores 92 % on sort_fixed, gate PASS (`eval/RESULTS.md` e-001). Setup + fixes in `docs/runbooks/verda-sim-setup.md`. **Machine hibernated Sat 14 Nov 03:48** (disk with the install kept, ~€0.05/h; resume steps in the runbook).
 - **Venue look (Sat 14 Nov):** `sim/venue_look/` makes the sim resemble the real table (plywood, orange/yellow/purple objects, taped cardboard bins, black curtains). Switchable; default sim unchanged. **Open question for organisers:** the real objects are orange/yellow/purple, the docs say red/yellow/blue. Which is which?
 - **LLM ideas (Sat 14 Nov):**
   - `docs/research/llm-vlm-uses.md` covers where an LLM/VLM could help: mainly an offline rung-2 instruction parser that could also fit the Gemma prize.

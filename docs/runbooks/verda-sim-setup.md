@@ -47,6 +47,17 @@ ssh -i ~/.ssh/verda_ed25519 root@<ip>
 ```
 The full API schema is at `$API/openapi.json`. **The machine bills until you delete it.**
 
+### Stopping the machine (and getting it back)
+**A plain `shutdown` keeps charging** (Verda's API docs). Billing for the GPU stops only when the instance is deleted. "Hibernate" deletes the instance but keeps its disk, so the installed sim survives:
+```bash
+bash aaltonomous/cloud/aalto.sh stop                                    # on the machine first
+curl -s -X PUT -H "$H" -H 'Content-Type: application/json' $API/instances -d '{"action":"shutdown","id":"<instance id>"}'
+curl -s -X PUT -H "$H" -H 'Content-Type: application/json' $API/instances -d '{"action":"hibernate","id":"<instance id>"}'   # once status is "offline"
+curl -s -H "$H" $API/volumes                                            # the OS volume is now "detached"
+```
+- The kept 200 GB disk costs about **€36/month (€0.05/h)**. Delete the volume too when it's no longer needed.
+- **To resume:** create a new instance as above, but pass the kept volume's id as `"image"` and leave out `"os_volume"`. Per Verda's API docs; not yet tried by us. The IP address will be new, and that GPU type must be free again.
+
 ## 2. Start the sim
 ```bash
 # image link: kickoff / Aalto Discord channel
