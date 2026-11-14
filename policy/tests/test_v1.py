@@ -292,5 +292,99 @@ class TestV13DropSpots(unittest.TestCase):
         self.assertEqual(pol.planner.drop_count, {})
 
 
+@unittest.skipUnless(HAVE_PIN, "needs pinocchio + the G1 URDF (sim machine or Docker build)")
+class TestV14GraspCheck(unittest.TestCase):
+    """v1.4: an empty hand at the end of the lift aborts the carry; the retry uses another arm or finger direction."""
+
+    @classmethod
+    def setUpClass(cls):
+        from policies.classical_v14 import ClassicalV14
+        cls.v = ClassicalV14()
+
+    def setUp(self):
+        self.v.reset(tasks.FIXED_INSTRUCTION, "sort_fixed")
+        pol = self.v.pol
+        pol.arm_cmd, pol.hand_cmd = pol.home.copy(), pol.post["open"].copy()
+
+    def det(self, color, y):
+        from aaltonomous.baselines.classical.perception import Detection
+        pol = self.v.pol
+        return Detection(color, np.array([0.29, y, pol.scene.counter_z + pol.planner.height]), 400, 400, "depth")
+
+    def run_to_check(self, plan, finger_offset):
+        """Execute `plan` up to the end of its lift, then hand the policy a measured hand pose for the check."""
+        pol = self.v.pol
+        pol._start(plan, 0.0)
+        cut = next(e for n, s, e in plan.phases if n == "lift")
+        self.assertIsNotNone(pol._gc)
+        self.assertLess(len(pol.queue_a), cut)              # the queue now ends at the end of the lift
+        while len(pol.queue_a):
+            pol.act({"t": 1.0, "arm_q": pol.arm_cmd, "hand_q": pol.hand_cmd})
+        np.testing.assert_allclose(pol.arm_cmd, plan.arm[cut - 1])   # stopped exactly at the end of the lift
+        hand_q = pol.hand_cmd.copy()
+        hand_q[3 if plan.side == "left" else 10] += finger_offset    # a held object stops one finger short
+        return pol.act({"t": 4.0, "arm_q": pol.arm_cmd, "hand_q": hand_q}), cut
+
+    def test_empty_hand_goes_home(self):
+        pol = self.v.pol
+        p = pol.planner.plan(self.det("red", 0.15), pol.home, pol.post["open"])
+        self.assertTrue(p.ok, p.reason)
+        self.run_to_check(p, 0.0)
+        while len(pol.queue_a):
+            pol.act({"t": 5.0, "arm_q": pol.arm_cmd, "hand_q": pol.hand_cmd})
+        np.testing.assert_allclose(pol.arm_cmd, p.arm[-1])          # ends where the plan would have ended
+        np.testing.assert_allclose(pol.hand_cmd, p.hand[-1])
+        self.assertEqual(len(pol.planner.failed_grasps), 1)
+        self.assertEqual(pol.planner.drop_count.get("left", 0), 0)  # nothing went into the bin
+        self.assertTrue(any("hand empty" in m for _, m in pol.events), pol.events)
+
+    def test_held_object_carries_on(self):
+        pol = self.v.pol
+        p = pol.planner.plan(self.det("red", 0.15), pol.home, pol.post["open"])
+        a, cut = self.run_to_check(p, 0.03)
+        self.assertEqual(len(pol.queue_a) + len(a["arm_q_target"]), len(p.arm) - cut)   # the rest of the plan
+        self.assertEqual(pol.planner.failed_grasps, [])
+        self.assertEqual(pol.planner.drop_count, {"left": 1})
+
+    def test_retry_uses_another_grasp(self):
+        pol = self.v.pol
+        for color, y in (("red", 0.15), ("yellow", -0.10), ("blue", -0.15)):
+            self.setUp()
+            p1 = pol.planner.plan(self.det(color, y), pol.home, pol.post["open"])
+            self.assertTrue(p1.ok, p1.reason)
+            self.run_to_check(p1, 0.0)                              # closed on nothing
+            pushed = self.det(color, y)
+            pushed.top[:2] -= [0.015, 0.0]                          # the failed grasp pushed it 1.5 cm
+            p2 = pol.planner.plan(pushed, pol.home, pol.post["open"])
+            self.assertTrue(p2.ok, p2.reason)
+            self.assertNotEqual((p2.side, p2.hint), (p1.side, p1.hint), f"{color}: {p2.reason}")
+            print(f"\n  v1.4 {color}: first {p1.side}/{p1.hint}, retry {p2.side}/{p2.hint} ({p2.reason})")
+
+    def test_head_fit_judged_by_the_camera_move(self):
+        """Venue look, Sat 14 Nov: tilt 9.8°, bin-fit step (-8.3, +2.8) cm, camera itself moved (-0.3, +1.9, -0.3) cm.
+        v1.2's check rejected it (step > 6 cm); v1.4 accepts it, and still rejects a camera that really moved 8 cm."""
+        from headpose import CAM, PoseFit, plausible
+        from policies.classical_v14 import camera_move_ok
+        T0 = self.v.pol._cal0._T(CAM)
+        a = np.radians(9.8)
+        R = np.array([[np.cos(a), 0, np.sin(a)], [0, 1, 0], [-np.sin(a), 0, np.cos(a)]])   # about the pelvis
+        T = np.eye(4)
+        T[:3, :3] = R @ T0[:3, :3]
+        T[:3, 3] = T0[:3, 3] + [-0.003, 0.019, -0.003]
+        venue = PoseFit(T, True, tilt_deg=9.8, dxy=(-0.083, 0.028), dyaw_deg=-0.5)
+        self.assertFalse(plausible(venue))                  # v1.2 / v1.3
+        self.assertTrue(camera_move_ok(venue, T0))          # v1.4
+        moved = PoseFit(T.copy(), True, tilt_deg=9.8, dxy=(0.0, 0.0), dyaw_deg=0.0)
+        moved.T[:3, 3] = T0[:3, 3] + [0.08, 0.0, 0.0]
+        self.assertFalse(camera_move_ok(moved, T0))
+
+    def test_other_objects_unaffected(self):
+        pol = self.v.pol
+        far = pol.planner.plan(self.det("blue", -0.15), pol.home, pol.post["open"])
+        pol.planner.failed_grasps = [{"xy": np.array([0.29, 0.15]), "side": far.side, "hint": far.hint}]
+        again = pol.planner.plan(self.det("blue", -0.15), pol.home, pol.post["open"])
+        self.assertEqual((again.side, again.hint), (far.side, far.hint))   # 30 cm away: same grasp as before
+
+
 if __name__ == "__main__":
     unittest.main()
