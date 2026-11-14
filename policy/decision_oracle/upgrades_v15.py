@@ -113,6 +113,7 @@ class SidedPlanner(O._OraclePlanner):
         return super()._plan_side(det, side, bin_name, arm_q, hand_q, place_xy=place_xy)
 
     _ridge_only = False
+    face_only = False                 # v1.6 near-body relay (near_v16.py): face / ridge grasps only, no stock claw
     ridge_shift = RIDGE_SHIFT_MM      # per planner: v1.6 sets its own
     ridge_first = RIDGE_FIRST
 
@@ -134,7 +135,10 @@ class SidedPlanner(O._OraclePlanner):
         shapes: Aalto's face-aligned grasp."""
         yaw = getattr(det, "yaw", None)
         if getattr(det, "shape", None) != "tipped" or yaw is None:
-            return super()._plan_side_faces(det, side, bin_name, arm_q, hand_q, **kw)
+            p = super()._plan_side_faces(det, side, bin_name, arm_q, hand_q, **kw)
+            if self.face_only and p.ok and not str(p.reason).startswith("face-aligned"):
+                return Plan(False, side=side, color=det.color, reason=f"{side}: no face plan")
+            return p
         ref = np.radians(O.FINGER_REF_DEG[side])
         cands = []
         for k in range(2):
@@ -160,7 +164,7 @@ class SidedPlanner(O._OraclePlanner):
                         return p
         finally:
             self.kin.hint, self.kin.w_hint = saved
-        if self._ridge_only:
+        if self._ridge_only or self.face_only:
             return Plan(False, side=side, color=det.color, reason=f"{side}: no ridge plan")
         return Planner._plan_side_hints(self, det, side, bin_name, arm_q, hand_q, **kw)
 
