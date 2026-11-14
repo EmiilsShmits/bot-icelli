@@ -65,6 +65,41 @@ the real object colours plus Aalto's `train` randomisation. It is not our venue 
   v1.5 on the same seeds, ideas worth taking into v1.5 without a model: the arms-aside parking and 12 cm clearance,
   trying every grip angle on triangles, choosing the next object while carrying.
 
+## What from v1.5 could go into the ADK agent (for Marcus)
+
+Checked against his repo at 1a51d7b. Only what his agent does not already have; file names on his side are in
+`adk_agents/robot_sorter/`.
+
+1. **Grasp along the ridge for lying triangles (largest gain).** His `shape.py` returns `"tipped"` with no
+   direction, and `look` only tells the model "lying on its side"; no tool has a grasp for it. v1.5 takes the ridge
+   direction from the top-strip points (`ridge_yaw`, `classify_top_v15` in `upgrades_v15.py`: 0.8° median error,
+   47 of 48 lying triangles found, offline on 115 frames) and pinches across the two triangular end faces
+   (`SidedPlanner._plan_side_faces`: only yaw and yaw + 180°, within 95° of the finger reference). Held 4 of 9 lying
+   triangles, the stock claw 0 of 14 (e-032, small sample). To port: return the ridge yaw from `shape.py`, and give
+   the tools a "tipped" grasp that tries only those two faces. Passing it as a cube with that yaw is not the same:
+   the cube grasp may choose the sloped faces, which squeeze the block up out of the fingers.
+2. **Do not repeat a failed pick.** After a miss his tools only step to the next triangle grip angle
+   (`robot.tries`, `TRIANGLE_GRIPS_DEG`); otherwise the model chooses again and may repeat the same arm and grasp.
+   v1.5's failure memory (`upgrades.py` memory chooser) tries a different arm / grasp pair on an object after one
+   fails. That is where the sort_language gain came from (e-015: second tries 8/11, against 5/11 without it). To
+   port: list the failed (arm, grasp) pairs in each object's `look` entry, or have `pick_and_place` skip them unless
+   the model names them.
+3. **Head-camera fit in the venue look.** `headpose.py` copied our fit and added `plausible()`, which rejects
+   shifts over 6 cm. In our venue look the fit reports about −8 cm while the camera moved about 2 cm, so the right
+   fit is thrown away there, and probably on the real robot (camera about 10° lower). v1.5 uses the fit whenever it
+   succeeds (part of its 23/27 there). To port: relax the shift limit, or use Samer's `camera_move_ok`
+   (`policy/policies/classical_v14.py`).
+4. **Evidence: do not let Decision 1 overrule "tipped".** His `decisions.py` lets Decision 1 call a block "other:
+   lying on its side". On 59 crops the geometry called lying (`test_tipcheck.py`), Decision 1 caught 2 of 11 wrong
+   "lying" labels and turned 3 really lying blocks into upright (Hydrogen: 5 of 11, flipped 4, 3.2 s). The
+   geometry's "tipped" should win.
+
+Not worth porting: same-side arms (his arm parking and 12 cm clearance cover collisions; the side rule cost v1.5
+3 objects), the option search and the relay limit (his `check_plan`, `choose_arm` and `hand_over` tools cover them).
+
+Shared problem, not a fix: lying cylinders are read as "cube" (19 times in the offline test), in `classify_top`,
+which both use; a fix there helps both.
+
 ## Open
 
 - v1.5 on Aalto's look with randomisation (running, Samer) and with real colours (not run).
