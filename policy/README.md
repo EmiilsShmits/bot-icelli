@@ -13,10 +13,11 @@
 | `server.py` | Entrypoint. Picks a policy by name (`--policy` or `POLICY` env) and serves it on :8000 |
 | `policies/hold.py` | Placeholder that holds the start pose. Passes the plumbing checks; scores 0 |
 | `policies/classical_v1.py` | **v1:** Aalto's classical baseline + instruction parsing + colour ranges that see the real orange/yellow/purple objects + speed guard |
+| `policies/classical_v11.py` | **v1.1:** v1 + a hand-over for far cross-body objects (the arm on the object's side puts it down near the middle; the bin-side arm finishes) + a retry budget that actually limits retries. Being compared with v1 in the sim |
 | `instruction.py` | Instruction → colour → bin, using Emīls's rule parser (`training/instruction_parser/rule_parser.py`) |
 | `guard.py` | Shadow copy of Aalto's safety filter with slightly lower caps: what we send never gets clipped |
 | `get_urdf.sh` | Downloads the G1 URDF that the IK and safety filter need (to `artifacts/urdf/` and where Aalto's code looks) |
-| `tests/test_v1.py` | Unit tests for the parts that run without Pinocchio (works on Windows too) |
+| `tests/test_v1.py` | Unit tests. Parser, guard and colours run anywhere (Windows too); the v1.1 planner tests need Pinocchio and skip without it (run them on the sim machine in the `isaac` env) |
 | `check.sh` | Runs Aalto's replay / mock tests against our server (`make check`, `make mock`) |
 | `Dockerfile` | Submission image (CUDA 12.8 base). The build context allowlist is in `/.dockerignore` |
 | `requirements.txt` | Image dependencies (keep them small) |
@@ -38,6 +39,7 @@ python -m unittest discover -s policy/tests -v       # parser, guard, colour ran
 bash policy/get_urdf.sh                              # once: the G1 URDF
 make check POLICY=v1                                 # Linux/macOS: needs pin (Pinocchio) from requirements
 make docker-build POLICY=v1 IMAGE=ghcr.io/<owner>/bot-icelli-policy:v1
+make docker-build POLICY=v1.1 IMAGE=bot-icelli/policy:v1.1     # v1.1; the tuning knobs are env vars (see the file's docstring)
 ```
 
 ## Status
@@ -45,6 +47,7 @@ make docker-build POLICY=v1 IMAGE=ghcr.io/<owner>/bot-icelli-policy:v1
   - **Image built** on the Linux sim machine: `make docker-build POLICY=v1 IMAGE=bot-icelli/policy:v1`, **1.46 GB**; the build-time load check passes (Pinocchio, URDF, config, parser).
   - **Aalto's replay test passes** against the image (`aaltonomous.deploy.replay --synthetic 100 --container bot-icelli/policy:v1`): 100 calls, 0 errors, latency p50 5.5 ms / max 18 ms, server up in 0.55 s.
   - **Sim eval running** (baseline vs v1, same seeds): see `eval/README.md` and `eval/RESULTS.md`.
+  - **v1.1** (Sat 14 Nov ~16:40): the baseline's first sim trials left 6 of 15 objects on the table; 3 of the 6 were cross-body grasps at the edge of the arm's reach, and one object was retried 4 times. v1.1 hands those objects over instead and caps retries. All 14 tests pass on the sim machine (incl. 3 planner tests); image `bot-icelli/policy:v1.1` built (1.46 GB). Sim comparison with v1 running.
 - **Before:** placeholder `hold` policy; `make check` passes (100 calls, 0 errors, p50 latency ~4 ms)
 - **Next:** —
 - **Blockers:** —

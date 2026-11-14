@@ -21,6 +21,12 @@ from instruction import mapping_for  # noqa: E402
 
 ARM_STEP, HAND_STEP = 0.98 / 30 + 1e-9, 2.7 / 30 + 1e-9
 
+try:  # the planner tests need Pinocchio and the G1 URDF: they run on the sim machine, not on Windows laptops
+    import pinocchio  # noqa: F401
+    HAVE_PIN = True
+except ImportError:
+    HAVE_PIN = False
+
 
 class TestInstruction(unittest.TestCase):
     def test_fixed_task(self):
@@ -107,6 +113,46 @@ class TestColours(unittest.TestCase):
         self.assertEqual(self.classes((160, 157, 162)), [])  # plywood table
         self.assertEqual(self.classes((248, 253, 252)), [])  # glare
         self.assertEqual(self.classes((130, 127, 118)), [])  # cardboard inside a box
+
+
+@unittest.skipUnless(HAVE_PIN, "needs pinocchio + the G1 URDF (sim machine or Docker build)")
+class TestV11Planner(unittest.TestCase):
+    """v1.1: far cross-body objects are handed over by the arm on their side; others are planned as before."""
+
+    @classmethod
+    def setUpClass(cls):
+        from policies.classical_v11 import ClassicalV11
+        cls.v = ClassicalV11()
+        cls.v.reset(tasks.FIXED_INSTRUCTION, "sort_fixed")   # red -> left, yellow -> center, blue -> right
+
+    def plan(self, color, x, y):
+        from aaltonomous.baselines.classical.perception import Detection
+        pol = self.v.pol
+        det = Detection(color, np.array([x, y, pol.scene.counter_z + pol.planner.height]), 400, 400, "depth")
+        return pol.planner.plan(det, pol.home, pol.post["open"])
+
+    def test_far_cross_body_is_handed_over(self):
+        for color, y, carrier in (("red", -0.155, "right"), ("blue", 0.165, "left")):
+            p = self.plan(color, 0.29, y)
+            self.assertTrue(p.ok, p.reason)
+            self.assertEqual((p.target_bin, p.side), ("counter", carrier), p.reason)
+            self.assertTrue(p.reason.startswith("hand-over"), p.reason)
+
+    def test_near_and_same_side_go_straight_to_the_bin(self):
+        for color, y, bin_name in (("red", -0.03, "left"), ("red", 0.15, "left"), ("blue", -0.15, "right"),
+                                   ("yellow", -0.15, "center")):
+            p = self.plan(color, 0.29, y)
+            self.assertTrue(p.ok, p.reason)
+            self.assertEqual(p.target_bin, bin_name, f"{color} at y={y}: {p.reason}")
+
+    def test_handover_spots_near_the_middle(self):
+        from aaltonomous.baselines.classical.perception import Detection
+        from policies.classical_v11 import HANDOVER_Y
+        pol = self.v.pol
+        det = Detection("red", np.array([0.29, -0.155, 0.05]), 400, 400, "depth")
+        spots = pol.planner.relocation_spots(det, "left")
+        self.assertTrue(spots)
+        self.assertLess(abs(spots[0][1] - HANDOVER_Y), 0.03, spots[0])
 
 
 if __name__ == "__main__":
