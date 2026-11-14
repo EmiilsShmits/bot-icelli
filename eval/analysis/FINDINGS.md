@@ -139,3 +139,18 @@ The videos are on Samer's laptop and the sim machine (`~/video/out/`). The repo 
   - New runs through `traced_eval.py` would record positions 5 times a second (not run end-to-end yet).
 - **Physics is not deterministic.** The same seed can end differently; Aalto expects ±10 % between runs. Small differences (one object in 15) are noise.
 - sort_fixed only, so far. sort_language doubles every point, so the same failures cost twice as much there.
+
+## Marcus's agent, standing blue cylinder missed twice (e-042, seed 1000, Sat ~22:30, Samer + Claude)
+Measured with `grasp_geometry.py` (forward kinematics on the recorded joint angles) against the sim's true spawn
+positions (`layout` in eval.json, mat → pelvis: x = 0.14 + y_mat, y = −0.45 + x_mat):
+- **Perception was not the problem:** the agent's object positions were within 2–3 mm of the truth for all three.
+- **The arm was not the problem either:** when the fingers started closing on the cylinder (miss 1), the grasp point
+  was 0.5 cm from its centre (commanded 0.2 cm; tracking error < 1°), the same as the two grasps that held (red cube
+  0.5 cm, yellow cylinder 0.5 cm), with the fingertips at the same distances.
+- **The grasp itself lost it:** the fingers closed fully on nothing and the cylinder ended 1.6 cm closer to the robot,
+  i.e. the closing fingers pushed the round object out before the thumb held it. Standing cylinders fail this way
+  often (Emīls: claw grasp on cylinders 45/77).
+- **The model's retry made it worse:** Gemini asked for a 1.5 cm offset toward the robot, so miss 2 closed 1.8 cm short
+  of the (already pushed) cylinder, which then tipped over. The tipped cylinder was picked up on the next try.
+- To fix: the grip on round objects (closing order, a grip that cages the cylinder, grasp height), tested with
+  Marcus's grasp bench; and don't let the model add offsets when the estimate is this accurate.
