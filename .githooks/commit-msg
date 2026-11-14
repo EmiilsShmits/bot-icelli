@@ -1,0 +1,10 @@
+#!/bin/sh
+# Team rule (AGENTS.md): no AI co-author or "Generated with ..." lines in commit messages.
+# GitHub turns "Co-Authored-By: Claude <noreply@anthropic.com>" into a repo contributor; this hook deletes such lines.
+# Enable once per clone: git config core.hooksPath .githooks   (make setup and Claude Code sessions in this repo do it)
+f="$1"
+tmp="$f.ai-strip"
+grep -v -i -E '^[[:space:]]*(co-authored-by:.*(claude|anthropic|copilot|cursor|codex|openai|gemini)|claude-session:)|^[^[:alnum:]]*generated (with|by) \[?(claude|copilot|cursor|codex|gemini)' "$f" > "$tmp"
+[ $? -le 1 ] || { rm -f "$tmp"; exit 0; }   # grep error: leave the message as it is
+git stripspace < "$tmp" > "$f"
+rm -f "$tmp"

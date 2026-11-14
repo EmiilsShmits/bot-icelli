@@ -67,6 +67,7 @@ Read it before working there, and update its Status when you change something.
 - **Never commit secrets.** Keys go in a local `.env` (see `.env.example`).
 - **Never commit datasets or weights.** GitHub caps files at 100 MB. Where they live instead is an open decision.
 - **AI tools commit only when a human asks.**
+- **No AI attribution in commits or PRs.** No `Co-Authored-By:` or "Generated with …" lines for Claude, Copilot, Codex, Cursor or Gemini: GitHub then lists the tool as a contributor of this repo. `.claude/settings.json` turns Claude Code's attribution off, and `.githooks/commit-msg` deletes such lines. Turn the hook on once per clone with `git config core.hooksPath .githooks` (`make setup` and every Claude Code session in this repo do it for you).
 
 ## Commands (run from the repo root; `make help` lists them all)
 ```bash

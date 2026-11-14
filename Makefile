@@ -23,6 +23,7 @@ help: ## list commands
 
 setup: ## init the Aalto submodule + .venv with policy and test deps (Python >= 3.10)
 	git submodule update --init --recursive
+	git config core.hooksPath .githooks
 	@$(PYTHON) -c 'import sys; v=sys.version_info; sys.exit(0 if v >= (3,10) else f"Need Python >= 3.10, found {v.major}.{v.minor}. Run: make setup PYTHON=/path/to/python3.12")'
 	$(PYTHON) -m venv $(VENV)
 	$(PY) -m pip install -q --upgrade pip
