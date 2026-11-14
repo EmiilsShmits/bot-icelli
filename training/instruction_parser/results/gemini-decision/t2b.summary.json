@@ -1,0 +1,56 @@
+{
+ "method": "gemini-decision",
+ "testset": "t2b.jsonl",
+ "n": 213,
+ "exact_acc": 0.9389671361502347,
+ "per_slot_acc": 0.9474178403755869,
+ "known_slot_acc": 0.9483568075117371,
+ "invalid_rate": 0.051643192488262914,
+ "malformed_rate": 0.0,
+ "confidently_wrong_rate": 0.009389671361502348,
+ "distractor_safety": 0.9389671361502347,
+ "distractor_unsafe_rate": 0.009389671361502348,
+ "per_category": {
+  "colour_shape": {
+   "n": 31,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "distractor_generic": {
+   "n": 29,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "distractor_silent": {
+   "n": 30,
+   "exact_acc": 0.9333333333333333,
+   "confidently_wrong": 0.06666666666666667
+  },
+  "leave": {
+   "n": 31,
+   "exact_acc": 0.7419354838709677,
+   "confidently_wrong": 0.0
+  },
+  "mixed": {
+   "n": 30,
+   "exact_acc": 0.9,
+   "confidently_wrong": 0.0
+  },
+  "negation": {
+   "n": 31,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "shape_only": {
+   "n": 31,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  }
+ },
+ "latency_p50_s": 0.4280078411102295,
+ "latency_p95_s": 0.6673130989074707,
+ "latency_n": 20,
+ "throughput_items_per_s": 6.7273156544727755,
+ "load_s": 0.0,
+ "device": "cpu"
+}

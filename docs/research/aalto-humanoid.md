@@ -67,7 +67,7 @@ Source: https://hackjunction.app/participate/45/challenges/320 (full text in [`.
 - **Safety:** teams never control the robot directly; Aalto's runner executes the image through their safety filter with staff at the e-stop.
 
 **Not on the page**
-- **Internet / network at the finals:** not mentioned. Aalto's repo docs say they provide no network (`FAQ.md`, `SUBMISSION.md`).
+- **Internet / network at the finals:** not on the challenge page. Aalto's repo docs said no network (`FAQ.md`, `SUBMISSION.md`), but Aalto confirmed to the team on Sat 14 Nov that the finals machine will have internet. Failed calls still get no rerun.
 - **The page header** showed "Status: Closed" and a countdown "T -12:32:15" at Fri 23:29 (≈ Sat 12:01). What either refers to is not stated. Ask.
 
 ## 1. Robot hardware
@@ -80,7 +80,7 @@ Source: https://hackjunction.app/participate/45/challenges/320 (full text in [`.
 | Head camera | RealSense D435i colour + aligned depth (mm, 0 = invalid), 640×480, pitched ~48° down. Intrinsics fx = fy = 615 (provisional) |
 | Wrist cameras | UVC RGB 640×480 on each wrist, each looking at its own Dex3. Poses not calibrated yet (placeholders in sim) |
 | Reach | ~0.40 m from the waist comfortably, ~0.55 m with a straight arm. The bin centres are further than that, so release in the near part of each bin |
-| Finals PC | One machine with an **RTX 5090 (32 GB)**, wired to the robot. **No guaranteed network** |
+| Finals PC | One machine with an **RTX 5090 (32 GB)**, wired to the robot. **Internet confirmed by Aalto (Sat 14 Nov)**; failed calls get no rerun |
 
 ### Dex3 conventions (easy to get wrong)
 - Each hand has its own joint order. **Left:** thumb 0–2, **middle** 0–1, **index** 0–1. **Right:** thumb 0–2, **index** 0–1, **middle** 0–1.
@@ -208,6 +208,16 @@ Local test ladder:
   - LeRobot **v3.0**, with head depth
   - **GR00T** copy (LeRobot v2.1 + `modality.json`), RGB only
 - `observation.state` = 28 values (`arm_q` + `hand_q`). `action` = 28 commanded absolute targets at 30 Hz.
+- **What was actually released (Aalto on Discord, Sat 14 Nov):** two public Hugging Face datasets, `zupermiez/g1_pick_cube` (20 episodes) and `zupermiez/g1_junction_drop_2` (48 episodes). Details and format differences are in [`data/DATASETS.md`](../../data/DATASETS.md).
+  - Aalto: teleoperation only works over Wi-Fi from the VR goggles and the venue Wi-Fi is unusable, so there is **less real data than planned**. "Better datasets" were promised for Saturday.
+- **Other facts from Aalto on Discord (Fri 13 – Sat 14 Nov):**
+  - **Object colours:** the sim's red / blue / yellow are wrong. The real objects are **purple, yellow, orange**, and those will be used. Which real colour replaces "red" and which "blue" in the rules was not stated.
+  - "You need to make your sim really accurate to our setup if you want to have any chance of having the sim2real work." Teams may edit the simulation as they see fit.
+  - **Finals instructions:** colour first. If several teams handle colour, shape-based instructions may be tested. No negation.
+  - **Dex3 gains on the real runner:** kp 1.5 / kd 0.2, fixed and the same for every team.
+  - **Fingertip pad friction:** not measured. The pads are rubber; the sim's 1.2 static / 1.0 dynamic is on the grippy side, so expect less grip on the real robot.
+  - **Oracle baseline:** ~84 % was measured before the sim-clock fix and not re-measured; triangle grasps were the main miss.
+  - **Finals PC:** an RTX 5090 PC wired to the robot by ethernet. Tell Aalto well in advance about big models so they can start downloads early.
 - **Public G1 Dex3 data for pretraining:** `unitreerobotics/G1_Stack_Block`, `G1_Dex3_PickGum_Dataset`, `datamentorshf/G1_Dex3_BlockStacking_Dataset`. There is no public colour-sorting set.
 
 ## 9. Baseline and starter routes

@@ -1,0 +1,17 @@
+{
+ "method": "ft:/root/ckpt/s1b-full:B",
+ "testset": "t3.jsonl",
+ "n": 60,
+ "t3_refusal_rate": 0.5833333333333334,
+ "t3_per_category_refusal": {
+  "contradiction": 0.2,
+  "nonexistent_bin": 0.7333333333333333,
+  "undefined": 0.5333333333333333,
+  "unrelated": 0.8666666666666667
+ },
+ "throughput_items_per_s": 127.46532869175167,
+ "load_s": 6.122734546661377,
+ "device": "cuda",
+ "peak_vram_gb": 2.469061632,
+ "gpu": "NVIDIA A100-SXM4-80GB"
+}

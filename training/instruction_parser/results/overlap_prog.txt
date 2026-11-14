@@ -1,0 +1,1 @@
+{"train": "../../artifacts/instruction_parser/data_train/prog.jsonl", "kept": 16000, "removed_near_dupes": 0, "max_trigram_jaccard_mean": 0.0976, "max_trigram_jaccard_p95": 0.1667, "threshold": 0.6}

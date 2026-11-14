@@ -1,0 +1,54 @@
+{
+ "method": "hf:google/gemma-3-1b-it:C",
+ "testset": "t3.jsonl",
+ "n": 60,
+ "t3_refusal_rate": 0.0,
+ "t3_per_category_refusal": {
+  "contradiction": 0.0,
+  "nonexistent_bin": 0.0,
+  "undefined": 0.0,
+  "unrelated": 0.0
+ },
+ "confidence_curve": [
+  {
+   "threshold": 0.0,
+   "coverage": 1.0,
+   "t3_refusal_rate": 0.0
+  },
+  {
+   "threshold": 0.5,
+   "coverage": 0.43333333333333335,
+   "t3_refusal_rate": 0.5666666666666667
+  },
+  {
+   "threshold": 1.0,
+   "coverage": 0.3333333333333333,
+   "t3_refusal_rate": 0.6666666666666666
+  },
+  {
+   "threshold": 2.0,
+   "coverage": 0.18333333333333332,
+   "t3_refusal_rate": 0.8166666666666667
+  },
+  {
+   "threshold": 3.0,
+   "coverage": 0.1,
+   "t3_refusal_rate": 0.9
+  },
+  {
+   "threshold": 5.0,
+   "coverage": 0.03333333333333333,
+   "t3_refusal_rate": 0.9666666666666667
+  },
+  {
+   "threshold": 8.0,
+   "coverage": 0.016666666666666666,
+   "t3_refusal_rate": 0.9833333333333333
+  }
+ ],
+ "throughput_items_per_s": 20.649284474232193,
+ "load_s": 2.765735626220703,
+ "device": "cuda",
+ "peak_vram_gb": 3.442413568,
+ "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+}

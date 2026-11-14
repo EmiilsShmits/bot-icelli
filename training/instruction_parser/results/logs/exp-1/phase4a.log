@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+    raise IncompleteSnapshotError(
+huggingface_hub.errors.IncompleteSnapshotError: The cached snapshot for 'google/gemma-4-E2B-it' (revision 'main', commit 4adf15748de9e1a0097b6274cee9c15836c41c37) is incomplete: 2 file(s) are missing (.gitattributes, README.md). Outgoing traffic is disabled ('local_files_only=True'). Re-run the download with network access to complete the snapshot.
+Traceback (most recent call last):
+    raise IncompleteSnapshotError(
+huggingface_hub.errors.IncompleteSnapshotError: The cached snapshot for 'google/gemma-4-E2B-it' (revision 'main', commit 4adf15748de9e1a0097b6274cee9c15836c41c37) is incomplete: 2 file(s) are missing (.gitattributes, README.md). Outgoing traffic is disabled ('local_files_only=True'). Re-run the download with network access to complete the snapshot.
+Traceback (most recent call last):
+    raise IncompleteSnapshotError(
+huggingface_hub.errors.IncompleteSnapshotError: The cached snapshot for 'google/gemma-4-E4B-it' (revision 'main', commit 4ecc2ba63bcac23ba4a767fc87025b1450f84c9c) is incomplete: 2 file(s) are missing (.gitattributes, README.md). Outgoing traffic is disabled ('local_files_only=True'). Re-run the download with network access to complete the snapshot.
+PHASE4_DONE (aborted, rerun in phase4b)

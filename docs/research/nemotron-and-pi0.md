@@ -60,7 +60,7 @@ Facts from the challenge pages, Aalto's docs and the hackerpacks. Lines marked *
 
 **Constraints in the Aalto challenge:**
 - **Too big for the finals GPU:** 120B parameters won't fit a 32 GB RTX 5090 without extreme quantisation.
-- **Network:** Aalto's docs say they provide no network ("whatever connection the venue gives it, or none"), with no reruns for failed calls. The challenge page doesn't mention network. **Confirm with Aalto on Discord** if we hear otherwise.
+- **Network:** Aalto confirmed to the team on Sat 14 Nov that the finals machine will have internet. Their repo docs had said no network, and failed calls get no rerun, so a planner call needs a timeout and an offline fallback.
 - **Too slow for control:** Aalto estimates frontier VLMs at 10–20 s per call. It can only plan per episode or per object, in a background thread, never tick by tick.
 
 **What makes it useful for us:**

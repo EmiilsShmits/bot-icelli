@@ -26,12 +26,12 @@ Sources, read 2026-11-13:
 |---|---|---|
 | **Anthropic Claude API** | $20 per participant | Claim link in `CLAUDE_CREDITS_URL`. Good for a rung-2 instruction parser or a planner |
 | **Google Gemini API** | Credits; **one form per team** | Form: https://forms.gle/bByXvjGkW9WZuYwW9. 18+ only. Stackable **Best Use of Gemini API** (€4,000) |
-| **Gemma** (open weights) | Free | Small Gemma models could run **offline inside the policy container**, which matters because the Aalto finals have no network. Stackable **Best Use of Gemma** (€1,000 × 3) |
+| **Gemma** (open weights) | Free | Small Gemma models could run **offline inside the policy container**, so they work even if the finals connection fails. Stackable **Best Use of Gemma** (€1,000 × 3) |
 | **NVIDIA Nemotron 3.5 Super VL** | Free tier | NVIDIA Build API (OpenAI-compatible, `https://integrate.api.nvidia.com/v1`, ~40 req/min per key), OpenRouter, or HF weights. 120B MoE (12B active), too big for the 32 GB finals GPU without heavy quantisation. Stackable **Best Use of Nemotron** (2 × RTX 5080) |
 | **Featherless API** | $50 per participant | Open-weight model catalog, OpenAI-compatible at `https://api.featherless.ai/v1`. Coupon link in `FEATHERLESS_COUPON_URL` |
 | **OpenAI Codex** | $100 per participant | Codex usage credits only (not API credits), via an assigned link. Stackable **Best Use of Codex** |
 
-Aalto rule to remember: external API calls from the submission container are allowed **at your own risk**. The finals PC may have no network and there are no reruns, so any LLM step needs an offline fallback (a local model or a template parser).
+Aalto rule to remember: external API calls from the submission container are allowed **at your own risk**. Aalto confirmed to the team on Sat 14 Nov that the finals machine will have internet, but failed calls get no rerun, so any LLM step still needs a timeout and an offline fallback (a local model or a template parser).
 
 ## Web, data and infra (less relevant to the robot idea)
 

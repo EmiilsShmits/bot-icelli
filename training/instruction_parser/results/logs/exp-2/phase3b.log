@@ -1,0 +1,9 @@
+ft e2b-lora start 03:24:17
+{'train_runtime': '471.2', 'train_samples_per_second': '49', 'train_steps_per_second': '3.064', 'train_loss': '0.06614', 'epoch': '1'}
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:14<00:00, 14.18s/it]Writing model shards: 100%|██████████| 1/1 [00:14<00:00, 14.18s/it]
+saved /root/ckpt/sE2B-lora in 488s
+{"method": "ft:/root/ckpt/sE2B-lora:B", "testset": "t2a.jsonl", "n": 339, "exact_acc": 0.9351, "per_slot_acc": 0.9431, "known_slot_acc": 0.9423, "invalid_rate": 0.0501, "malformed_rate": 0.0, "confidently_wrong_rate": 0.0147, "distractor_safety": 0.9499, "distractor_unsafe_rate": 0.0, "latency_p50_s": 0.5625, "latency_p95_s": 0.573, "latency_n": 30, "throughput_items_per_s": 76.9321, "load_s": 8.4
+{"method": "ft:/root/ckpt/sE2B-lora:B", "testset": "t2b.jsonl", "n": 213, "exact_acc": 0.9671, "per_slot_acc": 0.9854, "known_slot_acc": 0.9849, "invalid_rate": 0.0094, "malformed_rate": 0.0, "confidently_wrong_rate": 0.0235, "distractor_safety": 0.9906, "distractor_unsafe_rate": 0.0, "throughput_items_per_s": 67.5653, "load_s": 8.2317, "device": "cuda", "peak_vram_gb": 10.8752, "gpu": "NVIDIA A10
+{"method": "ft:/root/ckpt/sE2B-lora:B", "testset": "t3.jsonl", "n": 60, "t3_refusal_rate": 0.75, "throughput_items_per_s": 89.6084, "load_s": 8.2317, "device": "cuda", "peak_vram_gb": 10.8752, "gpu": "NVIDIA A100-SXM4-80GB"}
+{"method": "ft:/root/ckpt/sE2B-lora:B", "testset": "t1.jsonl", "n": 288, "exact_acc": 1.0, "per_slot_acc": 1.0, "known_slot_acc": 1.0, "invalid_rate": 0.0, "malformed_rate": 0.0, "confidently_wrong_rate": 0.0, "distractor_safety": 1.0, "distractor_unsafe_rate": 0.0, "throughput_items_per_s": 89.3984, "load_s": 8.2317, "device": "cuda", "peak_vram_gb": 10.8752, "gpu": "NVIDIA A100-SXM4-80GB"}
+PHASE3B_DONE 03:33:47

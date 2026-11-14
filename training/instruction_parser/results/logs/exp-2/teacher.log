@@ -1,0 +1,440 @@
+Loading weights:   0%|          | 0/1188 [00:00<?, ?it/s]Loading weights:   0%|          | 2/1188 [00:00<01:56, 10.17it/s]Loading weights:   1%|          | 7/1188 [00:00<00:45, 25.96it/s]Loading weights:   2%|▏         | 21/1188 [00:00<00:19, 61.08it/s]Loading weights:   3%|▎         | 35/1188 [00:00<00:14, 80.91it/s]Loading weights:   4%|▍         | 49/1188 [00:00<00:12, 90.20it/s]Loading weights:   5%|▌         | 63/1188 [00:00<00:11, 97.46it/s]Loading weights:   6%|▋         | 77/1188 [00:00<00:10, 102.55it/s]Loading weights:   7%|▋         | 89/1188 [00:01<00:12, 88.17it/s] Loading weights:   9%|▊         | 103/1188 [00:01<00:11, 97.15it/s]Loading weights:  10%|▉         | 116/1188 [00:01<00:10, 102.18it/s]Loading weights:  11%|█         | 130/1188 [00:01<00:10, 105.11it/s]Loading weights:  12%|█▏        | 141/1188 [00:01<00:09, 105.51it/s]Loading weights:  13%|█▎        | 152/1188 [00:01<00:09, 104.51it/s]Loading weights:  14%|█▎        | 163/1188 [00:01<00:09, 104.54it/s]Loading weights:  15%|█▍        | 174/1188 [00:01<00:10, 97.59it/s] Loading weights:  16%|█▌        | 186/1188 [00:02<00:10, 100.03it/s]Loading weights:  17%|█▋        | 200/1188 [00:02<00:09, 102.70it/s]Loading weights:  18%|█▊        | 213/1188 [00:02<00:09, 104.07it/s]Loading weights:  19%|█▉        | 227/1188 [00:02<00:09, 106.66it/s]Loading weights:  20%|██        | 241/1188 [00:02<00:08, 108.01it/s]Loading weights:  21%|██        | 252/1188 [00:02<00:08, 107.20it/s]Loading weights:  22%|██▏       | 263/1188 [00:02<00:08, 105.14it/s]Loading weights:  23%|██▎       | 274/1188 [00:02<00:08, 102.57it/s]Loading weights:  24%|██▍       | 285/1188 [00:03<00:09, 93.18it/s] Loading weights:  25%|██▌       | 298/1188 [00:03<00:09, 97.90it/s]Loading weights:  26%|██▌       | 311/1188 [00:03<00:08, 101.02it/s]Loading weights:  27%|██▋       | 324/1188 [00:03<00:07, 108.44it/s]Loading weights:  28%|██▊       | 336/1188 [00:03<00:07, 108.65it/s]Loading weights:  29%|██▉       | 347/1188 [00:03<00:08, 104.12it/s]Loading weights:  30%|███       | 358/1188 [00:03<00:08, 102.56it/s]Loading weights:  31%|███       | 369/1188 [00:03<00:08, 99.39it/s] Loading weights:  32%|███▏      | 380/1188 [00:03<00:07, 101.59it/s]Loading weights:  33%|███▎      | 393/1188 [00:04<00:07, 104.88it/s]Loading weights:  34%|███▍      | 404/1188 [00:04<00:07, 104.72it/s]Loading weights:  35%|███▍      | 415/1188 [00:04<00:08, 94.05it/s] Loading weights:  36%|███▌      | 427/1188 [00:04<00:07, 95.72it/s]Loading weights:  37%|███▋      | 442/1188 [00:04<00:06, 108.41it/s]Loading weights:  38%|███▊      | 454/1188 [00:04<00:06, 109.51it/s]Loading weights:  39%|███▉      | 466/1188 [00:04<00:06, 104.09it/s]Loading weights:  40%|████      | 478/1188 [00:04<00:06, 102.34it/s]Loading weights:  41%|████▏     | 491/1188 [00:04<00:06, 106.96it/s]Loading weights:  42%|████▏     | 503/1188 [00:05<00:06, 101.83it/s]Loading weights:  44%|████▎     | 517/1188 [00:05<00:06, 105.21it/s]Loading weights:  45%|████▍     | 531/1188 [00:05<00:06, 108.32it/s]Loading weights:  46%|████▌     | 545/1188 [00:05<00:05, 109.99it/s]Loading weights:  47%|████▋     | 559/1188 [00:05<00:05, 112.15it/s]Loading weights:  48%|████▊     | 573/1188 [00:05<00:05, 112.37it/s]Loading weights:  49%|████▉     | 585/1188 [00:05<00:05, 108.18it/s]Loading weights:  50%|█████     | 596/1188 [00:05<00:05, 104.47it/s]Loading weights:  51%|█████     | 607/1188 [00:06<00:05, 97.83it/s] Loading weights:  52%|█████▏    | 617/1188 [00:06<00:05, 97.10it/s]Loading weights:  53%|█████▎    | 630/1188 [00:06<00:05, 98.73it/s]Loading weights:  54%|█████▍    | 644/1188 [00:06<00:05, 102.38it/s]Loading weights:  55%|█████▌    | 658/1188 [00:06<00:05, 104.34it/s]Loading weights:  56%|█████▋    | 670/1188 [00:06<00:04, 105.66it/s]Loading weights:  57%|█████▋    | 683/1188 [00:06<00:04, 106.20it/s]Loading weights:  59%|█████▊    | 697/1188 [00:06<00:04, 102.77it/s]Loading weights:  60%|█████▉    | 708/1188 [00:07<00:04, 103.65it/s]Loading weights:  61%|██████    | 719/1188 [00:07<00:04, 99.66it/s] Loading weights:  62%|██████▏   | 731/1188 [00:07<00:04, 104.10it/s]Loading weights:  62%|██████▏   | 742/1188 [00:07<00:04, 99.97it/s] Loading weights:  63%|██████▎   | 753/1188 [00:07<00:04, 100.97it/s]Loading weights:  65%|██████▍   | 767/1188 [00:07<00:04, 104.28it/s]Loading weights:  66%|██████▌   | 780/1188 [00:07<00:03, 105.82it/s]Loading weights:  67%|██████▋   | 791/1188 [00:07<00:03, 106.88it/s]Loading weights:  68%|██████▊   | 802/1188 [00:07<00:03, 104.63it/s]Loading weights:  68%|██████▊   | 813/1188 [00:08<00:03, 103.71it/s]Loading weights:  69%|██████▉   | 824/1188 [00:08<00:03, 98.85it/s] Loading weights:  78%|███████▊  | 928/1188 [00:08<00:00, 353.62it/s]Loading weights:  95%|█████████▌| 1134/1188 [00:08<00:00, 829.07it/s]Loading weights: 100%|██████████| 1188/1188 [00:08<00:00, 141.15it/s]
+gen 12/1500 seeds, 60 cands, 22s
+gen 24/1500 seeds, 120 cands, 39s
+gen 36/1500 seeds, 180 cands, 57s
+gen 48/1500 seeds, 240 cands, 74s
+gen 60/1500 seeds, 300 cands, 92s
+gen 72/1500 seeds, 360 cands, 107s
+gen 84/1500 seeds, 420 cands, 127s
+gen 96/1500 seeds, 480 cands, 143s
+gen 108/1500 seeds, 540 cands, 159s
+gen 120/1500 seeds, 600 cands, 175s
+gen 132/1500 seeds, 660 cands, 194s
+gen 144/1500 seeds, 720 cands, 210s
+gen 156/1500 seeds, 780 cands, 228s
+gen 168/1500 seeds, 840 cands, 245s
+gen 180/1500 seeds, 900 cands, 263s
+gen 192/1500 seeds, 960 cands, 279s
+gen 204/1500 seeds, 1020 cands, 297s
+gen 216/1500 seeds, 1080 cands, 313s
+gen 228/1500 seeds, 1140 cands, 330s
+gen 240/1500 seeds, 1200 cands, 346s
+gen 252/1500 seeds, 1260 cands, 361s
+gen 264/1500 seeds, 1320 cands, 377s
+gen 276/1500 seeds, 1380 cands, 394s
+gen 288/1500 seeds, 1440 cands, 410s
+gen 300/1500 seeds, 1500 cands, 431s
+gen 312/1500 seeds, 1560 cands, 448s
+gen 324/1500 seeds, 1620 cands, 464s
+gen 336/1500 seeds, 1680 cands, 481s
+gen 348/1500 seeds, 1740 cands, 499s
+gen 360/1500 seeds, 1800 cands, 514s
+gen 372/1500 seeds, 1860 cands, 529s
+gen 384/1500 seeds, 1920 cands, 545s
+gen 396/1500 seeds, 1980 cands, 563s
+gen 408/1500 seeds, 2040 cands, 582s
+gen 420/1500 seeds, 2100 cands, 600s
+gen 432/1500 seeds, 2160 cands, 620s
+gen 444/1500 seeds, 2220 cands, 637s
+gen 456/1500 seeds, 2280 cands, 656s
+gen 468/1500 seeds, 2340 cands, 674s
+gen 480/1500 seeds, 2400 cands, 692s
+gen 492/1500 seeds, 2460 cands, 709s
+gen 504/1500 seeds, 2520 cands, 727s
+gen 516/1500 seeds, 2580 cands, 744s
+gen 528/1500 seeds, 2640 cands, 760s
+gen 540/1500 seeds, 2700 cands, 778s
+gen 552/1500 seeds, 2760 cands, 796s
+gen 564/1500 seeds, 2820 cands, 813s
+gen 576/1500 seeds, 2880 cands, 831s
+gen 588/1500 seeds, 2940 cands, 847s
+gen 600/1500 seeds, 3000 cands, 864s
+gen 612/1500 seeds, 3060 cands, 882s
+gen 624/1500 seeds, 3120 cands, 900s
+gen 636/1500 seeds, 3180 cands, 916s
+gen 648/1500 seeds, 3240 cands, 933s
+gen 660/1500 seeds, 3300 cands, 953s
+gen 672/1500 seeds, 3360 cands, 971s
+gen 684/1500 seeds, 3420 cands, 988s
+gen 696/1500 seeds, 3480 cands, 1003s
+gen 708/1500 seeds, 3540 cands, 1020s
+gen 720/1500 seeds, 3600 cands, 1036s
+gen 732/1500 seeds, 3660 cands, 1052s
+gen 744/1500 seeds, 3720 cands, 1068s
+gen 756/1500 seeds, 3780 cands, 1085s
+gen 768/1500 seeds, 3840 cands, 1104s
+gen 780/1500 seeds, 3900 cands, 1120s
+gen 792/1500 seeds, 3960 cands, 1136s
+gen 804/1500 seeds, 4020 cands, 1151s
+gen 816/1500 seeds, 4080 cands, 1169s
+gen 828/1500 seeds, 4140 cands, 1184s
+gen 840/1500 seeds, 4200 cands, 1204s
+gen 852/1500 seeds, 4260 cands, 1223s
+gen 864/1500 seeds, 4320 cands, 1239s
+gen 876/1500 seeds, 4380 cands, 1256s
+gen 888/1500 seeds, 4440 cands, 1272s
+gen 900/1500 seeds, 4500 cands, 1289s
+gen 912/1500 seeds, 4560 cands, 1306s
+gen 924/1500 seeds, 4620 cands, 1323s
+gen 936/1500 seeds, 4680 cands, 1341s
+gen 948/1500 seeds, 4740 cands, 1357s
+gen 960/1500 seeds, 4800 cands, 1377s
+gen 972/1500 seeds, 4860 cands, 1393s
+gen 984/1500 seeds, 4920 cands, 1410s
+gen 996/1500 seeds, 4980 cands, 1426s
+gen 1008/1500 seeds, 5040 cands, 1443s
+gen 1020/1500 seeds, 5100 cands, 1461s
+gen 1032/1500 seeds, 5160 cands, 1479s
+gen 1044/1500 seeds, 5220 cands, 1497s
+gen 1056/1500 seeds, 5280 cands, 1514s
+gen 1068/1500 seeds, 5340 cands, 1530s
+gen 1080/1500 seeds, 5400 cands, 1547s
+gen 1092/1500 seeds, 5460 cands, 1562s
+gen 1104/1500 seeds, 5520 cands, 1580s
+gen 1116/1500 seeds, 5580 cands, 1599s
+gen 1128/1500 seeds, 5640 cands, 1616s
+gen 1140/1500 seeds, 5700 cands, 1634s
+gen 1152/1500 seeds, 5760 cands, 1650s
+gen 1164/1500 seeds, 5820 cands, 1666s
+gen 1176/1500 seeds, 5880 cands, 1683s
+gen 1188/1500 seeds, 5940 cands, 1698s
+gen 1200/1500 seeds, 6000 cands, 1718s
+gen 1212/1500 seeds, 6060 cands, 1734s
+gen 1224/1500 seeds, 6120 cands, 1752s
+gen 1236/1500 seeds, 6180 cands, 1769s
+gen 1248/1500 seeds, 6240 cands, 1788s
+gen 1260/1500 seeds, 6300 cands, 1805s
+gen 1272/1500 seeds, 6360 cands, 1821s
+gen 1284/1500 seeds, 6420 cands, 1837s
+gen 1296/1500 seeds, 6480 cands, 1858s
+gen 1308/1500 seeds, 6540 cands, 1875s
+gen 1320/1500 seeds, 6600 cands, 1894s
+gen 1332/1500 seeds, 6660 cands, 1912s
+gen 1344/1500 seeds, 6720 cands, 1932s
+gen 1356/1500 seeds, 6780 cands, 1948s
+gen 1368/1500 seeds, 6840 cands, 1964s
+gen 1380/1500 seeds, 6900 cands, 1981s
+gen 1392/1500 seeds, 6960 cands, 2001s
+gen 1404/1500 seeds, 7020 cands, 2019s
+gen 1416/1500 seeds, 7080 cands, 2039s
+gen 1428/1500 seeds, 7140 cands, 2056s
+gen 1440/1500 seeds, 7200 cands, 2074s
+gen 1452/1500 seeds, 7260 cands, 2092s
+gen 1464/1500 seeds, 7320 cands, 2109s
+gen 1476/1500 seeds, 7380 cands, 2127s
+gen 1488/1500 seeds, 7440 cands, 2145s
+gen 1500/1500 seeds, 7500 cands, 2160s
+roundtrip 24/7500 kept 21 2165s
+roundtrip 48/7500 kept 34 2169s
+roundtrip 72/7500 kept 51 2173s
+roundtrip 96/7500 kept 74 2178s
+roundtrip 120/7500 kept 98 2182s
+roundtrip 144/7500 kept 115 2186s
+roundtrip 168/7500 kept 133 2190s
+roundtrip 192/7500 kept 157 2194s
+roundtrip 216/7500 kept 177 2199s
+roundtrip 240/7500 kept 198 2203s
+roundtrip 264/7500 kept 219 2207s
+roundtrip 288/7500 kept 237 2212s
+roundtrip 312/7500 kept 251 2216s
+roundtrip 336/7500 kept 268 2220s
+roundtrip 360/7500 kept 288 2224s
+roundtrip 384/7500 kept 307 2228s
+roundtrip 408/7500 kept 330 2233s
+roundtrip 432/7500 kept 348 2237s
+roundtrip 456/7500 kept 365 2241s
+roundtrip 480/7500 kept 385 2245s
+roundtrip 504/7500 kept 403 2250s
+roundtrip 528/7500 kept 423 2254s
+roundtrip 552/7500 kept 442 2258s
+roundtrip 576/7500 kept 463 2262s
+roundtrip 600/7500 kept 483 2267s
+roundtrip 624/7500 kept 505 2271s
+roundtrip 648/7500 kept 528 2275s
+roundtrip 672/7500 kept 546 2279s
+roundtrip 696/7500 kept 569 2284s
+roundtrip 720/7500 kept 590 2288s
+roundtrip 744/7500 kept 610 2292s
+roundtrip 768/7500 kept 634 2296s
+roundtrip 792/7500 kept 657 2301s
+roundtrip 816/7500 kept 678 2305s
+roundtrip 840/7500 kept 701 2309s
+roundtrip 864/7500 kept 718 2313s
+roundtrip 888/7500 kept 739 2318s
+roundtrip 912/7500 kept 761 2322s
+roundtrip 936/7500 kept 781 2326s
+roundtrip 960/7500 kept 800 2330s
+roundtrip 984/7500 kept 821 2335s
+roundtrip 1008/7500 kept 843 2339s
+roundtrip 1032/7500 kept 860 2343s
+roundtrip 1056/7500 kept 879 2347s
+roundtrip 1080/7500 kept 896 2352s
+roundtrip 1104/7500 kept 912 2356s
+roundtrip 1128/7500 kept 930 2360s
+roundtrip 1152/7500 kept 946 2364s
+roundtrip 1176/7500 kept 965 2369s
+roundtrip 1200/7500 kept 986 2373s
+roundtrip 1224/7500 kept 1008 2377s
+roundtrip 1248/7500 kept 1028 2381s
+roundtrip 1272/7500 kept 1046 2386s
+roundtrip 1296/7500 kept 1067 2390s
+roundtrip 1320/7500 kept 1083 2394s
+roundtrip 1344/7500 kept 1106 2398s
+roundtrip 1368/7500 kept 1118 2403s
+roundtrip 1392/7500 kept 1133 2407s
+roundtrip 1416/7500 kept 1151 2411s
+roundtrip 1440/7500 kept 1172 2415s
+roundtrip 1464/7500 kept 1196 2420s
+roundtrip 1488/7500 kept 1220 2424s
+roundtrip 1512/7500 kept 1239 2428s
+roundtrip 1536/7500 kept 1258 2432s
+roundtrip 1560/7500 kept 1280 2437s
+roundtrip 1584/7500 kept 1296 2441s
+roundtrip 1608/7500 kept 1316 2445s
+roundtrip 1632/7500 kept 1336 2450s
+roundtrip 1656/7500 kept 1355 2454s
+roundtrip 1680/7500 kept 1376 2458s
+roundtrip 1704/7500 kept 1399 2462s
+roundtrip 1728/7500 kept 1421 2467s
+roundtrip 1752/7500 kept 1442 2471s
+roundtrip 1776/7500 kept 1464 2475s
+roundtrip 1800/7500 kept 1488 2479s
+roundtrip 1824/7500 kept 1512 2484s
+roundtrip 1848/7500 kept 1531 2488s
+roundtrip 1872/7500 kept 1551 2492s
+roundtrip 1896/7500 kept 1566 2496s
+roundtrip 1920/7500 kept 1587 2501s
+roundtrip 1944/7500 kept 1609 2505s
+roundtrip 1968/7500 kept 1627 2509s
+roundtrip 1992/7500 kept 1646 2514s
+roundtrip 2016/7500 kept 1669 2518s
+roundtrip 2040/7500 kept 1687 2522s
+roundtrip 2064/7500 kept 1708 2526s
+roundtrip 2088/7500 kept 1724 2531s
+roundtrip 2112/7500 kept 1744 2535s
+roundtrip 2136/7500 kept 1766 2539s
+roundtrip 2160/7500 kept 1781 2544s
+roundtrip 2184/7500 kept 1800 2548s
+roundtrip 2208/7500 kept 1823 2552s
+roundtrip 2232/7500 kept 1837 2556s
+roundtrip 2256/7500 kept 1858 2561s
+roundtrip 2280/7500 kept 1877 2565s
+roundtrip 2304/7500 kept 1898 2569s
+roundtrip 2328/7500 kept 1922 2573s
+roundtrip 2352/7500 kept 1941 2578s
+roundtrip 2376/7500 kept 1959 2582s
+roundtrip 2400/7500 kept 1971 2586s
+roundtrip 2424/7500 kept 1994 2591s
+roundtrip 2448/7500 kept 2017 2595s
+roundtrip 2472/7500 kept 2034 2599s
+roundtrip 2496/7500 kept 2053 2603s
+roundtrip 2520/7500 kept 2074 2608s
+roundtrip 2544/7500 kept 2091 2612s
+roundtrip 2568/7500 kept 2106 2616s
+roundtrip 2592/7500 kept 2125 2620s
+roundtrip 2616/7500 kept 2141 2624s
+roundtrip 2640/7500 kept 2164 2629s
+roundtrip 2664/7500 kept 2183 2633s
+roundtrip 2688/7500 kept 2203 2637s
+roundtrip 2712/7500 kept 2226 2642s
+roundtrip 2736/7500 kept 2249 2646s
+roundtrip 2760/7500 kept 2267 2650s
+roundtrip 2784/7500 kept 2290 2654s
+roundtrip 2808/7500 kept 2308 2659s
+roundtrip 2832/7500 kept 2329 2663s
+roundtrip 2856/7500 kept 2349 2667s
+roundtrip 2880/7500 kept 2371 2672s
+roundtrip 2904/7500 kept 2391 2676s
+roundtrip 2928/7500 kept 2413 2680s
+roundtrip 2952/7500 kept 2429 2684s
+roundtrip 2976/7500 kept 2453 2689s
+roundtrip 3000/7500 kept 2474 2693s
+roundtrip 3024/7500 kept 2498 2697s
+roundtrip 3048/7500 kept 2520 2701s
+roundtrip 3072/7500 kept 2540 2706s
+roundtrip 3096/7500 kept 2556 2710s
+roundtrip 3120/7500 kept 2574 2714s
+roundtrip 3144/7500 kept 2590 2719s
+roundtrip 3168/7500 kept 2613 2723s
+roundtrip 3192/7500 kept 2635 2727s
+roundtrip 3216/7500 kept 2657 2731s
+roundtrip 3240/7500 kept 2676 2736s
+roundtrip 3264/7500 kept 2693 2740s
+roundtrip 3288/7500 kept 2716 2744s
+roundtrip 3312/7500 kept 2736 2749s
+roundtrip 3336/7500 kept 2757 2753s
+roundtrip 3360/7500 kept 2769 2757s
+roundtrip 3384/7500 kept 2789 2762s
+roundtrip 3408/7500 kept 2806 2766s
+roundtrip 3432/7500 kept 2821 2770s
+roundtrip 3456/7500 kept 2839 2774s
+roundtrip 3480/7500 kept 2859 2779s
+roundtrip 3504/7500 kept 2882 2783s
+roundtrip 3528/7500 kept 2899 2787s
+roundtrip 3552/7500 kept 2916 2791s
+roundtrip 3576/7500 kept 2932 2796s
+roundtrip 3600/7500 kept 2952 2800s
+roundtrip 3624/7500 kept 2976 2804s
+roundtrip 3648/7500 kept 2997 2808s
+roundtrip 3672/7500 kept 3016 2813s
+roundtrip 3696/7500 kept 3037 2817s
+roundtrip 3720/7500 kept 3061 2821s
+roundtrip 3744/7500 kept 3081 2826s
+roundtrip 3768/7500 kept 3098 2830s
+roundtrip 3792/7500 kept 3113 2834s
+roundtrip 3816/7500 kept 3129 2839s
+roundtrip 3840/7500 kept 3147 2843s
+roundtrip 3864/7500 kept 3168 2847s
+roundtrip 3888/7500 kept 3185 2852s
+roundtrip 3912/7500 kept 3204 2856s
+roundtrip 3936/7500 kept 3222 2860s
+roundtrip 3960/7500 kept 3243 2864s
+roundtrip 3984/7500 kept 3264 2869s
+roundtrip 4008/7500 kept 3283 2873s
+roundtrip 4032/7500 kept 3298 2877s
+roundtrip 4056/7500 kept 3305 2882s
+roundtrip 4080/7500 kept 3323 2886s
+roundtrip 4104/7500 kept 3346 2890s
+roundtrip 4128/7500 kept 3362 2894s
+roundtrip 4152/7500 kept 3375 2899s
+roundtrip 4176/7500 kept 3395 2903s
+roundtrip 4200/7500 kept 3414 2907s
+roundtrip 4224/7500 kept 3435 2912s
+roundtrip 4248/7500 kept 3454 2916s
+roundtrip 4272/7500 kept 3477 2920s
+roundtrip 4296/7500 kept 3496 2924s
+roundtrip 4320/7500 kept 3519 2929s
+roundtrip 4344/7500 kept 3540 2933s
+roundtrip 4368/7500 kept 3563 2937s
+roundtrip 4392/7500 kept 3583 2942s
+roundtrip 4416/7500 kept 3602 2946s
+roundtrip 4440/7500 kept 3625 2950s
+roundtrip 4464/7500 kept 3640 2954s
+roundtrip 4488/7500 kept 3650 2959s
+roundtrip 4512/7500 kept 3662 2963s
+roundtrip 4536/7500 kept 3686 2967s
+roundtrip 4560/7500 kept 3706 2972s
+roundtrip 4584/7500 kept 3727 2976s
+roundtrip 4608/7500 kept 3748 2980s
+roundtrip 4632/7500 kept 3766 2984s
+roundtrip 4656/7500 kept 3779 2989s
+roundtrip 4680/7500 kept 3799 2993s
+roundtrip 4704/7500 kept 3812 2997s
+roundtrip 4728/7500 kept 3834 3002s
+roundtrip 4752/7500 kept 3855 3006s
+roundtrip 4776/7500 kept 3875 3010s
+roundtrip 4800/7500 kept 3889 3014s
+roundtrip 4824/7500 kept 3908 3019s
+roundtrip 4848/7500 kept 3926 3023s
+roundtrip 4872/7500 kept 3943 3027s
+roundtrip 4896/7500 kept 3967 3031s
+roundtrip 4920/7500 kept 3989 3036s
+roundtrip 4944/7500 kept 4009 3040s
+roundtrip 4968/7500 kept 4031 3044s
+roundtrip 4992/7500 kept 4050 3048s
+roundtrip 5016/7500 kept 4073 3053s
+roundtrip 5040/7500 kept 4089 3057s
+roundtrip 5064/7500 kept 4107 3061s
+roundtrip 5088/7500 kept 4129 3065s
+roundtrip 5112/7500 kept 4145 3070s
+roundtrip 5136/7500 kept 4163 3074s
+roundtrip 5160/7500 kept 4183 3078s
+roundtrip 5184/7500 kept 4198 3083s
+roundtrip 5208/7500 kept 4220 3087s
+roundtrip 5232/7500 kept 4243 3091s
+roundtrip 5256/7500 kept 4260 3095s
+roundtrip 5280/7500 kept 4283 3100s
+roundtrip 5304/7500 kept 4300 3104s
+roundtrip 5328/7500 kept 4317 3108s
+roundtrip 5352/7500 kept 4338 3112s
+roundtrip 5376/7500 kept 4359 3117s
+roundtrip 5400/7500 kept 4374 3121s
+roundtrip 5424/7500 kept 4398 3125s
+roundtrip 5448/7500 kept 4417 3129s
+roundtrip 5472/7500 kept 4438 3134s
+roundtrip 5496/7500 kept 4456 3138s
+roundtrip 5520/7500 kept 4479 3142s
+roundtrip 5544/7500 kept 4493 3147s
+roundtrip 5568/7500 kept 4509 3151s
+roundtrip 5592/7500 kept 4532 3155s
+roundtrip 5616/7500 kept 4556 3159s
+roundtrip 5640/7500 kept 4576 3164s
+roundtrip 5664/7500 kept 4593 3168s
+roundtrip 5688/7500 kept 4612 3172s
+roundtrip 5712/7500 kept 4630 3176s
+roundtrip 5736/7500 kept 4652 3181s
+roundtrip 5760/7500 kept 4671 3185s
+roundtrip 5784/7500 kept 4694 3189s
+roundtrip 5808/7500 kept 4717 3193s
+roundtrip 5832/7500 kept 4738 3198s
+roundtrip 5856/7500 kept 4754 3202s
+roundtrip 5880/7500 kept 4773 3206s
+roundtrip 5904/7500 kept 4796 3211s
+roundtrip 5928/7500 kept 4816 3215s
+roundtrip 5952/7500 kept 4831 3219s
+roundtrip 5976/7500 kept 4846 3223s
+roundtrip 6000/7500 kept 4866 3228s
+roundtrip 6024/7500 kept 4882 3232s
+roundtrip 6048/7500 kept 4904 3236s
+roundtrip 6072/7500 kept 4923 3240s
+roundtrip 6096/7500 kept 4944 3245s
+roundtrip 6120/7500 kept 4962 3249s
+roundtrip 6144/7500 kept 4985 3253s
+roundtrip 6168/7500 kept 5003 3258s
+roundtrip 6192/7500 kept 5024 3262s
+roundtrip 6216/7500 kept 5044 3266s
+roundtrip 6240/7500 kept 5065 3270s
+roundtrip 6264/7500 kept 5086 3275s
+roundtrip 6288/7500 kept 5101 3279s
+roundtrip 6312/7500 kept 5120 3283s
+roundtrip 6336/7500 kept 5138 3287s
+roundtrip 6360/7500 kept 5158 3292s
+roundtrip 6384/7500 kept 5181 3296s
+roundtrip 6408/7500 kept 5202 3300s
+roundtrip 6432/7500 kept 5223 3305s
+roundtrip 6456/7500 kept 5246 3309s
+roundtrip 6480/7500 kept 5262 3313s
+roundtrip 6504/7500 kept 5282 3318s
+roundtrip 6528/7500 kept 5305 3322s
+roundtrip 6552/7500 kept 5327 3326s
+roundtrip 6576/7500 kept 5348 3330s
+roundtrip 6600/7500 kept 5365 3335s
+roundtrip 6624/7500 kept 5385 3339s
+roundtrip 6648/7500 kept 5404 3343s
+roundtrip 6672/7500 kept 5423 3347s
+roundtrip 6696/7500 kept 5445 3352s
+roundtrip 6720/7500 kept 5467 3356s
+roundtrip 6744/7500 kept 5489 3360s
+roundtrip 6768/7500 kept 5509 3365s
+roundtrip 6792/7500 kept 5531 3369s
+roundtrip 6816/7500 kept 5549 3373s
+roundtrip 6840/7500 kept 5572 3377s
+roundtrip 6864/7500 kept 5590 3382s
+roundtrip 6888/7500 kept 5600 3386s
+roundtrip 6912/7500 kept 5624 3390s
+roundtrip 6936/7500 kept 5646 3394s
+roundtrip 6960/7500 kept 5665 3399s
+roundtrip 6984/7500 kept 5685 3403s
+roundtrip 7008/7500 kept 5707 3407s
+roundtrip 7032/7500 kept 5725 3412s
+roundtrip 7056/7500 kept 5744 3416s
+roundtrip 7080/7500 kept 5761 3420s
+roundtrip 7104/7500 kept 5780 3425s
+roundtrip 7128/7500 kept 5801 3429s
+roundtrip 7152/7500 kept 5824 3433s
+roundtrip 7176/7500 kept 5844 3437s
+roundtrip 7200/7500 kept 5867 3442s
+roundtrip 7224/7500 kept 5888 3446s
+roundtrip 7248/7500 kept 5907 3450s
+roundtrip 7272/7500 kept 5927 3455s
+roundtrip 7296/7500 kept 5938 3459s
+roundtrip 7320/7500 kept 5960 3463s
+roundtrip 7344/7500 kept 5975 3468s
+roundtrip 7368/7500 kept 5996 3472s
+roundtrip 7392/7500 kept 6019 3477s
+roundtrip 7416/7500 kept 6038 3481s
+roundtrip 7440/7500 kept 6061 3485s
+roundtrip 7464/7500 kept 6082 3489s
+roundtrip 7488/7500 kept 6099 3494s
+roundtrip 7500/7500 kept 6108 3496s
+done: 7500 candidates, 6108 kept, 5907 unique, 3496s

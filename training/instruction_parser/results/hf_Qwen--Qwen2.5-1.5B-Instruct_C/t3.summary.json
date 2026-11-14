@@ -1,0 +1,54 @@
+{
+ "method": "hf:Qwen/Qwen2.5-1.5B-Instruct:C",
+ "testset": "t3.jsonl",
+ "n": 60,
+ "t3_refusal_rate": 0.0,
+ "t3_per_category_refusal": {
+  "contradiction": 0.0,
+  "nonexistent_bin": 0.0,
+  "undefined": 0.0,
+  "unrelated": 0.0
+ },
+ "confidence_curve": [
+  {
+   "threshold": 0.0,
+   "coverage": 1.0,
+   "t3_refusal_rate": 0.0
+  },
+  {
+   "threshold": 0.5,
+   "coverage": 0.6,
+   "t3_refusal_rate": 0.4
+  },
+  {
+   "threshold": 1.0,
+   "coverage": 0.2833333333333333,
+   "t3_refusal_rate": 0.7166666666666667
+  },
+  {
+   "threshold": 2.0,
+   "coverage": 0.1,
+   "t3_refusal_rate": 0.9
+  },
+  {
+   "threshold": 3.0,
+   "coverage": 0.03333333333333333,
+   "t3_refusal_rate": 0.9666666666666667
+  },
+  {
+   "threshold": 5.0,
+   "coverage": 0.0,
+   "t3_refusal_rate": 1.0
+  },
+  {
+   "threshold": 8.0,
+   "coverage": 0.0,
+   "t3_refusal_rate": 1.0
+  }
+ ],
+ "throughput_items_per_s": 14.576222866828193,
+ "load_s": 2.392181873321533,
+ "device": "cuda",
+ "peak_vram_gb": 4.857396224,
+ "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+}

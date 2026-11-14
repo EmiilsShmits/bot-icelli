@@ -1,0 +1,17 @@
+{
+ "method": "hf:Qwen/Qwen2.5-1.5B-Instruct:A",
+ "testset": "t3.jsonl",
+ "n": 60,
+ "t3_refusal_rate": 0.4666666666666667,
+ "t3_per_category_refusal": {
+  "contradiction": 0.06666666666666667,
+  "nonexistent_bin": 0.9333333333333333,
+  "undefined": 0.06666666666666667,
+  "unrelated": 0.8
+ },
+ "throughput_items_per_s": 32.16874404884938,
+ "load_s": 2.4184494018554688,
+ "device": "cuda",
+ "peak_vram_gb": 4.935479296,
+ "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+}

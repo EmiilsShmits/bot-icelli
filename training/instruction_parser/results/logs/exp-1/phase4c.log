@@ -1,0 +1,3 @@
+{"method": "ft:/root/ckpt/s1b-full:B", "device": "cuda", "threads": 30, "load_to_first_answer_s": 9.48, "model_load_s": 6.9, "weights_gb_on_disk": 2.0, "latency_p50_s": 0.138, "latency_p95_s": 0.1388, "first_answer": "{'red cube': 'center', 'red cylinder': 'center', 'red triangle': 'center', 'yell", "peak_vram_gb": 2.015, "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition"}
+{"method": "ft:/root/ckpt/s1b-full:B", "device": "cpu", "threads": 8, "load_to_first_answer_s": 8.43, "model_load_s": 4.33, "weights_gb_on_disk": 2.0, "latency_p50_s": 1.5983, "latency_p95_s": 1.6072, "first_answer": "{'red cube': 'center', 'red cylinder': 'center', 'red triangle': 'center', 'yell"}
+PHASE4_DONE 03:46:41

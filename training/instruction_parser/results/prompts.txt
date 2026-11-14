@@ -1,0 +1,117 @@
+===== format A =====
+[user]
+You turn a robot sorting instruction into a fixed answer.
+Objects: colours red, yellow, blue x shapes cube, cylinder, triangle (9 known types). Any other object (unknown colour or shape) is 'other'.
+Bins: left, center, right (named by position only; middle/centre = center).
+For each of the 10 slots give where it goes: left, center, right, or leave (stays on the table).
+Rules: a colour-only rule applies to all three shapes of that colour. 'other' is leave unless the instruction explicitly says what to do with unknown/other objects. 'Everything' means the known blocks. If the instruction is contradictory, names a bin that doesn't exist, is unrelated, or leaves a known object without a destination, the answer is invalid.
+Answer with one JSON object with exactly these 10 keys: red cube, red cylinder, red triangle, yellow cube, yellow cylinder, yellow triangle, blue cube, blue cylinder, blue triangle, other. If invalid, answer {"invalid": true}. Output only the JSON.
+
+Instruction: Put the blue objects in the left bin, the red objects in the center bin and the yellow objects in the right bin.
+
+[assistant]
+{"red cube": "center", "red cylinder": "center", "red triangle": "center", "yellow cube": "right", "yellow cylinder": "right", "yellow triangle": "right", "blue cube": "left", "blue cylinder": "left", "blue triangle": "left", "other": "leave"}
+
+[user]
+Instruction: The left bin is for yellow objects, the center bin for blue, the right bin for red.
+
+[assistant]
+{"red cube": "right", "red cylinder": "right", "red triangle": "right", "yellow cube": "left", "yellow cylinder": "left", "yellow triangle": "left", "blue cube": "center", "blue cylinder": "center", "blue triangle": "center", "other": "leave"}
+
+[user]
+Instruction: Sort the objects: red into right, blue into center, yellow into left.
+
+[assistant]
+{"red cube": "right", "red cylinder": "right", "red triangle": "right", "yellow cube": "left", "yellow cylinder": "left", "yellow triangle": "left", "blue cube": "center", "blue cylinder": "center", "blue triangle": "center", "other": "leave"}
+
+[user]
+Instruction: <INSTRUCTION>
+
+===== format B =====
+[user]
+You turn a robot sorting instruction into a fixed answer.
+Objects: colours red, yellow, blue x shapes cube, cylinder, triangle (9 known types). Any other object (unknown colour or shape) is 'other'.
+Bins: left, center, right (named by position only; middle/centre = center).
+For each of the 10 slots give where it goes: left, center, right, or leave (stays on the table).
+Rules: a colour-only rule applies to all three shapes of that colour. 'other' is leave unless the instruction explicitly says what to do with unknown/other objects. 'Everything' means the known blocks. If the instruction is contradictory, names a bin that doesn't exist, is unrelated, or leaves a known object without a destination, the answer is invalid.
+Answer with exactly 10 words, the values for these slots in this order: red cube, red cylinder, red triangle, yellow cube, yellow cylinder, yellow triangle, blue cube, blue cylinder, blue triangle, other. If invalid, answer the single word invalid. Output nothing else.
+
+Instruction: Put the blue objects in the left bin, the red objects in the center bin and the yellow objects in the right bin.
+
+[assistant]
+center center center right right right left left left leave
+
+[user]
+Instruction: The left bin is for yellow objects, the center bin for blue, the right bin for red.
+
+[assistant]
+right right right left left left center center center leave
+
+[user]
+Instruction: Sort the objects: red into right, blue into center, yellow into left.
+
+[assistant]
+right right right left left left center center center leave
+
+[user]
+Instruction: <INSTRUCTION>
+
+===== format C =====
+[user]
+You turn a robot sorting instruction into a fixed answer.
+Objects: colours red, yellow, blue x shapes cube, cylinder, triangle (9 known types). Any other object (unknown colour or shape) is 'other'.
+Bins: left, center, right (named by position only; middle/centre = center).
+For each of the 10 slots give where it goes: left, center, right, or leave (stays on the table).
+Rules: a colour-only rule applies to all three shapes of that colour. 'other' is leave unless the instruction explicitly says what to do with unknown/other objects. 'Everything' means the known blocks. If the instruction is contradictory, names a bin that doesn't exist, is unrelated, or leaves a known object without a destination, the answer is invalid.
+Answer with 10 lines 'slot: value' in this order: red cube, red cylinder, red triangle, yellow cube, yellow cylinder, yellow triangle, blue cube, blue cylinder, blue triangle, other.
+
+Instruction: Put the blue objects in the left bin, the red objects in the center bin and the yellow objects in the right bin.
+
+[assistant]
+red cube: center
+red cylinder: center
+red triangle: center
+yellow cube: right
+yellow cylinder: right
+yellow triangle: right
+blue cube: left
+blue cylinder: left
+blue triangle: left
+other: leave
+
+[user]
+Instruction: The left bin is for yellow objects, the center bin for blue, the right bin for red.
+
+[assistant]
+red cube: right
+red cylinder: right
+red triangle: right
+yellow cube: left
+yellow cylinder: left
+yellow triangle: left
+blue cube: center
+blue cylinder: center
+blue triangle: center
+other: leave
+
+[user]
+Instruction: Sort the objects: red into right, blue into center, yellow into left.
+
+[assistant]
+red cube: right
+red cylinder: right
+red triangle: right
+yellow cube: left
+yellow cylinder: left
+yellow triangle: left
+blue cube: center
+blue cylinder: center
+blue triangle: center
+other: leave
+
+[user]
+Instruction: <INSTRUCTION>
+
+===== fine-tuned student =====
+Sort instruction -> 10 slots (red cube, red cylinder, red triangle, yellow cube, yellow cylinder, yellow triangle, blue cube, blue cylinder, blue triangle, other):
+<INSTRUCTION>

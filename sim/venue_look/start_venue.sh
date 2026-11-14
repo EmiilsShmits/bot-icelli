@@ -1,4 +1,4 @@
 #!/bin/bash
-# Start the sim with the venue look (appearance only; geometry stays Aalto scene.yaml).
-export AALTO_LOOK=/root/venue_look/venue.yaml
+# Start the sim with the venue look (appearance, head camera pose, and scene_venue.yaml geometry if it exists).
+source "$(dirname "${BASH_SOURCE[0]}")/venue_env.sh"
 cd /root/aaltonomous-humanoid && bash aaltonomous/cloud/aalto.sh sim "$@"

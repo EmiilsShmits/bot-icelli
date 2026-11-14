@@ -1,0 +1,54 @@
+04:00:29 balance 196.26 spend 1.60 gemma-parser-exp-2:provisioning:0.01h, gemma-parser-exp-1:provisioning:0.01h
+04:02:29 balance 196.26 spend 1.60 gemma-parser-exp-2:running:0.04h, gemma-parser-exp-1:running:0.04h
+04:04:30 balance 196.26 spend 1.60 gemma-parser-exp-2:running:0.08h, gemma-parser-exp-1:running:0.08h
+04:06:31 balance 196.26 spend 1.60 gemma-parser-exp-2:running:0.11h, gemma-parser-exp-1:running:0.11h
+04:08:33 balance 196.26 spend 1.60 gemma-parser-exp-2:running:0.14h, gemma-parser-exp-1:running:0.14h
+04:10:33 balance 195.46 spend 2.40 gemma-parser-exp-2:running:0.18h, gemma-parser-exp-1:running:0.18h
+04:12:34 balance 195.46 spend 2.40 gemma-parser-exp-2:running:0.21h, gemma-parser-exp-1:running:0.21h
+04:14:37 balance 195.46 spend 2.40 gemma-parser-exp-2:running:0.24h, gemma-parser-exp-1:running:0.24h
+04:16:37 balance 195.46 spend 2.40 gemma-parser-exp-2:running:0.28h, gemma-parser-exp-1:running:0.28h
+04:18:38 balance 195.46 spend 2.40 gemma-parser-exp-2:running:0.31h, gemma-parser-exp-1:running:0.31h
+04:20:38 balance 194.65 spend 3.21 gemma-parser-exp-2:running:0.34h, gemma-parser-exp-1:running:0.35h
+04:22:39 balance 194.65 spend 3.21 gemma-parser-exp-2:running:0.38h, gemma-parser-exp-1:running:0.38h
+04:24:39 balance 194.65 spend 3.21 gemma-parser-exp-2:running:0.41h, gemma-parser-exp-1:running:0.41h
+04:26:40 balance 194.65 spend 3.21 gemma-parser-exp-2:running:0.44h, gemma-parser-exp-1:running:0.45h
+04:28:41 balance 194.65 spend 3.21 gemma-parser-exp-2:running:0.48h, gemma-parser-exp-1:running:0.48h
+04:30:41 balance 193.85 spend 4.01 gemma-parser-exp-2:running:0.51h, gemma-parser-exp-1:running:0.51h
+04:32:42 balance 193.85 spend 4.01 gemma-parser-exp-2:running:0.55h, gemma-parser-exp-1:running:0.55h
+04:34:42 balance 193.85 spend 4.01 gemma-parser-exp-2:running:0.58h, gemma-parser-exp-1:running:0.58h
+04:36:43 balance 193.85 spend 4.01 gemma-parser-exp-2:running:0.61h, gemma-parser-exp-1:running:0.61h
+04:38:43 balance 193.85 spend 4.01 gemma-parser-exp-2:running:0.65h, gemma-parser-exp-1:running:0.65h
+04:40:43 balance 193.05 spend 4.81 gemma-parser-exp-2:running:0.68h, gemma-parser-exp-1:running:0.68h
+04:42:45 balance 193.05 spend 4.81 gemma-parser-exp-2:running:0.71h, gemma-parser-exp-1:running:0.71h
+04:44:46 balance 193.05 spend 4.81 gemma-parser-exp-2:running:0.75h, gemma-parser-exp-1:running:0.75h
+04:46:46 balance 193.05 spend 4.81 gemma-parser-exp-2:running:0.78h, gemma-parser-exp-1:running:0.78h
+04:48:47 balance 193.05 spend 4.81 gemma-parser-exp-2:running:0.81h, gemma-parser-exp-1:running:0.81h
+04:50:47 balance 192.24 spend 5.62 gemma-parser-exp-2:running:0.85h, gemma-parser-exp-1:running:0.85h
+04:52:47 balance 192.24 spend 5.62 gemma-parser-exp-2:running:0.88h, gemma-parser-exp-1:running:0.88h
+04:54:48 balance 192.24 spend 5.62 gemma-parser-exp-2:running:0.91h, gemma-parser-exp-1:running:0.91h
+04:56:48 balance 192.24 spend 5.62 gemma-parser-exp-2:running:0.95h, gemma-parser-exp-1:running:0.95h
+04:58:48 balance 192.24 spend 5.62 gemma-parser-exp-2:running:0.98h, gemma-parser-exp-1:running:0.98h
+05:00:49 balance 191.44 spend 6.42 gemma-parser-exp-2:running:1.01h, gemma-parser-exp-1:running:1.01h
+05:02:49 balance 191.44 spend 6.42 gemma-parser-exp-2:running:1.05h, gemma-parser-exp-1:running:1.05h
+05:04:49 balance 191.44 spend 6.42 gemma-parser-exp-2:running:1.08h, gemma-parser-exp-1:running:1.08h
+05:06:50 balance 191.44 spend 6.42 gemma-parser-exp-2:running:1.11h, gemma-parser-exp-1:running:1.12h
+05:08:50 balance 191.44 spend 6.42 gemma-parser-exp-2:running:1.15h, gemma-parser-exp-1:running:1.15h
+05:10:51 balance 190.63 spend 7.23 gemma-parser-exp-2:running:1.18h, gemma-parser-exp-1:running:1.18h
+05:12:52 balance 190.63 spend 7.23 gemma-parser-exp-2:running:1.21h, gemma-parser-exp-1:running:1.22h
+05:14:53 balance 190.63 spend 7.23 gemma-parser-exp-2:running:1.25h, gemma-parser-exp-1:running:1.25h
+05:16:53 balance 190.63 spend 7.23 gemma-parser-exp-2:running:1.28h, gemma-parser-exp-1:running:1.28h
+05:18:53 balance 190.63 spend 7.23 gemma-parser-exp-2:running:1.32h, gemma-parser-exp-1:running:1.32h
+05:20:54 balance 189.83 spend 8.03 gemma-parser-exp-2:running:1.35h, gemma-parser-exp-1:running:1.35h
+05:22:54 balance 189.83 spend 8.03 gemma-parser-exp-2:running:1.38h, gemma-parser-exp-1:running:1.38h
+05:24:55 balance 189.83 spend 8.03 gemma-parser-exp-2:running:1.42h, gemma-parser-exp-1:running:1.42h
+05:26:55 balance 189.83 spend 8.03 gemma-parser-exp-2:running:1.45h, gemma-parser-exp-1:running:1.45h
+05:28:55 balance 189.83 spend 8.03 gemma-parser-exp-2:running:1.48h, gemma-parser-exp-1:running:1.48h
+05:30:56 balance 189.03 spend 8.83 gemma-parser-exp-2:running:1.52h, gemma-parser-exp-1:running:1.52h
+05:32:57 balance 189.03 spend 8.83 gemma-parser-exp-2:running:1.55h, gemma-parser-exp-1:running:1.55h
+05:34:57 balance 189.03 spend 8.83 gemma-parser-exp-2:running:1.58h, gemma-parser-exp-1:running:1.58h
+05:36:58 balance 189.03 spend 8.83 gemma-parser-exp-2:running:1.62h, gemma-parser-exp-1:running:1.62h
+05:38:58 balance 189.03 spend 8.83 gemma-parser-exp-1:running:1.65h
+05:40:58 balance 189.01 spend 8.85 gemma-parser-exp-1:running:1.68h
+05:42:59 balance 189.01 spend 8.85 gemma-parser-exp-1:running:1.72h
+05:45:00 balance 189.01 spend 8.85 gemma-parser-exp-1:running:1.75h
+05:47:00 balance 189.01 spend 8.85 gemma-parser-exp-1:running:1.78h

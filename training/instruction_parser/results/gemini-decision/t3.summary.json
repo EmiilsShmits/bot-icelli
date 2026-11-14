@@ -1,0 +1,18 @@
+{
+ "method": "gemini-decision",
+ "testset": "t3.jsonl",
+ "n": 60,
+ "t3_refusal_rate": 1.0,
+ "t3_per_category_refusal": {
+  "contradiction": 1.0,
+  "nonexistent_bin": 1.0,
+  "undefined": 1.0,
+  "unrelated": 1.0
+ },
+ "latency_p50_s": 0.5215981006622314,
+ "latency_p95_s": 0.832737922668457,
+ "latency_n": 20,
+ "throughput_items_per_s": 5.794169651416301,
+ "load_s": 0.0,
+ "device": "cpu"
+}

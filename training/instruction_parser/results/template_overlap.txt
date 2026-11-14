@@ -1,0 +1,2 @@
+{"file": "data/t2a.jsonl", "n": 339, "trigram_containment_in_templates_mean": 0.1468, "max": 0.625, "share_over_0.5": 0.0177}
+{"file": "data/t2b.jsonl", "n": 213, "trigram_containment_in_templates_mean": 0.1204, "max": 1.0, "share_over_0.5": 0.0047}

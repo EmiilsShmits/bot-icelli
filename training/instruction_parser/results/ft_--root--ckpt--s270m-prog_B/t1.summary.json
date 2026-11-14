@@ -1,0 +1,60 @@
+{
+ "method": "ft:/root/ckpt/s270m-prog:B",
+ "testset": "t1.jsonl",
+ "n": 288,
+ "exact_acc": 0.8680555555555556,
+ "per_slot_acc": 0.8680555555555556,
+ "known_slot_acc": 0.8680555555555556,
+ "invalid_rate": 0.13194444444444445,
+ "malformed_rate": 0.0,
+ "confidently_wrong_rate": 0.0,
+ "distractor_safety": 0.8680555555555556,
+ "distractor_unsafe_rate": 0.0,
+ "per_category": {
+  "template_0": {
+   "n": 36,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "template_1": {
+   "n": 36,
+   "exact_acc": 0.8333333333333334,
+   "confidently_wrong": 0.0
+  },
+  "template_2": {
+   "n": 36,
+   "exact_acc": 0.9722222222222222,
+   "confidently_wrong": 0.0
+  },
+  "template_3": {
+   "n": 36,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "template_4": {
+   "n": 36,
+   "exact_acc": 0.5277777777777778,
+   "confidently_wrong": 0.0
+  },
+  "template_5": {
+   "n": 36,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "template_6": {
+   "n": 36,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "template_7": {
+   "n": 36,
+   "exact_acc": 0.6111111111111112,
+   "confidently_wrong": 0.0
+  }
+ },
+ "throughput_items_per_s": 145.9972747874327,
+ "load_s": 5.565231561660767,
+ "device": "cuda",
+ "peak_vram_gb": 0.831713792,
+ "gpu": "NVIDIA A100-SXM4-80GB"
+}

@@ -1,0 +1,76 @@
+{
+ "method": "gemini-decision",
+ "testset": "t2a.jsonl",
+ "n": 339,
+ "exact_acc": 0.9174041297935103,
+ "per_slot_acc": 0.9174041297935103,
+ "known_slot_acc": 0.9174041297935103,
+ "invalid_rate": 0.08259587020648967,
+ "malformed_rate": 0.0,
+ "confidently_wrong_rate": 0.0,
+ "distractor_safety": 0.9174041297935103,
+ "distractor_unsafe_rate": 0.0,
+ "per_category": {
+  "bin_first": {
+   "n": 31,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "bin_synonyms": {
+   "n": 31,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "colour_variants": {
+   "n": 31,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "elimination": {
+   "n": 35,
+   "exact_acc": 0.9428571428571428,
+   "confidently_wrong": 0.0
+  },
+  "length_extremes": {
+   "n": 32,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "multi_sentence": {
+   "n": 31,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "noisy": {
+   "n": 32,
+   "exact_acc": 0.96875,
+   "confidently_wrong": 0.0
+  },
+  "passive": {
+   "n": 31,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "real_colour_names": {
+   "n": 21,
+   "exact_acc": 0.0,
+   "confidently_wrong": 0.0
+  },
+  "reordered": {
+   "n": 32,
+   "exact_acc": 0.90625,
+   "confidently_wrong": 0.0
+  },
+  "terse": {
+   "n": 32,
+   "exact_acc": 0.96875,
+   "confidently_wrong": 0.0
+  }
+ },
+ "latency_p50_s": 0.47625303268432617,
+ "latency_p95_s": 0.9603061676025391,
+ "latency_n": 20,
+ "throughput_items_per_s": 8.21455386485521,
+ "load_s": 0.0,
+ "device": "cpu"
+}

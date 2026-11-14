@@ -1,0 +1,61 @@
+{
+ "method": "gemini-decision",
+ "testset": "t1.jsonl",
+ "n": 288,
+ "exact_acc": 1.0,
+ "per_slot_acc": 1.0,
+ "known_slot_acc": 1.0,
+ "invalid_rate": 0.0,
+ "malformed_rate": 0.0,
+ "confidently_wrong_rate": 0.0,
+ "distractor_safety": 1.0,
+ "distractor_unsafe_rate": 0.0,
+ "per_category": {
+  "template_0": {
+   "n": 36,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "template_1": {
+   "n": 36,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "template_2": {
+   "n": 36,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "template_3": {
+   "n": 36,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "template_4": {
+   "n": 36,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "template_5": {
+   "n": 36,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "template_6": {
+   "n": 36,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "template_7": {
+   "n": 36,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  }
+ },
+ "latency_p50_s": 0.382321834564209,
+ "latency_p95_s": 0.46690893173217773,
+ "latency_n": 20,
+ "throughput_items_per_s": 6.417798417522995,
+ "load_s": 0.0,
+ "device": "cpu"
+}

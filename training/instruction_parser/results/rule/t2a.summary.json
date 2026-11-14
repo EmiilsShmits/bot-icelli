@@ -1,0 +1,76 @@
+{
+ "method": "rule",
+ "testset": "t2a.jsonl",
+ "n": 339,
+ "exact_acc": 0.8672566371681416,
+ "per_slot_acc": 0.88023598820059,
+ "known_slot_acc": 0.8780727630285152,
+ "invalid_rate": 0.10029498525073746,
+ "malformed_rate": 0.0,
+ "confidently_wrong_rate": 0.032448377581120944,
+ "distractor_safety": 0.8997050147492626,
+ "distractor_unsafe_rate": 0.0,
+ "per_category": {
+  "bin_first": {
+   "n": 31,
+   "exact_acc": 0.8709677419354839,
+   "confidently_wrong": 0.12903225806451613
+  },
+  "bin_synonyms": {
+   "n": 31,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "colour_variants": {
+   "n": 31,
+   "exact_acc": 0.967741935483871,
+   "confidently_wrong": 0.03225806451612903
+  },
+  "elimination": {
+   "n": 35,
+   "exact_acc": 0.9714285714285714,
+   "confidently_wrong": 0.0
+  },
+  "length_extremes": {
+   "n": 32,
+   "exact_acc": 0.71875,
+   "confidently_wrong": 0.0
+  },
+  "multi_sentence": {
+   "n": 31,
+   "exact_acc": 0.967741935483871,
+   "confidently_wrong": 0.0
+  },
+  "noisy": {
+   "n": 32,
+   "exact_acc": 0.625,
+   "confidently_wrong": 0.125
+  },
+  "passive": {
+   "n": 31,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "real_colour_names": {
+   "n": 21,
+   "exact_acc": 0.9523809523809523,
+   "confidently_wrong": 0.0
+  },
+  "reordered": {
+   "n": 32,
+   "exact_acc": 0.59375,
+   "confidently_wrong": 0.0625
+  },
+  "terse": {
+   "n": 32,
+   "exact_acc": 0.90625,
+   "confidently_wrong": 0.0
+  }
+ },
+ "latency_p50_s": 0.0002570152282714844,
+ "latency_p95_s": 0.0004858970642089844,
+ "latency_n": 50,
+ "throughput_items_per_s": 2871.3258103861904,
+ "load_s": 0.0,
+ "device": "cpu"
+}

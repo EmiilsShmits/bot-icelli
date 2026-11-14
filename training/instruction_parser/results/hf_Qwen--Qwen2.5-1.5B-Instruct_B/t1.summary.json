@@ -1,0 +1,60 @@
+{
+ "method": "hf:Qwen/Qwen2.5-1.5B-Instruct:B",
+ "testset": "t1.jsonl",
+ "n": 288,
+ "exact_acc": 0.2326388888888889,
+ "per_slot_acc": 0.42465277777777777,
+ "known_slot_acc": 0.376929012345679,
+ "invalid_rate": 0.14583333333333334,
+ "malformed_rate": 0.14583333333333334,
+ "confidently_wrong_rate": 0.6215277777777778,
+ "distractor_safety": 0.8541666666666666,
+ "distractor_unsafe_rate": 0.0,
+ "per_category": {
+  "template_0": {
+   "n": 36,
+   "exact_acc": 0.2777777777777778,
+   "confidently_wrong": 0.5277777777777778
+  },
+  "template_1": {
+   "n": 36,
+   "exact_acc": 0.25,
+   "confidently_wrong": 0.5555555555555556
+  },
+  "template_2": {
+   "n": 36,
+   "exact_acc": 0.3055555555555556,
+   "confidently_wrong": 0.6666666666666666
+  },
+  "template_3": {
+   "n": 36,
+   "exact_acc": 0.1388888888888889,
+   "confidently_wrong": 0.5
+  },
+  "template_4": {
+   "n": 36,
+   "exact_acc": 0.19444444444444445,
+   "confidently_wrong": 0.8055555555555556
+  },
+  "template_5": {
+   "n": 36,
+   "exact_acc": 0.2777777777777778,
+   "confidently_wrong": 0.5555555555555556
+  },
+  "template_6": {
+   "n": 36,
+   "exact_acc": 0.2222222222222222,
+   "confidently_wrong": 0.5555555555555556
+  },
+  "template_7": {
+   "n": 36,
+   "exact_acc": 0.19444444444444445,
+   "confidently_wrong": 0.8055555555555556
+  }
+ },
+ "throughput_items_per_s": 126.31564576226097,
+ "load_s": 2.4161949157714844,
+ "device": "cuda",
+ "peak_vram_gb": 4.39810304,
+ "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+}

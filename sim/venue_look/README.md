@@ -6,49 +6,82 @@
 ## What it changes
 | | Aalto default | Venue look |
 |---|---|---|
-| Objects | red, yellow, blue | orange, yellow, purple |
-| Table | white printed grid mat | varnished plywood, no mat |
-| Bins | plain orange | orange outside and rim, cardboard inside; the **middle** box has wide orange tape folded over its opening. Same size and 5 cm gaps as Aalto's |
-| Background | grey | black curtains, dark floor, less ambient light |
+| Head camera | pose from `calibration.yaml` (a URDF default) | looks 9° further down, 1° roll, 2.5 cm to the robot's left: fitted to the real footage |
+| Objects | red, yellow, blue; 3–4 in a band in front of the bins | orange, yellow, blue-violet; **3–6 scattered over the area where the real ones lie** (mat x 0.30–0.60, y 0.04–0.20, down to 6.5 cm apart) |
+| Table | white printed grid mat | pale grey-pink glossy wood with a glare patch from the lamp, no mat; orange tape marks in front of the bins |
+| Bins | plain orange, 6 cm walls | red-orange outside, grey cardboard inside, **7.5 cm walls**, orange paper folded over the rim of all three (wide on the middle box, slightly uneven). Same 21 cm size and 5 cm gaps as Aalto's |
+| Lighting | bright, warm, lamp overhead | one cool lamp in front of the robot on its right, weak room light |
+| Background | grey | black curtains, dark floor |
+| Camera image | sharp | motion blur and slightly soft focus (applies to all cameras) |
+| Robot arms | dark grey | silver wrists, white hand-camera mounts, a black cable on each forearm |
 
-Source: one phone photo of the real table (Sat 14 Nov), colours sampled from it. Compare `artifacts/sim-snap/venue/head_camera.jpg` with `artifacts/sim-snap/nominal_seed4/head_camera.jpg` (local, git-ignored).
+Sources: a phone photo of the real table (Sat 14 Nov) and the head-camera video in Aalto's two real datasets (`data/DATASETS.md`, d-001 and d-002). Sim next to real, head camera and both wrist cameras: `artifacts/sim-snap/venue_v3/head_sim_vs_real.jpg` and `wrist_sim_vs_real.jpg` (local, git-ignored).
 
 ## Files
 | File | What |
 |---|---|
-| `venue.yaml` | The look: colours, materials, lights. Edit this to tune |
-| `patch_aalto.py` | Adds `AALTO_LOOK` and `AALTO_SCENE` support to a clone of Aalto's repo (two files). Idempotent |
+| `venue.yaml` | The look: camera offset, colours, materials, lights, tape marks, blur, robot arm, plus a `scene:` section with geometry changes (bin wall height, where objects spawn). Edit this to tune |
+| `patch_aalto.py` | Adds `AALTO_LOOK` and `AALTO_SCENE` support to a clone of Aalto's repo (three files: `scene/scene.py`, `sim/aalto_task/scene_cfg.py`, `sim/aalto_task/hooks.py`). Idempotent |
+| `venue_env.sh` | Sets `AALTO_LOOK` and `AALTO_SCENE`. Source it in every shell that starts the sim or a client |
 | `start_venue.sh` | Starts the sim with the venue look (paths as on `bot-icelli-sim`) |
-| `make_assets.py` | Generates `plywood.png`. Can also write a `scene_venue.yaml` with a measured bin gap |
-| `plywood.png` | Table-top texture. Generated |
+| `make_assets.py` | Generates `plywood.png` and `scene_venue.yaml` (Aalto's `scene.yaml` with the `scene:` section of `venue.yaml` merged in) |
+| `plywood.png`, `scene_venue.yaml` | Generated; `scene_venue.yaml` exists only on the sim machine |
 
 ## How to run (on the sim machine, bare-metal install)
 ```bash
-# once: copy this folder to the machine, then patch Aalto's clone (not our submodule)
+# once: copy this folder to the machine, patch Aalto's clone (not our submodule), generate the geometry
 scp -r sim/venue_look root@<ip>:/root/
 python /root/venue_look/patch_aalto.py /root/aaltonomous-humanoid
+(cd /root/venue_look && python make_assets.py /root/aaltonomous-humanoid/aaltonomous/scene/scene.yaml)
 
-# start the sim with the venue look
+# start the sim with the venue look, then check it
+cd /root/aaltonomous-humanoid
 bash aaltonomous/cloud/aalto.sh stop
-export AALTO_LOOK=/root/venue_look/venue.yaml          # appearance only; geometry stays Aalto's
-bash aaltonomous/cloud/aalto.sh sim                    # or: bash /root/venue_look/start_venue.sh
+source /root/venue_look/venue_env.sh                   # needed in EVERY shell: sim, check, snap, baseline, eval
+bash aaltonomous/cloud/aalto.sh sim
 bash aaltonomous/cloud/aalto.sh check                  # 9 PASS
 ```
-- **Back to Aalto's default:** `aalto.sh stop`, unset `AALTO_LOOK`, `aalto.sh sim`.
-- **Measured geometry (optional):** once someone measures the real bin gap, `python make_assets.py <aalto>/aaltonomous/scene/scene.yaml <gap in m>` writes `scene_venue.yaml`; export `AALTO_SCENE=<that file>` for the sim and every client.
-- **With randomisation:** add `AALTO_DR=train`. Aalto's jitter is applied around the venue colours.
+- **Back to Aalto's default:** `aalto.sh stop`, `unset AALTO_LOOK AALTO_SCENE`, `aalto.sh sim`.
+- **After editing `patch_aalto.py`:** on the machine, `git checkout aaltonomous/scene/scene.py aaltonomous/sim/aalto_task/scene_cfg.py aaltonomous/sim/aalto_task/hooks.py` in Aalto's clone, then run the patch again (it skips files it has already patched).
+- **Other geometry or object spread:** edit the `scene:` section of `venue.yaml`, run `make_assets.py` again, restart the sim.
+- **New object layout without a restart:** `aalto.sh py -m aaltonomous.sim.scene_client random <seed>`.
+- **With randomisation:** add `AALTO_DR=train`. Aalto's jitter is applied around the venue colours and camera pose.
+
+## How the camera offset was found
+Projected Aalto's scene (bin corners from `scene.yaml`, camera from `calibration.yaml`) into the image and fitted the camera rotation, sideways shift and bin wall height to the middle bin's corners in one real frame per dataset.
+
+| Dataset | Further down | Roll | Camera to the robot's left | Wall height | Fit error |
+|---|---|---|---|---|---|
+| `g1_pick_cube` (drop 1), frame 0 | 7.9° | 1.0° | 4.7 cm | 7.1 cm | 3.4 px |
+| `g1_junction_drop_2` (drop 2), frame 0 | 12.2° | 1.1° | 0.7 cm | 7.9 cm | 5.2 px |
+
+- The bin widths in the image already matched (235 px real, 238 px projected), so the distance to the bins is right; the difference is the viewing angle.
+- `venue.yaml` uses the middle of the two (10° down), minus 1° because the renderer ignores the calibrated principal point.
+- The fit can't tell a tilted camera from a leaning torso or a robot standing off-centre. The image is the same either way.
+
+## What still differs from the real cameras
+| # | Real | Sim (venue look) |
+|---|---|---|
+| 1 | **Wrist cameras** look along the fingers: black fingers fill the lower half, bins and table beyond, the bright venue hall behind | **Not matched.** Unitree's default wrist cameras: strong fisheye, looking sideways, hand at the image edge, most of the image black. Aalto's `calibration.yaml` has no wrist camera pose |
+| 2 | The head view changes by about 4° and 4 cm between the two datasets, and shifts within one | One fixed pose. Aalto's `AALTO_DR=train` jitters it by only ±1° and ±1 cm |
+| 3 | Gaps between bins vary from about 3 to 5 cm (hand-placed); paper rims are creased and torn | Even 5 cm gaps; rims only slightly uneven |
+| 4 | Objects often touch each other | At least 6.5 cm between centres, so they come close but rarely touch |
+| 5 | Arms start low, hands near the table edge; the wrist is a silver ball joint with a thin cable loop | Aalto's start pose (left forearm in front of the left bin); recoloured wrist links, a boxy white camera mount and a simple cable arc |
+| 6 | Dark, contrasty image; bin interiors darker; people and coloured lights reflect in the table | Brighter and cleaner; only the lamp reflects |
 
 ## Status
-- **Now:** works on `bot-icelli-sim`: 9/9 scene checks pass. Appearance only; geometry is Aalto's. The machine is hibernated since Sat 14 Nov 03:48 (disk kept; see the runbook to resume).
-- **Next:** —
-- **Blockers:** the colour mapping below is a guess.
+- **Now:** works on `bot-icelli-sim` (spot RTX PRO 6000, resumed Sat 14 Nov): 9/9 scene checks pass with everything in the table above. Aalto's oracle sorts 71 % (10/14) with the scattered layouts, 88 % (7/8) with Aalto's own layout band (`eval/RESULTS.md` e-003, e-002).
+- **Next:** the wrist cameras (row 1 above); a randomisation file with a wider head-camera jitter (about ±3°, ±3 cm, row 2).
+- **Blockers:** the red/blue colour mapping below is still a guess.
 
 ## Gotchas
-- **Colour names are a guess.** Aalto's instructions say red / yellow / blue; the real objects are orange / yellow / purple (and black). `venue.yaml` assumes "red" = orange and "blue" = purple. **Not confirmed by the organisers.**
-- **The middle box's tape is visual only by default.** Objects fall through it in the sim. Its widths (2.5–4 cm per side) are rough estimates from the photo. `rim_tape_collide: true` in `venue.yaml` would make it a solid ledge, which shrinks the opening to about 14 × 15 cm; that setting is untested, and nobody has checked how stiff the real tape is. Aalto's randomisation (`AALTO_DR`) doesn't vary the tape colour.
-- **Geometry is not from the photo.** A first version made the bins touch; that was a misreading (the real boxes are separated). Bin size (21 cm, measured by Aalto) and the 5 cm gaps are Aalto's values. The real gap and the bin height (Aalto's 6 cm is an unmeasured default; the real boxes look taller) still need a tape measure.
-- **If you use `AALTO_SCENE`, it must be the same for the sim and every client** (`check`, `eval`, `baseline`, recording). Otherwise the scorer and the oracle use different bin positions from the sim.
+- **Blur and focus are renderer-wide.** The `render:` settings in `venue.yaml` change every camera, including the depth-aligned head RGB.
+- **Tape marks, rim paper and the cable have no collision.** They only change the image.
+- **Colour names are partly a guess.** Aalto confirmed on Discord (Sat 14 Nov) that the real objects are purple, yellow and orange and that the sim's red / blue / yellow are wrong. They did not say which real colour replaces "red" and which "blue"; `venue.yaml` assumes "red" = orange and "blue" = purple.
+- **The rim paper is visual only by default.** Objects fall through it in the sim. Its widths (1.5–3.5 cm per side on the middle box, about 1 cm on the others) are rough estimates from images. `rim_tape_collide: true` in `venue.yaml` would make it a solid ledge, which shrinks the middle opening to about 14.5 × 16.5 cm; that setting is untested, and nobody has checked how stiff the real tape is. Aalto's randomisation (`AALTO_DR`) doesn't vary the tape colour.
+- **Geometry: the bin wall height and the object spawn region differ from Aalto's.** Both are in the `scene:` section of `venue.yaml`. The spawn region covers where 67 real object sightings lie (24 frames); the oracle does worse in it (see Status). Bin size (21 cm, measured by Aalto) and the 5 cm gaps are Aalto's values. The 7.5 cm wall height comes from the camera fit above (Aalto's 6 cm is an unmeasured default); a tape measure would settle it. A first version made the bins touch; that was a misreading of the photo.
+- **`calibration.yaml` is unchanged.** The look moves the sim camera, but Aalto's calibration file still describes the old pose. Code that turns head-camera pixels or depth into 3-D points with that file is off by about 10° in this look, as it would be on the real robot.
+- **`AALTO_SCENE` must be the same for the sim and every client** (`check`, `eval`, `baseline`, recording). Otherwise the scorer and the oracle use a different bin size from the sim. `source venue_env.sh` in each shell does it.
 - **Finalists are picked in a hidden sim variant** with other textures and lighting. Train on this look *in addition to* the default look and randomisation, not instead.
-- **Colours in `venue.yaml` are sRGB (0–255)** as seen in a photo; the patch converts them to the linear values the renderer needs. Aalto's own `scene.yaml` colours are passed to the renderer unconverted.
-- **Not matched:** the robot's white T-shirt and silver forearms, the real camera's exposure and noise, exact dimensions. Aalto's real data drops (recorded through the robot's cameras) are the better reference for those.
+- **Colours in `venue.yaml` are sRGB (0–255)** as seen in an image; the patch converts them to the linear values the renderer needs. Aalto's own `scene.yaml` colours are passed to the renderer unconverted.
 - The patch fails loudly if Aalto changes the code it edits. Re-check after `make update-aalto`.

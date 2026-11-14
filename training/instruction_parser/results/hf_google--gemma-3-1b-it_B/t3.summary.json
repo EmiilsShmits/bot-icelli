@@ -1,0 +1,17 @@
+{
+ "method": "hf:google/gemma-3-1b-it:B",
+ "testset": "t3.jsonl",
+ "n": 60,
+ "t3_refusal_rate": 0.6833333333333333,
+ "t3_per_category_refusal": {
+  "contradiction": 0.4666666666666667,
+  "nonexistent_bin": 0.8666666666666667,
+  "undefined": 0.5333333333333333,
+  "unrelated": 0.8666666666666667
+ },
+ "throughput_items_per_s": 91.91333074019492,
+ "load_s": 2.7826974391937256,
+ "device": "cuda",
+ "peak_vram_gb": 3.066095616,
+ "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+}

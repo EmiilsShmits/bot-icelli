@@ -1,0 +1,106 @@
+{
+ "method": "hf:google/gemma-4-E2B-it:C",
+ "testset": "t2b.jsonl",
+ "n": 213,
+ "exact_acc": 0.6197183098591549,
+ "per_slot_acc": 0.939906103286385,
+ "known_slot_acc": 0.95565988523735,
+ "invalid_rate": 0.0,
+ "malformed_rate": 0.0,
+ "confidently_wrong_rate": 0.38028169014084506,
+ "distractor_safety": 0.7981220657276995,
+ "distractor_unsafe_rate": 0.20187793427230047,
+ "per_category": {
+  "colour_shape": {
+   "n": 31,
+   "exact_acc": 0.5806451612903226,
+   "confidently_wrong": 0.41935483870967744
+  },
+  "distractor_generic": {
+   "n": 29,
+   "exact_acc": 0.9310344827586207,
+   "confidently_wrong": 0.06896551724137931
+  },
+  "distractor_silent": {
+   "n": 30,
+   "exact_acc": 0.3333333333333333,
+   "confidently_wrong": 0.6666666666666666
+  },
+  "leave": {
+   "n": 31,
+   "exact_acc": 0.8709677419354839,
+   "confidently_wrong": 0.12903225806451613
+  },
+  "mixed": {
+   "n": 30,
+   "exact_acc": 0.7,
+   "confidently_wrong": 0.3
+  },
+  "negation": {
+   "n": 31,
+   "exact_acc": 0.5806451612903226,
+   "confidently_wrong": 0.41935483870967744
+  },
+  "shape_only": {
+   "n": 31,
+   "exact_acc": 0.3548387096774194,
+   "confidently_wrong": 0.6451612903225806
+  }
+ },
+ "confidence_curve": [
+  {
+   "threshold": 0.0,
+   "coverage": 1.0,
+   "exact_acc_overall": 0.6197183098591549,
+   "confidently_wrong_rate": 0.38028169014084506,
+   "acc_on_accepted": 0.6197183098591549
+  },
+  {
+   "threshold": 0.5,
+   "coverage": 0.9014084507042254,
+   "exact_acc_overall": 0.5774647887323944,
+   "confidently_wrong_rate": 0.323943661971831,
+   "acc_on_accepted": 0.640625
+  },
+  {
+   "threshold": 1.0,
+   "coverage": 0.8356807511737089,
+   "exact_acc_overall": 0.5586854460093896,
+   "confidently_wrong_rate": 0.27699530516431925,
+   "acc_on_accepted": 0.6685393258426966
+  },
+  {
+   "threshold": 2.0,
+   "coverage": 0.7136150234741784,
+   "exact_acc_overall": 0.5117370892018779,
+   "confidently_wrong_rate": 0.20187793427230047,
+   "acc_on_accepted": 0.7171052631578947
+  },
+  {
+   "threshold": 3.0,
+   "coverage": 0.6384976525821596,
+   "exact_acc_overall": 0.4835680751173709,
+   "confidently_wrong_rate": 0.15492957746478872,
+   "acc_on_accepted": 0.7573529411764706
+  },
+  {
+   "threshold": 5.0,
+   "coverage": 0.5539906103286385,
+   "exact_acc_overall": 0.431924882629108,
+   "confidently_wrong_rate": 0.12206572769953052,
+   "acc_on_accepted": 0.7796610169491526
+  },
+  {
+   "threshold": 8.0,
+   "coverage": 0.40375586854460094,
+   "exact_acc_overall": 0.3615023474178404,
+   "confidently_wrong_rate": 0.04225352112676056,
+   "acc_on_accepted": 0.8953488372093024
+  }
+ ],
+ "throughput_items_per_s": 17.337973603310324,
+ "load_s": 4.104067325592041,
+ "device": "cuda",
+ "peak_vram_gb": 12.304158208,
+ "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+}

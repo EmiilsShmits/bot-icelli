@@ -1,0 +1,18 @@
+{
+ "method": "rule",
+ "testset": "t3.jsonl",
+ "n": 60,
+ "t3_refusal_rate": 0.8166666666666667,
+ "t3_per_category_refusal": {
+  "contradiction": 0.7333333333333333,
+  "nonexistent_bin": 0.6,
+  "undefined": 0.9333333333333333,
+  "unrelated": 1.0
+ },
+ "latency_p50_s": 0.0001552104949951172,
+ "latency_p95_s": 0.00035190582275390625,
+ "latency_n": 50,
+ "throughput_items_per_s": 5170.174422187982,
+ "load_s": 0.0,
+ "device": "cpu"
+}

@@ -1,0 +1,17 @@
+{
+ "method": "ft:/root/ckpt/sE2B-lora:B",
+ "testset": "t3.jsonl",
+ "n": 60,
+ "t3_refusal_rate": 0.75,
+ "t3_per_category_refusal": {
+  "contradiction": 0.6,
+  "nonexistent_bin": 0.8666666666666667,
+  "undefined": 0.5333333333333333,
+  "unrelated": 1.0
+ },
+ "throughput_items_per_s": 89.60838164336356,
+ "load_s": 8.231672763824463,
+ "device": "cuda",
+ "peak_vram_gb": 10.875248128,
+ "gpu": "NVIDIA A100-SXM4-80GB"
+}

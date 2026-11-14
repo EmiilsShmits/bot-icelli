@@ -1,0 +1,55 @@
+{
+ "method": "hf:google/gemma-3-270m-it:B",
+ "testset": "t2b.jsonl",
+ "n": 213,
+ "exact_acc": 0.018779342723004695,
+ "per_slot_acc": 0.36666666666666664,
+ "known_slot_acc": 0.30099113197704747,
+ "invalid_rate": 0.0,
+ "malformed_rate": 0.0,
+ "confidently_wrong_rate": 0.9812206572769953,
+ "distractor_safety": 0.9577464788732394,
+ "distractor_unsafe_rate": 0.04225352112676056,
+ "per_category": {
+  "colour_shape": {
+   "n": 31,
+   "exact_acc": 0.0,
+   "confidently_wrong": 1.0
+  },
+  "distractor_generic": {
+   "n": 29,
+   "exact_acc": 0.0,
+   "confidently_wrong": 1.0
+  },
+  "distractor_silent": {
+   "n": 30,
+   "exact_acc": 0.06666666666666667,
+   "confidently_wrong": 0.9333333333333333
+  },
+  "leave": {
+   "n": 31,
+   "exact_acc": 0.0,
+   "confidently_wrong": 1.0
+  },
+  "mixed": {
+   "n": 30,
+   "exact_acc": 0.03333333333333333,
+   "confidently_wrong": 0.9666666666666667
+  },
+  "negation": {
+   "n": 31,
+   "exact_acc": 0.03225806451612903,
+   "confidently_wrong": 0.967741935483871
+  },
+  "shape_only": {
+   "n": 31,
+   "exact_acc": 0.0,
+   "confidently_wrong": 1.0
+  }
+ },
+ "throughput_items_per_s": 163.80722533692,
+ "load_s": 2.8792366981506348,
+ "device": "cuda",
+ "peak_vram_gb": 1.059288064,
+ "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+}

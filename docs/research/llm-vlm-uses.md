@@ -23,7 +23,7 @@ Facts come from Aalto's [`RULES_AND_SCORING.md`](../../third_party/aaltonomous-h
 **Policy interface:** the instruction arrives once per episode, in `reset(instruction, task, seed)` and in `obs["instruction"]`.
 
 **Constraints:**
-- The finals may have no network.
+- Aalto confirmed to the team on Sat 14 Nov that the finals machine will have internet (their repo docs had said no network). Failed calls get no rerun, so API calls need a timeout and an offline fallback.
 - The submission is limited to ≤ 32 GB VRAM and a ≤ 40 GB image, and must answer at ≥ 27 commands/s.
 
 ## Options
@@ -44,7 +44,7 @@ Facts come from Aalto's [`RULES_AND_SCORING.md`](../../third_party/aaltonomous-h
 - It targets the ×1.5 episode.
 - It works with either a VLA or a classical controller.
 - It runs once per episode, so the command rate isn't affected.
-- It needs no network.
+- It needs no network, so it also works as the fallback if an online parser fails.
 
 **Size:** a 1–4B model (e.g. Gemma, Qwen, a small Nemotron) should fit next to the VLA within 32 GB and answer in under a second *(general knowledge, verify on the target GPU)*.
 
@@ -91,7 +91,7 @@ From [`../challenges/tech/`](../challenges/tech/) and [`apis-and-credits.md`](ap
 | Track | Prize | What it needs | Fit with option 1 |
 |---|---|---|---|
 | **Best Use of Gemma** (Google DeepMind) | €1,000 each for the top 3 teams, unranked | "Most innovative and impactful use" of Gemma open models, creative application, strong technical execution. No minimum requirements or write-up form listed | Runs offline **inside the submission**, so it's clearly part of the working solution and visible in the unseen-instruction finals episode |
-| Best Use of Gemini API | €4,000 + $1,000 Google Cloud per member / €2,000 / €1,000 | Meaningful, innovative use of the Gemini API, with an explanation of why Gemini matters | An API, so it needs network at the finals. Fits development-time helpers (option 3) |
+| Best Use of Gemini API | €4,000 + $1,000 Google Cloud per member / €2,000 / €1,000 | Meaningful, innovative use of the Gemini API, with an explanation of why Gemini matters | An API. With finals internet confirmed it could be the main parser (e.g. the Gemini Decisions API), with Gemma or the rule parser as the offline fallback. Also fits development-time helpers (option 3) |
 | Best Use of Nemotron (NVIDIA) | RTX 5080 for 2 teams | Nemotron 3.5 Super VL "in the working solution" plus a write-up | Too big for the image; see [`nemotron-and-pi0.md`](nemotron-and-pi0.md) |
 
 **Credits:**

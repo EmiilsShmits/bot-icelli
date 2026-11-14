@@ -1,0 +1,60 @@
+{"id": "t3-001", "text": "Red goes left. Red goes right. Yellow goes in the centre and blue goes right.", "category": "contradiction", "spec": {"invalid": true, "reason": "red assigned to two bins"}}
+{"id": "t3-002", "text": "Put blue in the middle bin, yellow on the left and red on the right. Blue belongs on the left.", "category": "contradiction", "spec": {"invalid": true, "reason": "blue assigned to two bins"}}
+{"id": "t3-003", "text": "Every block goes in the left bin, and every block goes in the right bin.", "category": "contradiction", "spec": {"invalid": true, "reason": "all blocks assigned to two bins"}}
+{"id": "t3-004", "text": "Yellow goes in the left bin and yellow goes in the centre bin; red and blue go right.", "category": "contradiction", "spec": {"invalid": true, "reason": "yellow assigned to two bins"}}
+{"id": "t3-005", "text": "Triangles go in the middle bin. Cylinders go in the right bin. Cubes go left. Triangles go in the right bin.", "category": "contradiction", "spec": {"invalid": true, "reason": "triangles assigned to two bins"}}
+{"id": "t3-006", "text": "Put the red blocks in the left bin, but don't put the red blocks in the left bin. Yellow centre, blue right.", "category": "contradiction", "spec": {"invalid": true, "reason": "red both required and forbidden in left"}}
+{"id": "t3-007", "text": "Blue goes right and blue goes left; yellow and red go in the middle.", "category": "contradiction", "spec": {"invalid": true, "reason": "blue assigned to two bins"}}
+{"id": "t3-008", "text": "Leave the yellow blocks on the table and put the yellow blocks in the right bin. Red left, blue centre.", "category": "contradiction", "spec": {"invalid": true, "reason": "yellow both left on table and sorted"}}
+{"id": "t3-009", "text": "Every cube goes in the centre bin except the blue cube. The blue cube goes in the left bin. The blue cube goes in the right bin. Cylinders and triangles go right.", "category": "contradiction", "spec": {"invalid": true, "reason": "blue cube assigned to two bins"}}
+{"id": "t3-010", "text": "red → left, yellow → center, blue → right, red → center", "category": "contradiction", "spec": {"invalid": true, "reason": "red assigned to two bins"}}
+{"id": "t3-011", "text": "All the cylinders go in the left bin. No cylinder may go in the left bin. Cubes and triangles go right.", "category": "contradiction", "spec": {"invalid": true, "reason": "cylinders both required and forbidden in left"}}
+{"id": "t3-012", "text": "Red into the right bin, yellow into the left bin, blue into the right bin, and yellow into the right bin as well.", "category": "contradiction", "spec": {"invalid": true, "reason": "yellow assigned to two bins"}}
+{"id": "t3-013", "text": "Only red goes in the left bin. Only blue goes in the left bin. Yellow goes in the middle.", "category": "contradiction", "spec": {"invalid": true, "reason": "left bin claimed exclusively by two colours"}}
+{"id": "t3-014", "text": "Don't touch the triangles. The triangles go in the centre bin. Cubes and cylinders go left.", "category": "contradiction", "spec": {"invalid": true, "reason": "triangles both untouched and sorted"}}
+{"id": "t3-015", "text": "Everything goes in the right bin. Nothing goes in the right bin.", "category": "contradiction", "spec": {"invalid": true, "reason": "everything both in and not in right bin"}}
+{"id": "t3-016", "text": "Red blocks in the top bin, yellow in the left bin and blue in the right bin.", "category": "nonexistent_bin", "spec": {"invalid": true, "reason": "no top bin"}}
+{"id": "t3-017", "text": "Red goes in the green bin, yellow in the middle, blue on the right.", "category": "nonexistent_bin", "spec": {"invalid": true, "reason": "bins are not named by colour"}}
+{"id": "t3-018", "text": "The blue blocks go in the fourth bin. Red left, yellow centre.", "category": "nonexistent_bin", "spec": {"invalid": true, "reason": "only three bins"}}
+{"id": "t3-019", "text": "Put the yellow blocks in the bin behind you, red on the left, blue on the right.", "category": "nonexistent_bin", "spec": {"invalid": true, "reason": "no bin behind the robot"}}
+{"id": "t3-020", "text": "Red in the bottom bin, blue in the left bin, yellow in the right bin.", "category": "nonexistent_bin", "spec": {"invalid": true, "reason": "no bottom bin"}}
+{"id": "t3-021", "text": "The triangles go in the red bin, the cubes in the yellow bin and the cylinders in the blue bin.", "category": "nonexistent_bin", "spec": {"invalid": true, "reason": "bins are not named by colour"}}
+{"id": "t3-022", "text": "Put everything in the big bin.", "category": "nonexistent_bin", "spec": {"invalid": true, "reason": "bins are identical, no big bin"}}
+{"id": "t3-023", "text": "Red goes in the bin on the far left, yellow in the bin in the middle, blue in the fifth bin.", "category": "nonexistent_bin", "spec": {"invalid": true, "reason": "only three bins"}}
+{"id": "t3-024", "text": "Cubes in the recycling bin, cylinders left and triangles right.", "category": "nonexistent_bin", "spec": {"invalid": true, "reason": "no recycling bin"}}
+{"id": "t3-025", "text": "Yellow left, red right, blue in the box on the shelf.", "category": "nonexistent_bin", "spec": {"invalid": true, "reason": "no box on the shelf"}}
+{"id": "t3-026", "text": "Red in the front bin, yellow in the back bin, blue in the left bin.", "category": "nonexistent_bin", "spec": {"invalid": true, "reason": "no front/back bins"}}
+{"id": "t3-027", "text": "The blue ones go in the upper bin, the red ones in the lower bin and the yellow ones in the centre bin.", "category": "nonexistent_bin", "spec": {"invalid": true, "reason": "no upper/lower bins"}}
+{"id": "t3-028", "text": "All cylinders go into the small bin; cubes and triangles go to the left.", "category": "nonexistent_bin", "spec": {"invalid": true, "reason": "bins are identical, no small bin"}}
+{"id": "t3-029", "text": "Red to bin 4, yellow to the left bin, blue to the right bin.", "category": "nonexistent_bin", "spec": {"invalid": true, "reason": "only three bins"}}
+{"id": "t3-030", "text": "The red blocks go in the bin under the table, yellow in the middle bin and blue in the right bin.", "category": "nonexistent_bin", "spec": {"invalid": true, "reason": "no bin under the table"}}
+{"id": "t3-031", "text": "", "category": "unrelated", "spec": {"invalid": true, "reason": "empty"}}
+{"id": "t3-032", "text": "   ", "category": "unrelated", "spec": {"invalid": true, "reason": "whitespace"}}
+{"id": "t3-033", "text": "\n\t", "category": "unrelated", "spec": {"invalid": true, "reason": "whitespace"}}
+{"id": "t3-034", "text": "What's the weather like in Helsinki today?", "category": "unrelated", "spec": {"invalid": true, "reason": "unrelated question"}}
+{"id": "t3-035", "text": "asdkjh qwe zxcmn plorb", "category": "unrelated", "spec": {"invalid": true, "reason": "gibberish"}}
+{"id": "t3-036", "text": "Tell me a joke about robots.", "category": "unrelated", "spec": {"invalid": true, "reason": "unrelated request"}}
+{"id": "t3-037", "text": "Hello!", "category": "unrelated", "spec": {"invalid": true, "reason": "greeting only"}}
+{"id": "t3-038", "text": "How many blocks are on the table?", "category": "unrelated", "spec": {"invalid": true, "reason": "question, no instruction"}}
+{"id": "t3-039", "text": "Wave your hand at the audience.", "category": "unrelated", "spec": {"invalid": true, "reason": "not a sorting instruction"}}
+{"id": "t3-040", "text": "lorem ipsum dolor sit amet", "category": "unrelated", "spec": {"invalid": true, "reason": "filler text"}}
+{"id": "t3-041", "text": "The quick brown fox jumps over the lazy dog.", "category": "unrelated", "spec": {"invalid": true, "reason": "unrelated sentence"}}
+{"id": "t3-042", "text": "????", "category": "unrelated", "spec": {"invalid": true, "reason": "punctuation only"}}
+{"id": "t3-043", "text": "Pick up the cup and pour the coffee.", "category": "unrelated", "spec": {"invalid": true, "reason": "unrelated task"}}
+{"id": "t3-044", "text": "1234 5678", "category": "unrelated", "spec": {"invalid": true, "reason": "numbers only"}}
+{"id": "t3-045", "text": "Stack all the blocks into a tower.", "category": "unrelated", "spec": {"invalid": true, "reason": "not a sorting instruction"}}
+{"id": "t3-046", "text": "Red left, blue right.", "category": "undefined", "spec": {"invalid": true, "reason": "yellow undefined"}}
+{"id": "t3-047", "text": "Put the cubes in the left bin.", "category": "undefined", "spec": {"invalid": true, "reason": "cylinders and triangles undefined"}}
+{"id": "t3-048", "text": "Yellow goes in the middle bin.", "category": "undefined", "spec": {"invalid": true, "reason": "red and blue undefined"}}
+{"id": "t3-049", "text": "Red cubes go left, yellow cubes go right, blue cubes go centre.", "category": "undefined", "spec": {"invalid": true, "reason": "cylinders and triangles undefined"}}
+{"id": "t3-050", "text": "The blue blocks go in the left bin and the red blocks in the right bin.", "category": "undefined", "spec": {"invalid": true, "reason": "yellow undefined"}}
+{"id": "t3-051", "text": "Triangles in the centre, cylinders on the right.", "category": "undefined", "spec": {"invalid": true, "reason": "cubes undefined"}}
+{"id": "t3-052", "text": "Sort the red ones into the middle bin and the yellow ones into the left bin.", "category": "undefined", "spec": {"invalid": true, "reason": "blue undefined"}}
+{"id": "t3-053", "text": "Yellow cylinders go in the left bin and blue triangles go in the right bin.", "category": "undefined", "spec": {"invalid": true, "reason": "seven types undefined"}}
+{"id": "t3-054", "text": "Red blocks go in the right bin, except the red cubes, which go left. Blue goes in the middle.", "category": "undefined", "spec": {"invalid": true, "reason": "yellow undefined"}}
+{"id": "t3-055", "text": "Cubes go right. Leave the triangles alone.", "category": "undefined", "spec": {"invalid": true, "reason": "cylinders undefined"}}
+{"id": "t3-056", "text": "Every blue block goes in the centre bin and every yellow cube in the left bin.", "category": "undefined", "spec": {"invalid": true, "reason": "red and yellow cylinders/triangles undefined"}}
+{"id": "t3-057", "text": "Blue to the right bin, please.", "category": "undefined", "spec": {"invalid": true, "reason": "red and yellow undefined"}}
+{"id": "t3-058", "text": "Don't put anything yellow in the right bin. Red goes right, blue goes left.", "category": "undefined", "spec": {"invalid": true, "reason": "yellow only negated, never given a bin"}}
+{"id": "t3-059", "text": "Ignore anything that isn't one of the blocks. Red goes in the middle bin.", "category": "undefined", "spec": {"invalid": true, "reason": "yellow and blue undefined"}}
+{"id": "t3-060", "text": "Cylinders aren't allowed in the left bin. Cubes go left, triangles go right.", "category": "undefined", "spec": {"invalid": true, "reason": "cylinders only negated, never given a bin"}}

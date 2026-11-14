@@ -1,0 +1,78 @@
+{
+ "method": "ft:/root/ckpt/s1b-full:B",
+ "testset": "t2a.jsonl",
+ "n": 339,
+ "exact_acc": 0.9469026548672567,
+ "per_slot_acc": 0.9536873156342183,
+ "known_slot_acc": 0.9534578826614225,
+ "invalid_rate": 0.04424778761061947,
+ "malformed_rate": 0.0,
+ "confidently_wrong_rate": 0.008849557522123894,
+ "distractor_safety": 0.9557522123893806,
+ "distractor_unsafe_rate": 0.0,
+ "per_category": {
+  "bin_first": {
+   "n": 31,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "bin_synonyms": {
+   "n": 31,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "colour_variants": {
+   "n": 31,
+   "exact_acc": 0.967741935483871,
+   "confidently_wrong": 0.03225806451612903
+  },
+  "elimination": {
+   "n": 35,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "length_extremes": {
+   "n": 32,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "multi_sentence": {
+   "n": 31,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "noisy": {
+   "n": 32,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "passive": {
+   "n": 31,
+   "exact_acc": 1.0,
+   "confidently_wrong": 0.0
+  },
+  "real_colour_names": {
+   "n": 21,
+   "exact_acc": 0.6190476190476191,
+   "confidently_wrong": 0.09523809523809523
+  },
+  "reordered": {
+   "n": 32,
+   "exact_acc": 0.75,
+   "confidently_wrong": 0.0
+  },
+  "terse": {
+   "n": 32,
+   "exact_acc": 0.96875,
+   "confidently_wrong": 0.0
+  }
+ },
+ "latency_p50_s": 0.406813383102417,
+ "latency_p95_s": 0.4157450199127197,
+ "latency_n": 30,
+ "throughput_items_per_s": 101.50963120267936,
+ "load_s": 6.005239963531494,
+ "device": "cuda",
+ "peak_vram_gb": 2.748792832,
+ "gpu": "NVIDIA A100-SXM4-80GB"
+}

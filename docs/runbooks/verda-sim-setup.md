@@ -14,11 +14,14 @@ Condensed from Aalto's `third_party/aaltonomous-humanoid/aaltonomous/cloud/QUICK
    5. To let a teammate onto your machine, add their SSH public key to it. Each machine bills to the account that created it.
 2. Create an instance:
    - **RTX-class GPU, ≥ 24 GB:** RTX Pro 6000 / L40S / A6000 / RTX 4090/5090. **Not A100/H100**: no RT cores, so the cameras won't render.
-   - **On-demand, not spot.** Spot instances can vanish in seconds.
+   - **On-demand if one is free.** Spot instances cost half but Verda can take them away at any moment without warning. If only spot is free, clone the disk first (see "Stopping the machine").
    - ≥ 8 CPU cores, ≥ 32 GB RAM, ≥ 80 GB disk. Driver ≥ 580.65.06; Ubuntu 22.04/24.04 x86_64.
    - **Attach a persistent volume at `/data`.** Checkpoints, datasets and logs go there.
    - **Image:** `24.04.cuda13.0.docker` (Ubuntu 24.04 + CUDA 13.0 + Docker) gave driver **580.178.04**, which passes. Avoid the `cuda12.9` images (driver too old), and the `.cc` (confidential computing) types and images.
-   - **What we ran (Sat 14 Nov):** `1RTX6000ADA.10V` (RTX 6000 Ada 48 GB, 10 vCPU, 58 GB RAM) at **$1.59/h** in FIN-03, 200 GB OS disk. The single `1RTXPRO6000.30V` ($2.81/h) appeared and vanished within the hour, so availability changes fast.
+   - **What we ran (Sat 14 Nov):**
+     - Night: `1RTX6000ADA.10V` (RTX 6000 Ada 48 GB, 10 vCPU, 58 GB RAM), on-demand, **€1.43/h** in FIN-03, 200 GB OS disk. Sim at 0.31× real time.
+     - From noon: `1RTXPRO6000.30V` (RTX PRO 6000 96 GB, 30 vCPU, 88 GB RAM), **spot, €1.28/h** (on-demand €2.56/h, none free), resumed from the same disk. Sim at 0.52× real time. Needs the start-up fix in Troubleshooting ("Black images on an RTX PRO 6000").
+     - No on-demand RTX machine was free in FIN-03 at noon; availability changes within the hour. Spot availability is a separate list: `GET /instance-availability?is_spot=true`.
 3. Work over SSH inside `tmux`, so the sim keeps running if SSH drops.
 
 ### Creating the machine through the API (no console needed)
@@ -56,7 +59,13 @@ curl -s -X PUT -H "$H" -H 'Content-Type: application/json' $API/instances -d '{"
 curl -s -H "$H" $API/volumes                                            # the OS volume is now "detached"
 ```
 - The kept 200 GB disk costs about **€36/month (€0.05/h)**. Delete the volume too when it's no longer needed.
-- **To resume:** create a new instance as above, but pass the kept volume's id as `"image"` and leave out `"os_volume"`. Per Verda's API docs; not yet tried by us. The IP address will be new, and that GPU type must be free again.
+- **To resume:** create a new instance as above, but pass the kept volume's id as `"image"` and leave out `"os_volume"`. Worked for us on Sat 14 Nov (running after ~30 s, everything on the disk intact), also onto a different GPU type. The IP address is new, and the machine must be in the volume's location (ours: FIN-03).
+- **Spot:** same call with `"is_spot": true`. Verda's API docs say the disk is kept (detached) when a spot machine is taken away; a post on Verda's forum reports disks being deleted instead. So clone the disk first, about a minute for 200 GB, another €0.05/h while the copy exists:
+  ```bash
+  curl -s -X PUT -H "$H" -H 'Content-Type: application/json' $API/volumes \
+    -d '{"action":"clone","id":"<volume id>","name":"my-sim-os-backup","location_code":"FIN-03"}'   # wait until its status is "detached"
+  ```
+- **After a resume onto another GPU type,** the first sim start recompiles shaders (4–5 min on the RTX PRO 6000); later starts take 10–15 s.
 
 ## 2. Start the sim
 ```bash
@@ -131,12 +140,13 @@ make eval TASK=sort_fixed TRIALS=10   # runs `aalto eval` inside the container a
 | Symptom | Fix |
 |---|---|
 | Black images | Shader cache is cold. Wait 2–5 min or restart the sim |
+| Black images on an RTX PRO 6000 that never recover; `head depth valid 0 %` in `aalto.sh check`; sim log has `[omni.rtx] make sure you call cmdBegin before calling cmdEnd`; GPU at 0 % | The renderer needs ~6 s to initialise on this GPU and Isaac Sim's start-up stops waiting after 120 frames (~3 s). In `<env>/lib/python3.12/site-packages/isaacsim/exts/isaacsim.simulation_app/isaacsim/simulation_app/simulation_app.py`, function `_wait_for_viewport`, raise `MAX_FRAMES` from 120 to 1500, then restart the sim |
 | Gate fails on rate (< 27 Hz) | The machine is CPU-starved. One sim per machine; don't train on the same machine |
 | "port in use" | Another sim is running: `aalto status`, `aalto stop` |
 | Need to stop | `aalto stop` (never `pkill -f sim_main`) |
 | `ResolutionImpossible` at the `isaacsim` step | Aalto's pins conflict with Isaac Sim; see §2b |
 | `isaaclab` step fails on `rerun-sdk>=0.29.0` | Install Isaac Lab without the rerun visualizer; see §2b |
 | `verify` fails only `test_cubes_and_bins_visible` | Aalto's own test fails at commit 36daf5b (also on a laptop): 4 far-edge corner points of the cube area fall outside the head camera's view. Not an install problem; go on to `aalto.sh sim` |
-| Sim slower than Aalto's ~0.7× real time | We measured 0.31× on 10 vCPU (sim at ~5 cores, GPU 8 %). Probably CPU-bound; a machine with more cores may help (unverified) |
+| Sim slower than Aalto's ~0.7× real time | We measured 0.31× on the RTX 6000 Ada machine (10 vCPU) and 0.52× on the RTX PRO 6000 machine (30 vCPU, EPYC 9555), same disk and scene. Scoring paces on the sim clock, so results are not affected; runs just take longer |
 | `verda.com` shows a "suspended" page | Use `https://api.datacrunch.io/v1` for the API (§1) |
 | Wanted machine type gone | `GET /instance-availability` again; single RTX PRO 6000s come and go within the hour |

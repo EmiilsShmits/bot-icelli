@@ -1,0 +1,54 @@
+{
+ "method": "hf:google/gemma-4-31B-it:C",
+ "testset": "t3.jsonl",
+ "n": 60,
+ "t3_refusal_rate": 0.0,
+ "t3_per_category_refusal": {
+  "contradiction": 0.0,
+  "nonexistent_bin": 0.0,
+  "undefined": 0.0,
+  "unrelated": 0.0
+ },
+ "confidence_curve": [
+  {
+   "threshold": 0.0,
+   "coverage": 1.0,
+   "t3_refusal_rate": 0.0
+  },
+  {
+   "threshold": 0.5,
+   "coverage": 0.85,
+   "t3_refusal_rate": 0.15
+  },
+  {
+   "threshold": 1.0,
+   "coverage": 0.7166666666666667,
+   "t3_refusal_rate": 0.2833333333333333
+  },
+  {
+   "threshold": 2.0,
+   "coverage": 0.5333333333333333,
+   "t3_refusal_rate": 0.4666666666666667
+  },
+  {
+   "threshold": 3.0,
+   "coverage": 0.45,
+   "t3_refusal_rate": 0.55
+  },
+  {
+   "threshold": 5.0,
+   "coverage": 0.35,
+   "t3_refusal_rate": 0.65
+  },
+  {
+   "threshold": 8.0,
+   "coverage": 0.25,
+   "t3_refusal_rate": 0.75
+  }
+ ],
+ "throughput_items_per_s": 0.7891879874926471,
+ "load_s": 14.921746015548706,
+ "device": "cuda",
+ "peak_vram_gb": 73.028123136,
+ "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+}

@@ -3,9 +3,11 @@
 Run ON THE SIM MACHINE against a clone of Aalto's repo (never against our submodule):
     python sim/venue_look/patch_aalto.py /root/aaltonomous-humanoid
 
-It edits two files in that clone (idempotent; fails loudly if Aalto's code changed):
-  aaltonomous/sim/aalto_task/scene_cfg.py   reads $AALTO_LOOK (a yaml, see venue.yaml): colours, materials,
-                                            table texture, bin liners, backdrop, lights. Appearance only.
+It edits three files in that clone (idempotent; fails loudly if Aalto's code changed):
+  aaltonomous/sim/aalto_task/scene_cfg.py   reads $AALTO_LOOK (a yaml, see venue.yaml): head camera offset, colours,
+                                            materials, table texture and tape marks, bin liners and rim paper,
+                                            backdrop, lights, render settings, robot arm look. Appearance only.
+  aaltonomous/sim/aalto_task/hooks.py       calls scene_cfg.apply_look_stage() once the scene exists.
   aaltonomous/scene/scene.py                reads $AALTO_SCENE (a scene yaml) instead of scene.yaml: geometry.
 With neither variable set the sim is exactly Aalto's nominal scene.
 """
@@ -72,6 +74,104 @@ def _look_rgb(key, default):
     v = _look(key)
     return _lin(v) if v is not None else tuple(default)
 '''
+
+
+STAGE_HELPERS = '''def table_mark_cfgs():
+    """Look: flat tape marks on the table top (visual only). Mat coordinates, metres."""
+    out = {}
+    for i, m in enumerate(_look("table.tape_marks") or []):
+        (x, y), (w, d) = m["center"], m["size"]
+        out[f"tape_mark_{i}"] = _static_box(f"TapeMark_{i}", SC.mat_to_pelvis([x, y, 0.0012]), (d, w, 0.0006),
+                                            _lin(m.get("rgb") or _look("table.tape_rgb", [235, 110, 60])), 0.6,
+                                            collide=False)
+    return out
+
+
+def apply_look_stage():
+    """Look: the parts that need the live stage. Called once from hooks.AaltoRuntime: render settings
+    (blur), and the robot's wrists, wrist-camera mounts and camera cables."""
+    if not LOOK:
+        return
+    try:
+        import carb
+        for k, v in (_look("render") or {}).items():
+            carb.settings.get_settings().set(k, v)
+    except Exception as e:
+        print(f"[aalto] look: render settings failed: {type(e).__name__}: {e}")
+    arm = _look("robot.arm")
+    if not arm:
+        return
+    try:
+        import omni.usd
+        from pxr import Gf, Sdf, UsdGeom, UsdShade, Vt
+        stage = omni.usd.get_context().get_stage()
+        robot = "/World/envs/env_0/Robot"
+
+        def material(name, rgb, rough, metal):
+            mat = UsdShade.Material.Define(stage, f"/World/Looks/look_{name}")
+            sh = UsdShade.Shader.Define(stage, f"/World/Looks/look_{name}/Shader")
+            sh.CreateIdAttr("UsdPreviewSurface")
+            sh.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*_lin(rgb)))
+            sh.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(float(rough))
+            sh.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(float(metal))
+            mat.CreateSurfaceOutput().ConnectToSource(sh.ConnectableAPI(), "surface")
+            return mat
+
+        def bind(path, mat):
+            prim = stage.GetPrimAtPath(path)
+            if prim.IsValid():
+                UsdShade.MaterialBindingAPI.Apply(prim).Bind(mat, UsdShade.Tokens.strongerThanDescendants)
+            return int(prim.IsValid())
+
+        n, sides = 0, arm.get("sides", ["left", "right"])
+        if arm.get("wrist_rgb"):
+            m = material("wrist", arm["wrist_rgb"], arm.get("wrist_roughness", 0.3), arm.get("wrist_metallic", 0.8))
+            for side in sides:
+                for link in arm.get("wrist_links", ["wrist_roll", "wrist_pitch", "wrist_yaw"]):
+                    n += bind(f"{robot}/{side}_{link}_link/visuals", m)
+        if arm.get("camera_mount_rgb"):
+            m = material("camera_mount", arm["camera_mount_rgb"], 0.6, 0.0)
+            for side in sides:
+                n += bind(f"{robot}/{side}_hand_camera_base_link/visuals", m)
+        cable = arm.get("cable")
+        if cable:   # a tube along a smooth curve, in the link's frame (x towards the hand); y is mirrored for the right arm
+            m = material("cable", cable.get("rgb", [15, 15, 15]), 0.5, 0.0)
+            link = cable.get("link", "wrist_roll")
+            for side in sides:
+                sgn = 1.0 if side == "left" else -1.0
+                pts = [Gf.Vec3f(float(x), sgn * float(y), float(z)) for x, y, z in cable["points"]]
+                pts = [pts[0]] + pts + [pts[-1]]
+                crv = UsdGeom.BasisCurves.Define(stage, f"{robot}/{side}_{link}_link/look_cable")
+                crv.CreateTypeAttr("cubic")
+                crv.CreateBasisAttr("catmullRom")
+                crv.CreateWrapAttr("nonperiodic")
+                crv.CreatePointsAttr(Vt.Vec3fArray(pts))
+                crv.CreateCurveVertexCountsAttr([len(pts)])
+                crv.CreateWidthsAttr([float(cable.get("width", 0.006))])
+                crv.SetWidthsInterpolation("constant")
+                UsdShade.MaterialBindingAPI.Apply(crv.GetPrim()).Bind(m)
+                n += 1
+        print(f"[aalto] look: robot arm, {n} prims changed")
+    except Exception as e:
+        print(f"[aalto] look: robot arm failed: {type(e).__name__}: {e}")
+
+
+'''
+
+
+def patch_hooks(p):
+    s = p.read_text()
+    if MARK in s:
+        return False
+    s = sub(s, '        self.ports = {"scene": sp, "rgbd": rp, "clock": cp}\n',
+            '        self.ports = {"scene": sp, "rgbd": rp, "clock": cp}\n'
+            f'        try:  {MARK} render settings and robot arm look, once the scene exists\n'
+            '            from .scene_cfg import apply_look_stage\n'
+            '            apply_look_stage()\n'
+            '        except Exception as e:\n'
+            '            print(f"[aalto] look: {type(e).__name__}: {e}")\n')
+    p.write_text(s)
+    return True
 
 
 def patch_scene_cfg(p):
@@ -157,18 +257,48 @@ def patch_scene_cfg(p):
             "            e = 0.001\n"
             "            wn, wf, wl, wr = (float(tape.get(k, 0.0)) for k in (\"near\", \"far\", \"left\", \"right\"))\n"
             "            ys, yc = oy - wn - wf, cy + (wn - wf) / 2          # side strips fill the span between near and far\n"
-            "            strips = {  # robot's view: near = low mat y, left = high mat x\n"
-            "                \"near\": ((cx, cy - oy / 2 + wn / 2, h + e / 2), (ox, wn, e)),\n"
-            "                \"far\": ((cx, cy + oy / 2 - wf / 2, h + e / 2), (ox, wf, e)),\n"
-            "                \"left\": ((cx + ox / 2 - wl / 2, yc, h + e / 2), (wl, ys, e)),\n"
-            "                \"right\": ((cx - ox / 2 + wr / 2, yc, h + e / 2), (wr, ys, e)),\n"
-            "            }\n"
-            "            for part, (c, s) in strips.items():\n"
-            "                if min(s) > 0:\n"
-            "                    out[f\"bin_{name}_tape_{part}\"] = _static_box(\n"
-            "                        f\"BinTape_{name}_{part}\", SC.mat_to_pelvis(c), (s[1], s[0], s[2]),\n"
-            "                        _look_rgb(\"bins.rim_tape_rgb\", rgb), float(_look(\"bins.roughness\", 0.8)),\n"
-            "                        collide=bool(_look(\"bins.rim_tape_collide\", False)))\n")
+            '            crumple = float(_look("bins.rim_tape_crumple", 0.0))   # > 0: ragged, uneven paper instead of flat strips\n'
+            '            rng = np.random.default_rng(sum(map(ord, name)))\n'
+            "            strips = {  # robot's view: near = low mat y, left = high mat x. (centre, size, long axis, inward sign)\n"
+            '                "near": ((cx, cy - oy / 2 + wn / 2, h + e / 2), (ox, wn, e), 0, 1),\n'
+            '                "far": ((cx, cy + oy / 2 - wf / 2, h + e / 2), (ox, wf, e), 0, -1),\n'
+            '                "left": ((cx + ox / 2 - wl / 2, yc, h + e / 2), (wl, ys, e), 1, -1),\n'
+            '                "right": ((cx - ox / 2 + wr / 2, yc, h + e / 2), (wr, ys, e), 1, 1),\n'
+            '            }\n'
+            '            trgb = _look_rgb("bins.rim_tape_rgb", rgb)\n'
+            '            for part, (c, s, ax, sgn) in strips.items():\n'
+            '                if min(s) <= 0:\n'
+            '                    continue\n'
+            '                nseg = 4 if crumple > 0 else 1\n'
+            '                for i in range(nseg):\n'
+            '                    ci, si, col = list(c), list(s), trgb\n'
+            '                    si[ax] = s[ax] / nseg\n'
+            '                    ci[ax] = c[ax] - s[ax] / 2 + (i + 0.5) * s[ax] / nseg\n'
+            '                    if crumple > 0:   # outer edge stays on the box edge; inner edge, height and shade vary\n'
+            '                        w = s[1 - ax] * rng.uniform(0.88, 1.1)\n'
+            '                        ci[1 - ax] = c[1 - ax] - sgn * s[1 - ax] / 2 + sgn * w / 2\n'
+            '                        si[1 - ax] = w\n'
+            '                        ci[2] += rng.uniform(0.0, crumple)\n'
+            '                        col = tuple(min(1.0, v * rng.uniform(0.975, 1.025)) for v in trgb)\n'
+            '                    out[f"bin_{name}_tape_{part}{i}"] = _static_box(\n'
+            '                        f"BinTape_{name}_{part}{i}", SC.mat_to_pelvis(ci), (si[1], si[0], si[2]), col,\n'
+            '                        float(_look("bins.roughness", 0.8)), collide=bool(_look("bins.rim_tape_collide", False)))\n')
+
+    # head camera: offset from Aalto's calibration.yaml pose (which is a URDF default, not a measurement)
+    s = sub(s, "    T = np.asarray(cal[\"T_pelvis_optical\"], float)\n    return CameraCfg(\n",
+            "    T = np.asarray(cal[\"T_pelvis_optical\"], float)\n"
+            "    cam = _look(\"camera.head\") or {}\n"
+            "    if cam:  # rotations about the camera's own optical axes (x right, y down, z forward), shift in the pelvis frame\n"
+            "        def _r(axis, deg):\n"
+            "            a = np.radians(float(deg)); c, s_ = np.cos(a), np.sin(a)\n"
+            "            return {\"x\": np.array([[1, 0, 0], [0, c, -s_], [0, s_, c]]),\n"
+            "                    \"y\": np.array([[c, 0, s_], [0, 1, 0], [-s_, 0, c]]),\n"
+            "                    \"z\": np.array([[c, -s_, 0], [s_, c, 0], [0, 0, 1]])}[axis]\n"
+            "        T = T.copy()\n"
+            "        T[:3, :3] = (T[:3, :3] @ _r(\"x\", -float(cam.get(\"pitch_down_deg\", 0))) @ _r(\"z\", cam.get(\"roll_deg\", 0))\n"
+            "                     @ _r(\"y\", cam.get(\"yaw_deg\", 0)))\n"
+            "        T[:3, 3] += np.asarray(cam.get(\"shift_m\", (0, 0, 0)), float)\n"
+            "    return CameraCfg(\n")
 
     # lid colour
     s = sub(s, "visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.85, 0.85, 0.85), roughness=0.8)),",
@@ -203,9 +333,10 @@ def patch_scene_cfg(p):
             "             \"right\": ((0.0, -d, 0.5), (2 * d, 0.02, hgt))}\n"
             "    return {f\"backdrop_{k}\": _static_box(f\"Backdrop_{k}\", c, sz, rgb, 0.95, collide=False) for k, (c, sz) in walls.items()}\n"
             "\n\n"
+            + STAGE_HELPERS +
             "def make_scene_cfg_class(name=\"AaltoSceneCfg\", lid=False):")
     s = sub(s, "    attrs = {**_fixed_cfgs(), **bin_cfgs(), **object_cfgs()}\n",
-            "    attrs = {**_fixed_cfgs(), **bin_cfgs(), **object_cfgs(), **backdrop_cfgs()}\n")
+            "    attrs = {**_fixed_cfgs(), **bin_cfgs(), **object_cfgs(), **backdrop_cfgs(), **table_mark_cfgs()}\n")
     p.write_text(s)
     return True
 
@@ -213,5 +344,6 @@ def patch_scene_cfg(p):
 if __name__ == "__main__":
     repo = Path(sys.argv[1])
     for rel, fn in (("aaltonomous/scene/scene.py", patch_scene_py),
-                    ("aaltonomous/sim/aalto_task/scene_cfg.py", patch_scene_cfg)):
+                    ("aaltonomous/sim/aalto_task/scene_cfg.py", patch_scene_cfg),
+                    ("aaltonomous/sim/aalto_task/hooks.py", patch_hooks)):
         print(("patched  " if fn(repo / rel) else "already  ") + rel)

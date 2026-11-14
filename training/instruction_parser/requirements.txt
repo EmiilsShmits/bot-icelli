@@ -1,0 +1,10 @@
+# Installed on the Verda GPU machines only (Phase 1). The rule parser, eval harness on "rule",
+# spec.py, gen_train.py and watchdog.py need only the Python standard library.
+torch
+transformers
+accelerate
+peft
+trl
+datasets
+bitsandbytes
+huggingface_hub

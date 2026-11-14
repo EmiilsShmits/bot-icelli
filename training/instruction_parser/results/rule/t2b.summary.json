@@ -1,0 +1,56 @@
+{
+ "method": "rule",
+ "testset": "t2b.jsonl",
+ "n": 213,
+ "exact_acc": 0.6009389671361502,
+ "per_slot_acc": 0.6488262910798122,
+ "known_slot_acc": 0.647887323943662,
+ "invalid_rate": 0.3333333333333333,
+ "malformed_rate": 0.0,
+ "confidently_wrong_rate": 0.06572769953051644,
+ "distractor_safety": 0.6572769953051644,
+ "distractor_unsafe_rate": 0.009389671361502348,
+ "per_category": {
+  "colour_shape": {
+   "n": 31,
+   "exact_acc": 0.5806451612903226,
+   "confidently_wrong": 0.03225806451612903
+  },
+  "distractor_generic": {
+   "n": 29,
+   "exact_acc": 0.6206896551724138,
+   "confidently_wrong": 0.06896551724137931
+  },
+  "distractor_silent": {
+   "n": 30,
+   "exact_acc": 0.7666666666666667,
+   "confidently_wrong": 0.0
+  },
+  "leave": {
+   "n": 31,
+   "exact_acc": 0.6129032258064516,
+   "confidently_wrong": 0.0967741935483871
+  },
+  "mixed": {
+   "n": 30,
+   "exact_acc": 0.5333333333333333,
+   "confidently_wrong": 0.06666666666666667
+  },
+  "negation": {
+   "n": 31,
+   "exact_acc": 0.3870967741935484,
+   "confidently_wrong": 0.03225806451612903
+  },
+  "shape_only": {
+   "n": 31,
+   "exact_acc": 0.7096774193548387,
+   "confidently_wrong": 0.16129032258064516
+  }
+ },
+ "latency_p50_s": 0.0002999305725097656,
+ "latency_p95_s": 0.0006570816040039062,
+ "latency_n": 50,
+ "throughput_items_per_s": 2793.2651483885493,
+ "load_s": 0.0,
+ "device": "cpu"
+}
