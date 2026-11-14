@@ -386,5 +386,27 @@ class TestV14GraspCheck(unittest.TestCase):
         self.assertEqual((again.side, again.hint), (far.side, far.hint))   # 30 cm away: same grasp as before
 
 
+@unittest.skipUnless(HAVE_PIN, "needs pinocchio + the G1 URDF (sim machine or Docker build)")
+class TestLookPolicy(unittest.TestCase):
+    """look: the first real-robot run. It must never move and must end on its own."""
+
+    def test_holds_still_and_ends(self):
+        import os
+        from policies.look import LookPolicy
+        os.environ["LOOK_SECONDS"] = "1.0"
+        try:
+            p = LookPolicy()
+        finally:
+            os.environ.pop("LOOK_SECONDS")
+        p.reset(tasks.FIXED_INSTRUCTION, "sort_fixed")
+        arm = p.pol.home.copy() + 0.01
+        hand = p.pol.post["open"].copy()
+        for t in (0.0, 0.3, 0.6):
+            a = p.act({"t": t, "arm_q": arm, "hand_q": hand})          # no camera images: holds, never looks
+            self.assertFalse(a["done"])
+            np.testing.assert_allclose(a["arm_q_target"], np.repeat(arm[None], len(a["arm_q_target"]), 0), atol=1e-9)
+        self.assertTrue(p.act({"t": 1.2, "arm_q": arm, "hand_q": hand})["done"])
+
+
 if __name__ == "__main__":
     unittest.main()

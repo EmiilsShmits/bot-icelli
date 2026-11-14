@@ -2,6 +2,11 @@
 
 Condensed from Aalto's `aaltonomous/docs/participants/SUBMISSION.md`. If they disagree, Aalto's file wins.
 
+**Already pushed (Sat 14 Nov evening, public package `ghcr.io/samer-cyber/bot-icelli-policy`, Samer's account):**
+- v1.4, the candidate: `ghcr.io/samer-cyber/bot-icelli-policy@sha256:cd8311e9f64ea25703d9c70a645b44091dc5a00d8b5f75dc54f29720f6fd7f8d`
+- v1.3, the fallback: `ghcr.io/samer-cyber/bot-icelli-policy@sha256:60ef1b8980de11f9448da5de27234bf3d9f3b3be682f1914a2c0532c2ed504c4`
+- New versions: on `samer-v1-sim` (logged in to GHCR) `docker tag bot-icelli/policy:vN ghcr.io/samer-cyber/bot-icelli-policy:vN && docker push ghcr.io/samer-cyber/bot-icelli-policy:vN`; the push prints the digest for the form.
+
 1. **Pass the local checks:**
    - `make check`
    - on the sim machine: `make eval TASK=sort_fixed TRIALS=20` and `TASK=sort_language`, both with gate PASS (exit 0)
