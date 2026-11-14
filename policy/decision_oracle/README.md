@@ -13,7 +13,7 @@ Two perception modes:
 - **Result so far.** Decision 1 as chooser is no better than Aalto's rule (23/27 against 22/27 on the same seeds; its confidence sits near 0.5). The useful output is the per-movement log: it shows **where the oracle fails**: triangles picked with the stock claw grasp hold in 1 of 15 picks.
 - **Camera-only perception works in sim.** 2.5 mm median position error against true poses and the same score as exact poses on the two seeds tried. Not tested on real depth.
 - **Not a submission.** It runs in-process inside Aalto's evaluator and imports Aalto's planner. Nothing here is in the Docker image.
-- **Oracle upgrades (Sat ~17:00): written, not yet measured in sim.** `--chooser memory --grasp-check on` adds a per-object failure memory, face grasps first and a finger-angle grasp check (section below). The offline test passes; the sim runs are queued.
+- **Oracle upgrades (Sat ~17:00): written, not yet measured in sim.** `upgrades.py` (a separate file; the original code is unchanged) adds a per-object failure memory, face grasps first and a finger-angle grasp check (section below). The offline test passes; the sim runs are queued.
 - **Still running (Sat ~17:00):** camera mode on all 6 seeds (in progress), then the memory chooser + grasp check (2-seed smoke test, sort_fixed, sort_language, sort_fixed with camera), camera on sort_language, the random chooser, camera + Decision. Rows get added to `eval/RESULTS.md` as they finish.
 
 ## Inputs → Outputs
@@ -24,13 +24,14 @@ Two perception modes:
 | File | What |
 |---|---|
 | `motions.py` | The motion functions. `plan_direct(det, arm, grasp, bin, …, drop)`, `plan_relay`, `drop_ok`, `face_options`, `target_bin`; `OptionEnumerator.feasible_options()` lists only planner-checked options, the oracle's own choice first |
-| `chooser.py` | `DefaultChooser` (Aalto's rule), `DecisionChooser` (one createDecision call per look, 2 s timeout, default on any failure), `RandomChooser` (seeded, explores), `PreferFaceChooser` (the oracle's object, but a face grasp whenever one is planned; no API), `MemoryChooser` (face grasp first, never repeats an arm + grasp that failed on that object; no API) |
-| `policy.py` | `DecisionOraclePolicy(OraclePolicy)`: replaces `_plan_next`; keeps Aalto's look thread, prefetch and holds. Adds the finger-angle grasp check and the per-object failure memory. Logs decisions and outcomes |
+| `chooser.py` | `DefaultChooser` (Aalto's rule), `DecisionChooser` (one createDecision call per look, 2 s timeout, default on any failure), `RandomChooser` (seeded, explores), `PreferFaceChooser` (the oracle's object, but a face grasp whenever one is planned; no API) |
+| `policy.py` | `DecisionOraclePolicy(OraclePolicy)`: replaces only `_plan_next`; keeps Aalto's look thread, prefetch and holds. Logs decisions and outcomes |
 | `camera.py` | Camera perception: fits the head camera pose from the depth image (table plane + bin walls), finds objects by colour and height, gets shape and yaw from the top face outline |
 | `labels.py` | Optional Decision 1 labels for single-object crops (colour, shape, "other"); geometry stays the fallback |
 | `test_camera.py` | Scores camera perception against true poses on saved frames |
-| `run_eval.py` | `aaltonomous.sim.evaluate` with our policy swapped in (`--chooser aalto|default|decision|random|prefer_face|memory`, `--perception privileged|camera`, `--labels off|log|fuse`, `--grasp-check off|log|on`) |
+| `run_eval.py` | `aaltonomous.sim.evaluate` with our policy swapped in (`--chooser aalto|default|decision|random|prefer_face`, `--perception privileged|camera`, `--labels off|log|fuse`) |
 | `analyze.py` | Tables per shape / arm / grasp / route / drop spot, latency, fallbacks, planner rejections |
+| `upgrades.py` | **All oracle upgrades in one separate file**, as subclasses of the files above (which stay as first pushed): `MemoryChooser`, `MemoryEnumerator`, `TrackingCamera`, `UpgradedOraclePolicy`, plus its own runner, self-test and analysis. Delete this file and nothing else changes |
 | `test_offline.py` | No sim: fake scene service from random layouts; default chooser = Aalto's choice, every option passes the checks |
 
 ## The parameters (what Aalto's oracle hard-codes)
@@ -42,15 +43,15 @@ Two perception modes:
 | Route | direct; relay (put down near the centre, other arm finishes) only when no object has a direct plan | direct / relay |
 | Bin | from the mapping (`scene.resolve_bin`) | fixed by the instruction |
 | Drop spot | `DROP_OFFSETS` cycled by how many objects are already in the bin | the 5 offsets that pass a cheap IK check |
-| Retry / skip | retry up to 2× per **table position** (a pushed object counts as new) | `retry` / `skip`, asked when a picked object is back on the table. Memory chooser: up to 4 failures per **object**, a different arm or grasp each time |
+| Retry / skip | retry up to 2× per **table position** (a pushed object counts as new) | `retry` / `skip`, asked when a picked object is back on the table. `upgrades.py`: up to 4 failures per **object**, a different arm or grasp each time |
 
 ## How it decides (never blocks `act()`)
 - The look runs in Aalto's planning thread. That is the first look of an episode, or the prefetch while the previous pick executes. Meanwhile `act()` returns holds, as in Aalto's oracle.
 - The oracle's own choice is planned first, so a default always exists. Then alternatives are planned until a budget runs out: 8 s in a prefetch, 3 s in a blocking look.
 - Decision 1 gets one call per look: the head-camera JPEG, a short scene text, and one `choice` question per parameter. Each question's criteria are only the feasible values plus `default`; questions with a single feasible value are skipped. A timeout (2 s), an HTTP error or a missing answer falls back to the default. Answers are matched to an option in the order object → arm → grasp → route. A non-default drop spot means one more plan; if that plan fails, the default spot is kept.
 
-## Oracle upgrades (`--chooser memory --grasp-check on`)
-Three changes to how the oracle picks, all rules (no API call):
+## Oracle upgrades (`upgrades.py`, run with `python -m decision_oracle.upgrades`)
+Everything in this section lives in `upgrades.py` only. The original files are not modified, so `run_eval.py` behaves as before. Three changes to how the oracle picks, all rules (no API call):
 1. **Failure memory.** Every failed pick is stored per object as (arm, grasp). The memory chooser never repeats a pair that failed on that object while another planner-checked option exists, and sorts objects that have not failed yet first. Retries are counted per object (4 failures, `--max-tries`), not per table position as in Aalto's code. In camera mode the object keeps its name after a failed pick if it is found within 10 cm of where it was.
 2. **Face grasp first.** For cubes and triangles: Aalto's face grasp, then the alternative triangle angles (75°, 90°), then the stock claw. The option search spends its time budget on the object that will be picked.
 3. **Grasp check from the finger angles.** At the end of the lift the policy compares the measured finger angles (`obs["hand_q"]`) with the commanded closed posture. A held block keeps the fingers 0.021–0.100 rad short of it; an empty hand reaches it (0.000–0.010 rad). Measured on 56 logged sim picks: 29 of 29 held and 27 of 27 empty told apart. Below 0.012 rad the pick is aborted: the hand opens, the arm goes straight home (a joint-space move, the reverse of the approach) and the robot looks again. This skips the empty carry to the bin and records the failure at once. The threshold is a sim value: real finger encoders need their own.
@@ -75,14 +76,16 @@ $P -m decision_oracle.test_offline --layouts 8                  # no sim needed
 $P -m decision_oracle.run_eval --chooser decision --task sort_fixed --trials 6 --seed 1000 --out /root/runs_do
 $P -m decision_oracle.run_eval --chooser aalto    --task sort_fixed --trials 6 --seed 1000 --out /root/runs_do
 $P -m decision_oracle.run_eval --chooser default --perception camera --labels fuse --task sort_fixed --trials 6 --seed 1000 --out /root/runs_do
-$P -m decision_oracle.run_eval --chooser memory --grasp-check on --task sort_fixed --trials 6 --seed 1000 --out /root/runs_do
+$P -m decision_oracle.upgrades --task sort_fixed --trials 6 --seed 1000 --out /root/runs_do   # upgrades: memory chooser + grasp check
+$P -m decision_oracle.upgrades --selftest 6                     # upgrades, no sim needed
+$P -m decision_oracle.upgrades --analyze <decisions.jsonl>      # grasp check vs outcome, picks by try number
 $P -m decision_oracle.test_camera <frames dir>                  # camera perception vs true poses on saved frames
 python3 policy/decision_oracle/analyze.py <run_dir>=<decisions.jsonl>    # laptop, after copying the runs back
 ```
 Don't pass `--no-cameras`: the Decision chooser needs the head image.
 
 ## Status
-- **Now (Sat 14 Nov, ~17:00):** the library, five choosers (default, Decision 1, random, prefer_face, memory), camera perception, crop labels, the grasp check, logging and analysis are in place. Everything except the memory chooser and the grasp check has run in the venue-look sim with gate PASS (0 clips, 30 Hz). **The memory chooser and the grasp check have only passed the offline test so far**; their sim runs are queued on the sim machine behind the camera run.
+- **Now (Sat 14 Nov, ~17:00):** the library, four choosers (default, Decision 1, random, prefer_face), camera perception, crop labels, logging and analysis are in place, plus the upgrades in `upgrades.py` (memory chooser, grasp check). Everything except the memory chooser and the grasp check has run in the venue-look sim with gate PASS (0 clips, 30 Hz). **The upgrades in `upgrades.py` have only passed their offline self-test so far**; their sim runs are queued on the sim machine behind the camera run.
 - **Next:**
   - Measure the oracle upgrades on the 12 seeds (queued). If face grasps still fail on triangles: more carry routes, relay as a normal option, a nudge move.
   - Placement check: Decision 1 "is it in the bin?" on the head camera.

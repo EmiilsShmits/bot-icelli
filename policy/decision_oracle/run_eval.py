@@ -10,8 +10,6 @@
           decision  Gemini Decision 1 picks among the feasible options (2 s timeout, default on failure)
           random    uniform over the feasible options (seeded): explores movements
           prefer_face  the oracle's object, but a face grasp whenever one is planned (stock claw last)
-          memory    prefer_face + never repeat an (arm, grasp) that failed on this object; retries counted per object
---grasp-check on    abort a pick at the end of the lift when the fingers show an empty hand (any chooser)
 Every other argument goes to aaltonomous.sim.evaluate unchanged (--policy oracle is implied). The per-look log is
 written to --dlog (default: <out>/decisions_<chooser>_<task>_<time>.jsonl).
 """
@@ -25,14 +23,11 @@ import time
 
 def main(argv=None):
     ap = argparse.ArgumentParser(add_help=False)
-    ap.add_argument("--chooser", default="decision", choices=["aalto", "default", "decision", "random", "prefer_face", "memory"])
+    ap.add_argument("--chooser", default="decision", choices=["aalto", "default", "decision", "random", "prefer_face"])
     ap.add_argument("--perception", default="privileged", choices=["privileged", "camera"],
                     help="camera = head RGB-D only (the scene service is then used for logging the truth, nothing else)")
     ap.add_argument("--labels", default="off", choices=["off", "log", "fuse"],
                     help="camera only: Decision 1 crop labels (log = record, fuse = may fix a close shape call)")
-    ap.add_argument("--grasp-check", default="off", choices=["off", "log", "on"],
-                    help="finger-angle check at the end of the lift: log = record only, on = abort an empty-handed pick")
-    ap.add_argument("--max-tries", type=int, default=4, help="memory chooser: failed picks per object before giving up")
     ap.add_argument("--dlog", default=None)
     ap.add_argument("--look-budget", type=float, default=3.0, help="s of alternatives in a blocking look")
     ap.add_argument("--budget", type=float, default=None, help="s of alternatives in a prefetch look (chooser default)")
@@ -62,7 +57,7 @@ def main(argv=None):
 
         def factory(client, **kw):
             return DecisionOraclePolicy(client, chooser=ch, dlog=dlog, look_budget_s=a.look_budget, perception=a.perception, labels=a.labels,
-                                        grasp_check=a.grasp_check, max_tries=a.max_tries, **kw)
+                                        **kw)
 
         O.OraclePolicy = factory   # evaluate() imports it from the module at call time
 

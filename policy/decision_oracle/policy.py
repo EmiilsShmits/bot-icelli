@@ -28,8 +28,6 @@ from .motions import MotionLibrary, OptionEnumerator
 FRESH_WAIT_S = 0.4        # sim s to wait before using a head frame for a look (arm lag, camera latency)
 FIRST_LOOK_T = 1.0        # sim s: the first frames of a sim episode still show the previous (empty) scene
 EMPTY_RETRIES = 2         # camera: looks that see nothing are repeated this many times before giving up
-GRASP_EMPTY_ERR = 0.012   # rad. Grasp check at the end of `lift`: largest |measured - commanded| finger angle of the
-                          # closed hand. Sim logs (56 picks): holding an object 0.021-0.100, empty hand 0.000-0.010.
 
 
 class _FreshCamera:
@@ -64,17 +62,11 @@ class _FreshCamera:
 
 class DecisionOraclePolicy(OraclePolicy):
     def __init__(self, client, chooser="default", dlog=None, look_budget_s=3.0, perception="privileged",
-                 labels="off", grasp_check="off", max_tries=4, **kw):
+                 labels="off", **kw):
         """perception: "privileged" = exact poses from the sim's scene service (Aalto's oracle);
                        "camera"     = head RGB-D only (camera.py). The scene service is then used ONLY to log the
-                                      truth next to what the camera saw (and not at all when client is None).
-        grasp_check: "off" | "log" (record only) | "on": at the end of `lift`, an empty hand (finger angles reach
-                     the commanded closed posture) aborts the pick: open, go home, look again.
-        max_tries:   failed picks per object before it is given up (choosers with a failure memory only)."""
+                                      truth next to what the camera saw (and not at all when client is None)."""
         self.chooser = C.make(chooser) if isinstance(chooser, str) else chooser
-        self.grasp_check, self.max_tries = grasp_check, int(max_tries)
-        self.retry = "object" if getattr(self.chooser, "wants_history", False) else "position"
-        self.hist, self._gc, self._last_pick = {}, None, None
         self.look_budget_s = look_budget_s
         self.perception_mode = perception
         self._dlog = open(dlog, "a", buffering=1) if dlog else None
@@ -107,9 +99,6 @@ class DecisionOraclePolicy(OraclePolicy):
         self._executing = None
         self._look_n = 0
         self.picks = {}            # obj name -> [route, ...] of executed picks
-        self.hist = {}             # obj name -> [{arm, grasp, route, source}, ...] of FAILED picks
-        self._gc = None            # grasp check pending for the plan being executed
-        self._last_pick = None     # the pick whose result is not known yet
         self._bin_count = {}       # camera mode: objects we released into each bin
         if getattr(self, "cam", None) is not None:
             self.cam.reset()
@@ -127,53 +116,7 @@ class DecisionOraclePolicy(OraclePolicy):
         self._t = float(obs.get("t", self._t))
         if self.cam is not None:
             self.cam.update(obs)
-        if self._gc is not None and self.state == "executing" and (self.queue_a is None or not len(self.queue_a)):
-            return self._grasp_check(obs)      # the queue was cut at the end of `lift`
         return super().act(obs)
-
-    # ------------------------------------------------------------------ grasp check + failure memory
-    def _grasp_check(self, obs):
-        """End of `lift`: is something in the hand? Holding an object keeps the fingers short of the commanded closed
-        posture; an empty hand reaches it. Empty -> skip the carry: open, go to the pose the plan would have ended
-        in (so a prefetched next plan stays valid) and look again."""
-        gc, self._gc = self._gc, None
-        plan, o = gc["plan"], gc["option"]
-        sl = slice(0, 7) if gc["side"] == "left" else slice(7, 14)
-        err = float(np.abs(np.asarray(obs["hand_q"], float)[sl] - self.hand_cmd[sl]).max())
-        empty = err < GRASP_EMPTY_ERR
-        abort = empty and self.grasp_check == "on"
-        self._w({"type": "grasp_check", "decision": getattr(plan, "decision_id", None), "t": round(self._t, 2),
-                 "obj": o.obj, "arm": o.arm, "grasp": o.grasp, "err": round(err, 4), "empty": empty, "abort": abort})
-        if not abort:
-            self._enqueue(gc["rest_a"], gc["rest_h"])
-            return self._pop()
-        self._fail(o, "fingers")
-        if o.route == "direct":
-            self._bin_count[o.bin] = max(0, self._bin_count.get(o.bin, 0) - 1)
-        a, h = self.planner.go_to(self.arm_cmd, self.hand_cmd, plan.arm[-1], plan.hand[-1])
-        self._enqueue(a, h)
-        self._note(self._t, f"grasp check: hand empty (finger error {err:.3f} rad), back home")
-        return self._pop() if len(a) else self._hold()
-
-    def _fail(self, o, source):
-        lp = self._last_pick
-        if lp is None or lp["o"] is not o or lp["failed"]:
-            return
-        lp["failed"] = source
-        self.hist.setdefault(o.obj, []).append({"arm": o.arm, "grasp": o.grasp, "route": o.route, "source": source})
-        if self.cam is not None:       # the failed pick pushed it: keep its name at the next look
-            self.cam.expect_moved(o.obj)
-
-    def _settle_last_pick(self, dets):
-        """At a fresh look: a directly picked object that is still on the counter is a failed pick (backup for the
-        grasp check: slipped during the carry, or the check is off)."""
-        lp, self._last_pick = self._last_pick, None
-        if lp is None or lp["failed"] or lp["o"].route != "direct":
-            return
-        if any(d.name == lp["o"].obj for d in dets):
-            self._last_pick = lp
-            self._fail(lp["o"], "look")
-            self._last_pick = None
 
     # ------------------------------------------------------------------ outcome of the last pick
     def _classify(self, name):
@@ -210,13 +153,7 @@ class DecisionOraclePolicy(OraclePolicy):
 
     def _look_locked(self):
         self._record_outcome()
-        res = super()._look_locked()
-        if self._last_pick is not None:      # a prefetched plan was accepted: _plan_next did not run for this look
-            try:
-                self._settle_last_pick(list(self.cam.last) if self.cam is not None else self.truth.detect())
-            except Exception as e:
-                self.log(f"[decision-oracle] failure memory: {e!r}")
-        return res
+        return super()._look_locked()
 
     def _start(self, plan, t):
         o = getattr(plan, "option", None)
@@ -228,16 +165,7 @@ class DecisionOraclePolicy(OraclePolicy):
                 self._bin_count[o.bin] = self._bin_count.get(o.bin, 0) + 1
             self._w({"type": "exec", "decision": getattr(plan, "decision_id", None), "t": round(t, 2),
                      "option": o.to_json(), "truth": tname})
-            self._last_pick = {"o": o, "failed": None}
-        out = super()._start(plan, t)
-        self._gc = None
-        if o is not None and self.grasp_check != "off":
-            cut = next((e for name, s, e in plan.phases if name == "lift"), None)
-            done = len(plan.arm) - len(self.queue_a)          # ticks already handed out by super()._start
-            if cut is not None and done < cut < len(plan.arm):
-                self._gc = {"plan": plan, "option": o, "side": plan.side, "rest_a": plan.arm[cut:], "rest_h": plan.hand[cut:]}
-                self.queue_a, self.queue_h = plan.arm[done:cut], plan.hand[done:cut]
-        return out
+        return super()._start(plan, t)
 
     def _commit(self, p):
         super()._commit(p)
@@ -325,19 +253,14 @@ class DecisionOraclePolicy(OraclePolicy):
         self._update_drop_offsets(exclude)
         dets = [d for d in self._detections(fresh=commit) if d.name != exclude]
         self.last_detections = dets
-        if commit:
-            self._settle_last_pick(dets)
         budget = self.chooser.budget_s if not commit else min(self.chooser.budget_s, self.look_budget_s)
-        if commit and self.retry == "object" and any(self.hist.get(d.name) for d in dets):
-            budget = self.chooser.budget_s      # a retry needs the alternatives: the default is what just failed
         options, info = self.enum.feasible_options(dets, arm, hand, budget_s=budget)
         rec = {"type": "look", "decision": did, "prefetch": not commit, "t": round(self._t, 2),
                "perception": self.perception_mode,
                "n_dets": len(dets), "dets": [{"obj": d.name, "xy": np.round(d.top[:2], 3).tolist(),
                                               "yaw_deg": _r(np.degrees(d.yaw) if d.yaw is not None else None)}
                                              for d in dets],
-               "planner": info, "options": [o.to_json() for o in options],
-               "history": {k: [f"{f['arm']}/{f['grasp']}/{f['source']}" for f in v] for k, v in self.hist.items()}}
+               "planner": info, "options": [o.to_json() for o in options]}
         if not options:
             if commit:   # Aalto: objects with neither a direct nor a relay plan are given up on
                 xy = {d.name: d.top[:2] for d in dets}
@@ -353,7 +276,7 @@ class DecisionOraclePolicy(OraclePolicy):
         retry = sorted(n for n, routes in self.picks.items() if "direct" in routes and any(o.obj == n for o in options))
         ctx = {"dets": dets, "mapping_text": ", ".join(f"{k} objects -> {v} bin" for k, v in self.mapping.items()),
                "time_left": max(0.0, float(self.time_limit) - self._t), "attempts": {n: len(r) for n, r in self.picks.items()},
-               "retry_objs": retry, "drop_choices": self.enum.drop_choices, "history": self.hist,
+               "retry_objs": retry, "drop_choices": self.enum.drop_choices,
                "jpeg": C.jpeg(self._rgb) if self.chooser.name == "decision" else None}
         try:
             o, drop, crec = self.chooser.choose(options, ctx)

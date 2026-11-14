@@ -107,28 +107,6 @@ def dlog_table(path, ev=None):
     print(f"looks choosing a non-default option: {nd}/{len(chosen)}; options per look mean "
           f"{sum(len(r['options']) for r in looks) / max(1, len(looks)):.1f}; look time s mean "
           f"{sum(r.get('t_look_s', 0) for r in looks) / max(1, len(looks)):.1f}")
-    # grasp check (finger angles at the end of the lift) against what really happened
-    gcs = {r["decision"]: r for r in recs if r["type"] == "grasp_check"}
-    if gcs:
-        c = collections.Counter()
-        for r in outs:
-            g_ = gcs.get(r["decision"])
-            if g_ is not None:
-                c[("empty" if g_["empty"] else "held", "pick ok" if r["ok"] else "pick failed")] += 1
-        held = sorted(g_["err"] for g_ in gcs.values() if not g_["empty"])
-        emp = sorted(g_["err"] for g_ in gcs.values() if g_["empty"])
-        print(f"grasp check: {len(gcs)} checks, {sum(1 for g_ in gcs.values() if g_['abort'])} aborted; vs outcome: "
-              + ", ".join(f"{k[0]} + {k[1]}: {v}" for k, v in sorted(c.items()))
-              + (f"; finger error held {held[0]:.3f}-{held[-1]:.3f}" if held else "")
-              + (f", empty {emp[0]:.3f}-{emp[-1]:.3f}" if emp else ""))
-    # failure memory: how the n-th try on the same object went
-    tries, by_try = collections.Counter(), collections.defaultdict(lambda: [0, 0])
-    for r in sorted((r for r in rows if r["ok"] is not None and r["route"] == "direct"), key=lambda r: r.get("t_start", 1e9)):
-        k = (r.get("seed"), r.get("truth") or r["obj"])
-        tries[k] += 1
-        by_try[tries[k]][1] += 1
-        by_try[tries[k]][0] += bool(r["ok"])
-    print("picks ok by try on the same object: " + ", ".join(f"try {k}: {v[0]}/{v[1]}" for k, v in sorted(by_try.items())))
     rej = collections.Counter()
     for r in looks:
         for t in r["planner"]["tried"]:
