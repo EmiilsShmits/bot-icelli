@@ -24,7 +24,11 @@ ARM_STEP, HAND_STEP = 0.98 / 30 + 1e-9, 2.7 / 30 + 1e-9
 
 class TestInstruction(unittest.TestCase):
     def test_fixed_task(self):
-        self.assertEqual(mapping_for("anything", "sort_fixed"), (tasks.FIXED_MAPPING, "fixed"))
+        self.assertEqual(mapping_for(tasks.FIXED_INSTRUCTION, "sort_fixed"), (tasks.FIXED_MAPPING, "fixed"))
+
+    def test_real_fixed_wording(self):  # Aalto: real rung 1 = yellow -> left, purple -> center, orange -> right
+        text = "Put the yellow objects in the left bin, the purple objects in the center bin and the orange objects in the right bin."
+        self.assertEqual(mapping_for(text, "sort_fixed")[0], {"yellow": "left", "blue": "center", "red": "right"})
 
     def test_training_templates(self):
         for seed in range(200):

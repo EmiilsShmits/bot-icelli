@@ -52,8 +52,10 @@ def fold_to_colours(slots: dict) -> tuple[dict, bool]:
 
 def mapping_for(instruction: str, task: str | None = None) -> tuple[dict, str]:
     """Returns ({colour: bin}, where the answer came from). Never raises."""
+    # Always read the text, even for sort_fixed: on the real robot rung 1 is yellow -> left, purple -> center,
+    # orange -> right (Aalto, Discord Sat 15:07), not the sim's red -> left, yellow -> center, blue -> right.
     text = (instruction or "").strip()
-    if task == "sort_fixed" or text == FIXED_INSTRUCTION:
+    if text == FIXED_INSTRUCTION:
         return dict(FIXED_MAPPING), "fixed"
     try:
         slots = rule_parser.parse(text)
