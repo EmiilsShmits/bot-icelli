@@ -87,7 +87,7 @@ python3 policy/decision_oracle/analyze.py <run_dir>=<decisions.jsonl>    # lapto
 Don't pass `--no-cameras`: the Decision chooser needs the head image.
 
 ## Status
-- **Now (Sat 14 Nov, ~17:00):** the library, four choosers (default, Decision 1, random, prefer_face), camera perception, crop labels, logging and analysis are in place, plus the upgrades in `upgrades.py` (memory chooser, grasp check). Everything has run in the venue-look sim with gate PASS (0 clips, 30 Hz). **The upgrades in `upgrades.py` sort 26/28 on sort_language (e-015) against 20/28 for Aalto's oracle**, and 23/27 against 22/27 on sort_fixed (e-016; the same before the option-search fix, e-013); gate PASS every time. Grasp check off: same 23/27 (e-018). Camera + Decision 1: 21/27 (e-017). Upgrades with camera: 21/27 (e-019). Without the memory chooser: 23/27 (e-020). Still running (Sat ~18:30): camera on sort_language.
+- **Now (Sat 14 Nov, ~17:00):** the library, four choosers (default, Decision 1, random, prefer_face), camera perception, crop labels, logging and analysis are in place, plus the upgrades in `upgrades.py` (memory chooser, grasp check). Everything has run in the venue-look sim with gate PASS (0 clips, 30 Hz). **The upgrades in `upgrades.py` sort 26/28 on sort_language (e-015) against 20/28 for Aalto's oracle**, and 23/27 against 22/27 on sort_fixed (e-016; the same before the option-search fix, e-013); gate PASS every time. Grasp check off: same 23/27 (e-018). Camera + Decision 1: 21/27 (e-017). Upgrades with camera: 21/27 (e-019). Without the memory chooser: 23/27 (e-020). Camera on sort_language: 21/28 (e-021), one more than Aalto's oracle with exact poses. All queued runs are done. Next: upgrades with camera on sort_language, and more seeds.
 - **Next:**
   - More seeds for the upgrades on both tasks (the sort_language gain rests on 6 seeds). More options for objects that have only one: more carry routes, relay as a normal option, a nudge move (all 4 sort_fixed misses in e-016 are of this kind).
   - Placement check: Decision 1 "is it in the bin?" on the head camera.
@@ -113,6 +113,7 @@ Don't pass `--no-cameras`: the Decision chooser needs the head image.
 | e-018 | sort_fixed | exact poses | upgrades without the grasp check | 23/27 (85 %) | 7/7 | 15/15 | 1/5 | PASS |
 | e-019 | sort_fixed | camera | upgrades: memory chooser + grasp check | 21/27 (78 %) | 7/7 | 13/15 | 1/5 | PASS |
 | e-020 | sort_fixed | exact poses | upgrades without the memory chooser (oracle's choice + grasp check) | 23/27 (85 %) | 7/7 | 15/15 | 1/5 | PASS |
+| e-021 | sort_language | camera | oracle's rule | 21/28 (75 %) | 11/16 | 7/8 | 3/4 | PASS |
 
 Every run: 0 clipped steps, 30 commands/s in sim time, policy 110–135 Hz in real time. Sim time per sorted object: about 22 s (15 s with the grasp check, e-013). Full rows with logs: [`eval/RESULTS.md`](../../eval/RESULTS.md).
 
