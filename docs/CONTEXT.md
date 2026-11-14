@@ -12,7 +12,7 @@
 ## 1. The situation in five lines
 1. **FACT:** we hand Aalto one Docker image. Finalists are picked from a sim run on a held-out variant; the finals run on the real robot on Sunday. Aalto posts the hand-in form, team IDs and deadlines on Discord "this evening" (erkka, Sat 15:07).
 2. **FACT:** Junction's project page closes Sun 15 Nov 10:00 (official schedule).
-3. **FACT:** our candidates are v1 … v1.4 in `policy/`, all built on Aalto's classical baseline. Their images are built and pass Aalto's replay test. **v1.4 and v1.3 are public on GHCR** (§2). In the nominal sim v1.x sort 26–29/40 like the baseline; **with randomisation v1.3 keeps 26/40 while the baseline falls to 11/40**, and in the venue look v1.4 sorts 20/27 (§4.3).
+3. **FACT:** our candidates are v1 … v1.4 in `policy/`, all built on Aalto's classical baseline. Their images are built and pass Aalto's replay test. **v1.4 and v1.3 are public on GHCR** (§2). In the nominal sim v1.x sort 26–29/40 like the baseline; **with randomisation v1.3 keeps 26/40 while the baseline falls to 11/40**, and in the venue look v1.4 sorts 20/27 (§4.3). **v1.5 is a different base** (Aalto's oracle motions on the head camera + decision_oracle upgrades, `policy/policies/oracle_v15.py`): in the venue look 23/27 with either arm anywhere and 20/27 with same-side arms (e-030, e-029, Modal); image built on sim-3, replay test passed, **not on GHCR, not run in the nominal look or with randomisation**.
 4. **FACT (Samer, Sat ~17:00):** Samer + Claude do the final integration and build the final image from what the team produces.
 5. **OPINION (Samer + Claude):** v2 = Gemini Decision 1 reads the instruction (with offline fallbacks) + the best "hands" we can measure (v1.x vs Emīls's `policy/decision_oracle` in camera mode). Gemini does not drive the robot.
 
@@ -76,6 +76,8 @@ How to hand in: [`runbooks/submit.md`](runbooks/submit.md). Hard rules for code:
 | e-026 | **v1.1** | nominal, sort_fixed, same seeds | 29/40 (72 %), gate PASS | within run-to-run spread of the 26/40s |
 | e-027 | **v1.3 with randomisation** | `AALTO_DR=train`, sort_fixed, same seeds | **26/40 (65 %), gate PASS** | **the same as nominal; the baseline falls to 11/40 with a gate FAIL (e-011)**: +15 objects on the test closest to the finalist variant. 12 of 14 lost objects end near the robot |
 | e-028 | **v1.4 in the venue look** (sim C) | venue look, sort_fixed, seeds 1000–1005 | **20/27 (74 %), gate PASS** | same seeds as e-004 (oracle, exact poses 22/27), e-012 (camera 18/27), e-019 (decision_oracle camera + upgrades 21/27). v1.3 there: 0/9 in 2 episodes (head fit rejected) |
+| e-029/e-030 | **v1.5** same-side arms / sides off (Modal) | venue look, sort_fixed, seeds 1000–1005 | 20/27 / **23/27 (85 %)**, gate PASS | same seeds as e-028 (v1.4 20/27) and e-004 (oracle, exact poses 22/27) |
+| e-031, e-032 | v1.5 same-side arms (Modal) | venue look: sort_language 2000–2005; sort_fixed with every triangle lying | 22/28; 18/27, gate PASS | e-022 (decision_oracle inside Aalto's evaluator) 26/28; lying triangles held 4/9 with the ridge grasp, 0/14 with the stock claw |
 | running | v1.4 with randomisation (sim B); v1.3 and the baseline on sort_language (sim A); the baseline in the venue look, then a `look` test (sim C) | | | |
 | e-001 | Aalto's oracle (exact object poses from the sim: **not a valid submission**) | nominal, sort_fixed, 3 | 11/12 (92 %) | no triangles in those layouts |
 | e-004 | Aalto's oracle | venue look, sort_fixed, 6 | 22/27 (82 %) | triangles 2/5 |
@@ -109,6 +111,7 @@ Other measurements:
 | v1.2 | v1.1 + re-fits the head-camera pose from depth at each episode's first look (Emīls's fit): corrects ~1° in the nominal sim, ~2° with randomisation. **Rejects the ~10° fit of the venue look** (see §4.3) | nominal 26/40 = baseline (e-023) |
 | v1.3 | v1.2 + a free drop spot per bin (`eval/analysis/FINDINGS.md` §1) | nominal 26/40 (e-024), **randomised 26/40 (e-027)**; venue look 0/9 (head fit rejected). On GHCR (fallback) |
 | v1.4 | v1.3 + grasp check at the end of the lift (empty: skip the carry, go home, look again) + a retry with another arm / finger direction + the head-fit check fixed | **venue look 20/27 (e-028)**; randomised run going; not yet in the nominal sim. On GHCR (candidate) |
+| v1.5 | not built on v1.x: Aalto's oracle motions (face grasps, relay, drop spots) on the head camera + decision_oracle upgrades (failure memory, grasp check, option search) + same-side arms (`V15_SIDES=strict`, default) + a ridge grasp for lying triangles | venue look 20/27 strict, 23/27 sides off (e-029, e-030); sort_language 22/28 (e-031). Uses Aalto's `scene.yaml` bin walls (6 cm) for the camera fit; the venue look has 7.5 cm |
 | look | never moves: logs v1.4's camera fit, the objects it sees and a hand check (`policy/policies/look.py`) | for the first real-robot run; image on GHCR. Hand check not validated yet |
 | all three | `reset()` never blocks (a blocked reset made Aalto's baseline fail the gate once on our loaded machine) | 80d7c9a |
 

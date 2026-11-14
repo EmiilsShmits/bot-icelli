@@ -52,6 +52,8 @@ SIDE_BAND = 0.03          # m. Either arm may work within this distance of the c
 TIP_MAX_DEV_DEG = 95.0    # ridge grasp: finger direction may be this far from the arm's natural one (Aalto faces: 75)
 RIDGE_MIN_RATIO = 2.0     # top strip length / width below which the ridge direction is not trusted
 SIDES = ("strict", "off")
+MAX_RELAYS_STRICT = 3     # relay tries per object with same-side arms (Aalto: 1). There a cross-side object has no
+                          # other way to its bin, and Aalto's count includes relays whose grasp closed on nothing
 
 
 def arm_allowed(arm, y, band=SIDE_BAND):
@@ -158,20 +160,156 @@ class RidgeCamera(TrackingCamera):
             CAMMOD.classify_top = saved
 
 
+# ---------------------------------------------------------------------------------------------------- model check
+TIP_POSES = {
+    "lying_prism": "A triangular prism lying on one of its long rectangular sides: a sharp ridge runs along its top "
+                   "and one triangular end face can be seen.",
+    "lying_cylinder": "A cylinder lying on its curved side: a round end face can be seen and its top is rounded.",
+    "upright": "A block standing upright on a flat end: a cube (square top), a cylinder (round top) or a triangular "
+               "prism with a triangle on top.",
+    "unclear": "The block is mostly hidden (by a robot hand or the edge of the crop), or there is no single block.",
+}
+TIP_SHAPES = {"cube": "A cube.", "cylinder": "A cylinder.", "triangle": "A triangular prism."}
+TIP_TEXT = ("This is a small crop from a robot's head camera, looking down at a table at an angle. It shows one small "
+            "coloured block (about 4.5 cm). Look at the block in the middle of the crop.")
+TIP_MODELS = {"hydrogen": "gemini-4-hydrogen", "d1": "gemini-decision-1"}
+GEN_URL = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent"
+D1_URL = "https://generativelanguage.googleapis.com/v1beta/decisions"
+
+
+class TipChecker:
+    """Model check of the camera's "lying" label (only for objects the geometry calls "tipped"; the angle stays the
+    geometry's). One call per such object and name, in parallel, inside the planning thread, with a deadline; no
+    key, an error or a late answer = the geometry stands. Used as the policy's `labeler` (`label(dets, rgb)`)."""
+
+    def __init__(self, model="d1", timeout=2.5, deadline_s=3.0, log=None, workers=4):
+        from concurrent.futures import ThreadPoolExecutor
+        from .chooser import _api_key
+        if model not in TIP_MODELS:
+            raise ValueError(f"tip check model {model!r}: use one of {sorted(TIP_MODELS)}")
+        self.model, self.timeout, self.deadline_s = model, timeout, deadline_s
+        self.log = log or (lambda *a: None)
+        try:
+            self.key = _api_key()
+        except Exception:
+            self.key = None
+        if not self.key:
+            self.log("[v1.5] tip check: no API key, the camera's geometry decides alone")
+        self.pool = ThreadPoolExecutor(workers)
+        self.cache = {}
+
+    def reset(self):
+        self.cache = {}
+
+    def forget(self, name):
+        """The object was touched (a failed pick): ask again at the next look."""
+        self.cache.pop(name, None)
+
+    def ask(self, jpeg):
+        """-> {"pose": one of TIP_POSES, "shape": one of TIP_SHAPES, "latency_s"}; raises on any failure."""
+        import base64
+        import json
+        import time
+        import urllib.request
+        b64 = base64.b64encode(jpeg).decode()
+        q_pose = "How is the block resting on the table?"
+        q_shape = "What kind of block is it?"
+        if self.model == "d1":
+            body = {"model": TIP_MODELS["d1"], "input": [{"type": "text", "text": TIP_TEXT},
+                                                         {"type": "image", "data": b64, "mime_type": "image/jpeg"}],
+                    "questions": {"pose": {"type": "choice", "instructions": q_pose, "criteria": TIP_POSES},
+                                  "shape": {"type": "choice", "instructions": q_shape, "criteria": TIP_SHAPES}}}
+            url = D1_URL
+        else:
+            text = (TIP_TEXT + "\nAnswer as JSON:\n- pose: " + q_pose + " Options: "
+                    + "; ".join(f"{k} = {v}" for k, v in TIP_POSES.items())
+                    + "\n- shape: " + q_shape + " Options: " + "; ".join(f"{k} = {v}" for k, v in TIP_SHAPES.items()))
+            props = {"pose": {"type": "STRING", "enum": list(TIP_POSES)},
+                     "shape": {"type": "STRING", "enum": list(TIP_SHAPES)}}
+            body = {"contents": [{"role": "user", "parts": [{"inline_data": {"mime_type": "image/jpeg", "data": b64}},
+                                                            {"text": text}]}],
+                    "generationConfig": {"temperature": 0, "responseMimeType": "application/json",
+                                         "responseSchema": {"type": "OBJECT", "properties": props,
+                                                            "required": list(props)},
+                                         "thinkingConfig": {"thinkingBudget": 0}}}
+            url = GEN_URL.format(TIP_MODELS[self.model])
+        req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
+                                     headers={"x-goog-api-key": self.key, "Content-Type": "application/json"})
+        t = time.monotonic()
+        with urllib.request.urlopen(req, timeout=self.timeout) as r:
+            out = json.load(r)
+        dt = round(time.monotonic() - t, 2)
+        if self.model == "d1":
+            a = out["answers"]
+            return {"pose": a["pose"]["choice"], "shape": a["shape"]["choice"], "latency_s": dt}
+        txt = "".join(p.get("text", "") for p in out["candidates"][0]["content"]["parts"] if not p.get("thought"))
+        a = json.loads(txt)
+        return {"pose": a["pose"], "shape": a["shape"], "latency_s": dt}
+
+    def label(self, dets, rgb):
+        """Adds d.tip_check to every "tipped" detection and applies the answer:
+             lying_prism / lying_cylinder -> keep "tipped" (ridge grasp);
+             upright -> the geometry misread it (usually part of it hidden): shape = the model's, no yaw (stock grasp),
+                        d.recheck = True (the chooser takes other objects first; a later look may see it whole);
+             unclear / error / late -> the geometry stands."""
+        from concurrent.futures import wait
+        from .labels import crop_jpeg
+        todo = {}
+        for d in dets:
+            if d.shape != "tipped":
+                continue
+            if d.name in self.cache:
+                d.tip_check = self.cache[d.name]
+            elif self.key and getattr(d, "bbox", None) is not None and rgb is not None:
+                j = crop_jpeg(np.asarray(rgb), d.bbox)
+                if j is not None:
+                    todo[self.pool.submit(self.ask, j)] = d
+        if todo:
+            wait(list(todo), timeout=self.deadline_s)
+        for fut, d in todo.items():
+            if fut.done():
+                try:
+                    d.tip_check = fut.result()
+                    self.cache[d.name] = d.tip_check
+                except Exception as e:
+                    d.tip_check = {"error": f"{type(e).__name__}: {str(e)[:80]}"}
+            else:
+                d.tip_check = {"error": "deadline"}
+                fut.cancel()
+        for d in dets:
+            r = getattr(d, "tip_check", None) or {}
+            if d.shape == "tipped" and r.get("pose") == "upright":
+                d.shape_geom, d.shape, d.yaw, d.recheck = "tipped", r.get("shape") or "cube", None, True
+                self.log(f"[v1.5] tip check: {d.name} is upright ({d.shape}) by {self.model}, not lying")
+        return dets
+
+
 # ---------------------------------------------------------------------------------------------------- chooser
 class V15Chooser(MemoryChooser):
-    """MemoryChooser; the stock claw on a lying object is a last resort too (0 of 9 held in e-019)."""
+    """MemoryChooser; the stock claw on a lying object is a last resort too (0 of 9 held in e-019), and an object the
+    model check found upright after the camera called it lying (part of it hidden) waits until the others are done."""
     name = "memory_v15"
 
     @staticmethod
     def _last_resort(o):
         return o.shape in ("triangle", "tipped") and _grasp_kind(o.grasp) == "stock"
 
+    def choose(self, options, ctx):
+        later = [o for o in options if getattr(o.det, "recheck", False)]
+        if later and len(later) < len(options):
+            o, drop, rec = super().choose([o for o in options if not getattr(o.det, "recheck", False)], ctx)
+            if o is not None:
+                rec["recheck_later"] = sorted({x.obj for x in later})
+                return o, drop, rec
+        return super().choose(options, ctx)
+
 
 # ---------------------------------------------------------------------------------------------------- policy
 class V15OraclePolicy(UpgradedOraclePolicy):
-    def __init__(self, client, sides="strict", chooser=None, **kw):
-        """sides: "strict" (same-side arms) | "off" (Aalto's arm rule). Other arguments: UpgradedOraclePolicy."""
+    def __init__(self, client, sides="strict", chooser=None, tip_check="off", **kw):
+        """sides: "strict" (same-side arms) | "off" (Aalto's arm rule).
+        tip_check: "off" | "d1" (Gemini Decision 1) | "hydrogen": model check of the camera's "lying" label (TipChecker; camera only).
+        Other arguments: UpgradedOraclePolicy."""
         if sides not in SIDES:
             raise ValueError(f"sides={sides!r}: use one of {SIDES}")
         self.sides = sides
@@ -181,6 +319,13 @@ class V15OraclePolicy(UpgradedOraclePolicy):
             pl.sides = sides
         if self.cam is not None:
             self.cam = RidgeCamera(self.scene, self.cal, log=self.log)
+            if tip_check != "off":
+                self.labeler = TipChecker(tip_check, log=self.log)
+
+    def _fail(self, o, source):
+        super()._fail(o, source)
+        if isinstance(self.labeler, TipChecker):     # a failed pick may have tipped or righted it: ask again
+            self.labeler.forget(o.obj)
 
     def _w(self, rec):
         if isinstance(rec.get("mapping"), dict):        # (colour, shape) keys: JSON keys must be strings
@@ -192,7 +337,7 @@ class V15OraclePolicy(UpgradedOraclePolicy):
         one of the two arms may not use are skipped without counting as a try."""
         if self.sides != "strict":
             return super()._plan_relay(d, dets, arm, hand)
-        if self.relays.get(d.name, 0) >= O.MAX_RELAYS_PER_OBJECT:
+        if self.relays.get(d.name, 0) >= MAX_RELAYS_STRICT:
             return None
         others = [o.top[:2] for o in dets if o.name != d.name]
         tried = 0
@@ -276,6 +421,7 @@ def main(argv=None):
     ap.add_argument("--grasp-check", default="on", choices=["off", "log", "on"])
     ap.add_argument("--max-tries", type=int, default=4)
     ap.add_argument("--perception", default="camera", choices=["privileged", "camera"])
+    ap.add_argument("--tip-check", default="off", choices=["off"] + sorted(TIP_MODELS))
     ap.add_argument("--dlog", default=None)
     ap.add_argument("--look-budget", type=float, default=3.0)
     ap.add_argument("--selftest", type=int, default=0)
@@ -297,7 +443,7 @@ def main(argv=None):
 
     def factory(client, **kw):
         return V15OraclePolicy(client, sides=a.sides, grasp_check=a.grasp_check, max_tries=a.max_tries, dlog=dlog,
-                               look_budget_s=a.look_budget, perception=a.perception, **kw)
+                               look_budget_s=a.look_budget, perception=a.perception, tip_check=a.tip_check, **kw)
 
     O.OraclePolicy = factory
 

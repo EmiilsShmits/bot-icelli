@@ -16,7 +16,9 @@ What runs (all offline, no API calls):
     shapes.
   * every target passes our shadow safety filter (`policy/guard.py`); reset() never blocks (as v1).
 
-Env: V15_SIDES (strict | off, default strict), AALTO_TIME_LIMIT (s, default 120), V15_DLOG (path: decision log,
+Env: V15_SIDES (strict | off, default strict), V15_TIP_CHECK (off | d1 | hydrogen, default off: a Gemini check of the
+camera's "lying" label; needs GEMINI_API_KEY; measured on 59 sim crops it did not beat the geometry, see
+decision_oracle/README.md), AALTO_TIME_LIMIT (s, default 120), V15_DLOG (path: decision log,
 default off), GUARD_ARM_VEL / GUARD_HAND_VEL (default 0.98 / 2.7).
 """
 from __future__ import annotations
@@ -72,6 +74,7 @@ class OracleV15(Policy):
         from decision_oracle.upgrades_v15 import V15OraclePolicy
         self.pol = V15OraclePolicy(None, sides=os.environ.get("V15_SIDES", "strict"), perception="camera",
                                    grasp_check="on", dlog=os.environ.get("V15_DLOG") or None, threaded=True,
+                                   tip_check=os.environ.get("V15_TIP_CHECK", "off"),
                                    time_limit=float(os.environ.get("AALTO_TIME_LIMIT", 120.0)),
                                    log=lambda m: log.info(m))
         self.guard = Guard(float(os.environ.get("GUARD_ARM_VEL", 0.98)), float(os.environ.get("GUARD_HAND_VEL", 2.7)))

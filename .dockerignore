@@ -21,6 +21,7 @@ policy/decision_oracle/
 !policy/decision_oracle/__init__.py
 !policy/decision_oracle/camera.py
 !policy/decision_oracle/chooser.py
+!policy/decision_oracle/labels.py
 !policy/decision_oracle/motions.py
 !policy/decision_oracle/policy.py
 !policy/decision_oracle/upgrades.py
