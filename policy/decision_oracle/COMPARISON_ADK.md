@@ -34,8 +34,8 @@ Both pass the gate in every run (0 clipped steps, ~30 Hz).
 | Aalto's oracle, exact poses (not a submission) | 17/20 | 17/20 |
 | Aalto's baseline | 12/20 | 10/20 |
 | v1.3 | 13/20 | 14/20 |
-| v1.4 | | 12/15 after 4 seeds |
-| **v1.5** | not run | **running** on `samer-v1-sim` (seeds 1000–1009, strict and sides off, `eval/v15_lane.sh`) |
+| v1.4 | | 15/20 (seeds 1000–1009: 29/40, e-035) |
+| **v1.5** | not run | sides off **17/20** (Sat ~20:45; seeds 1005–1009 and strict sides running on `samer-v1-sim`, `eval/v15_lane.sh`) |
 
 **Own scenes** (not comparable with each other):
 
