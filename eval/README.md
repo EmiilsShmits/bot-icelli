@@ -18,10 +18,14 @@
 
 **Two sims on one machine:** one sim uses ~15 of the RTX PRO 6000 machine's 30 cores, and a 10-trial run takes ~20–30 min. `eval/start_sim_b.sh` starts a second sim with its own ports (`AALTO_DR=train bash ~/start_sim_b.sh`, inside tmux `simb`); point a second comparison at it with `AALTO_INSTANCE=b PORT=8001 bash ~/compare.sh`. Stop it with `kill -INT $(cat ~/sim_b.pid)`, never `aalto.sh stop` (that stops whichever sim it finds first). `queue.sh` stops sim b before its own phases.
 
+**Never `--container` without `--policy`:** Aalto's `evaluate.py` checks `--policy` (default `oracle`) first, so `--container IMAGE` alone silently runs the privileged oracle instead of the image. That happened to our first "v1" run (e-010). `compare.sh` passes both since 9b0e59c.
+
+**What failed, and why:** [`analysis/`](analysis/) turns run folders into grasp-by-grasp tables. Results: [`analysis/FINDINGS.md`](analysis/FINDINGS.md). For new runs, use `analysis/traced_eval.py` in place of `aalto.sh eval`: it also records object positions, the container's log and video.
+
 **Docker-path sim (Aalto's image):** start a policy server on :8000 (`make serve`, or `docker run -d --gpus all -p 8000:8000 <image>`), then `make eval TASK=sort_fixed TRIALS=20` (runs `aalto eval` inside the sim container; untested). Exit 0 = gate passed, 2 = failed.
 
 ## Status
-- **Now (Sat 14 Nov, Samer + Claude):** baseline vs v1 running on Samer's Verda machine (`samer-v1-sim`, spot RTX PRO 6000, FIN-03): nominal sim, then `AALTO_DR=train`, then the venue look; 10 seeds per task. Results go into `RESULTS.md` when each phase finishes.
+- **Now (Sat 14 Nov ~17:50, Samer + Claude):** on Samer's Verda machine (`samer-v1-sim`, spot RTX PRO 6000, FIN-03): e-008 (baseline nominal), e-010 (the oracle, launched as v1 by mistake) and e-011 (baseline with `AALTO_DR=train`) are done. v1.2 nominal is running (the real image; 12/15 after 4 trials). Videos of v1.1 / v1.2 are being recorded on a 3rd sim. Failure analysis: `analysis/FINDINGS.md`.
 - **Next:** —
 - **Blockers:** —
 

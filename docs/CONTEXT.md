@@ -63,7 +63,9 @@ How to hand in: [`runbooks/submit.md`](runbooks/submit.md). Hard rules for code:
 | Run | Policy | Sim / task / trials | Objects sorted | Notes |
 |---|---|---|---|---|
 | e-008 | Aalto's classical baseline, camera only (a valid submission) | nominal, sort_fixed, 10 | 26/40 (65 %), gate PASS | **far cross-body objects 2/9**, the rest 24/31 |
-| running | v1, same seeds as e-008 | nominal, sort_fixed | 13/15 after 4 trials (baseline 10/15 on the same 4) | not final |
+| e-010 | **Aalto's oracle**, launched as "v1" by mistake (`--container` without `--policy` runs the oracle) | nominal, sort_fixed, 10 (same seeds as e-008) | 32/40 (80 %) | **not v1**. Useful as the exact-pose reference on the baseline's seeds |
+| e-011 | Aalto's classical baseline | `AALTO_DR=train`, sort_fixed, 10 | 11/40 (28 %), gate FAIL | 2 safe-stops right after time-limit episodes (blocking `reset()`, fixed in our versions) |
+| running | **v1.2, the real image** | nominal, sort_fixed, same seeds as e-008 | 12/15 after 4 trials (baseline 10/15, oracle 13/15 on the same seeds) | not final ([`../eval/analysis/FINDINGS.md`](../eval/analysis/FINDINGS.md)) |
 | e-001 | Aalto's oracle (exact object poses from the sim: **not a valid submission**) | nominal, sort_fixed, 3 | 11/12 (92 %) | no triangles in those layouts |
 | e-004 | Aalto's oracle | venue look, sort_fixed, 6 | 22/27 (82 %) | triangles 2/5 |
 | e-005 | oracle + Gemini Decision 1 choosing the next move | same seeds as e-004 | 23/27 (85 %) | one object more is noise |
@@ -76,7 +78,12 @@ Other measurements:
 - Aalto's oracle over 125 recorded episodes (Marcus): cubes 97 %, cylinders 91 %, **triangles 35 %**. Best π0.5 checkpoint: 3 of 12 objects. ([`../modal_pipeline/TEAM_HANDOVER.md`](../modal_pipeline/TEAM_HANDOVER.md))
 - **Triangles with the stock claw grasp hold in 1 of 15 picks**; face-aligned grasps held 5/5 cubes and 1/1 triangle. (Emīls, e-005/e-006)
 - Camera-only perception (Emīls): 2.5 mm median position error, shape right on 153 of 162 objects, head-pose re-fit 9.79° ± 0.02° on venue-look frames.
-- Grasp check signal (Emīls, 40db2e6): after closing, an empty hand reaches the commanded finger angles within 0.000–0.010 rad; a held block stops the fingers 0.021–0.100 rad short. Flag-gated, not yet measured in sim.
+- Grasp check signal (Emīls, 40db2e6): after closing, an empty hand reaches the commanded finger angles within 0.000–0.010 rad; a held block stops the fingers 0.021–0.100 rad short. Measured in sim since: right on all 11 aborts (e-013) and on 146 of 147 logged picks ([`research/model-monitor-oracle.md`](research/model-monitor-oracle.md)). The trace of 215 grasps in `eval/analysis/` shows the same split.
+- **What fails, grasp by grasp** (Samer + Claude, [`../eval/analysis/FINDINGS.md`](../eval/analysis/FINDINGS.md); baseline, baseline with `AALTO_DR=train` and the oracle on the same 10 seeds):
+  - **Second object into the same bin:** Aalto counts an object only if its centre is below the bin's 6 cm rim. The baseline drops every object at one fixed point per bin, so the next one lands on the first. Only 2 of 8 such drops scored: 6 of the baseline's 14 lost objects.
+  - **Empty grasps:** baseline 49 % of grasps, 70 % with DR, the oracle 34 %. In the nominal sim the planned grasp point is as close to the object for empty grasps as for held ones.
+  - **Second tries hold less than first tries:** 37 % vs 58 % (baseline).
+  - **Cylinders, first grasp held:** baseline 53 %, oracle 89 %.
 - Sim speed: one sim on the RTX PRO 6000 machine runs at 0.52× real time, two or three on one machine at 0.25–0.48×. Scores pace on the sim clock, so speed doesn't change results.
 
 ### 4.4 Submission candidates (`policy/`)
@@ -105,7 +112,7 @@ Other measurements:
 
 ### 6.2 What v2 should look like
 1. **Reader** (once per episode, in a background thread, never blocking `act()`): Gemini Decision 1 (2 s limit) → Gemma 3 1B inside the image → rule parser → fixed mapping. Gemini's answer is used as it comes (0 % confidently wrong on colour-only wording). Gemma's answer is used only when the rule parser agrees or can't read the sentence (Gemma is 8 % confidently wrong on hard wording). First fix the orange/purple refusal.
-2. **Hands** (all offline): whichever measures best, v1.x or decision_oracle in camera mode. Worth adding to either: face grasps for triangles (prefer-face / memory chooser), the finger-angle grasp check with a retry, and the head-pose re-fit (already in v1.2).
+2. **Hands** (all offline): whichever measures best, v1.x or decision_oracle in camera mode. Worth adding to either: a free drop spot in each bin (the cheapest fix found, `eval/analysis/FINDINGS.md`), face grasps for triangles (prefer-face / memory chooser), the finger-angle grasp check with a retry, and the head-pose re-fit (already in v1.2).
 3. **Pacemaker:** `act()` answers 30 times a second from the planned motion, or holds. It never waits on the network.
 
 ### 6.3 Where Gemini helps, and where it doesn't
@@ -125,13 +132,14 @@ Other measurements:
 ### 6.6 Risks we see
 - **Triangles:** the biggest loss in sim (stock claw 1/15).
 - **Far cross-body objects:** 2/9 in the baseline; v1.1 targets them.
+- **Second object into a bin:** v1.x still drops every object at the baseline's one point per bin. An object resting on another scores 0 (`eval/analysis/FINDINGS.md`).
 - **Real robot, none of it tested there:** camera ~10° off (v1.2 targets it), the hand sits 4–6 cm closer than in sim, real depth noise and holes, bins maybe not where `scene.yaml` says.
 - **Infrastructure:** the spot machine can vanish (reinstall: 11 min).
 
 ## 7. Open questions (OPEN)
 - **Aalto:** the image deadline and hand-in form (expected tonight); whether they can pass an API key as an environment variable; how distractors are scored.
 - **Real camera:** is the camera mounted tilted, or is the torso leaning? This decides whether the head-pose re-fit is right on the real robot. Comparing the hands' projected and seen positions in the head camera could tell.
-- **Sim runs queued:** does v1.2's re-fit help with randomisation? Which hands win on the same seeds, v1.2 or decision_oracle in camera mode?
+- **Sim runs queued:** does v1.2's re-fit help with randomisation? (Its first `AALTO_DR=train` run was the oracle by mistake.) Which hands win on the same seeds, v1.2 or decision_oracle in camera mode?
 - **Gemma inside the image:** size, and start-up within the 120 s limit, are untested.
 
 ## 8. Repo rules added today (FACT)

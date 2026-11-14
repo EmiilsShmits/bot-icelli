@@ -35,6 +35,7 @@ Details live in `docs/` and in each folder's `README.md`.
 | `policy/` | The submission: policy server + Dockerfile. Candidates v1, v1.1, v1.2 in `policy/policies/` (status in `policy/README.md`) |
 | `policy/decision_oracle/` | Sim-only exploration, **not in the submission**: Aalto's oracle as motion functions, Gemini Decision 1 / rule choosers, camera-only perception. Has its own README with results |
 | `eval/` | Scoring policies in sim |
+| `eval/analysis/` | What happened in each sim episode, grasp by grasp: `FINDINGS.md` (what fails, what to build), data snapshots, `trace.py` / `traced_eval.py` / `numbers.py` |
 | `third_party/aaltonomous-humanoid/` | Aalto's starter repo (git submodule, pinned). **Never edit it** |
 | `artifacts/` | Local datasets, checkpoints, logs. Git-ignored |
 
