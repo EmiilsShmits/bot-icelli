@@ -4,6 +4,10 @@
 # 1) sparse clone of github.com/marcusoberg/junction2026 at MARCUS_REF (adk_agents/ and agent/ only, not sim_out/);
 # 2) context = those + Aalto's package (our pinned submodule) + the G1 URDF + policy/adk/Dockerfile;
 # 3) patch_headpose.py: his head-camera fit judged by the camera's own move (else the real ~10 deg tilt is ignored);
+#    patch_smooth.py + policy/runtime.py: smooth, jerk-limited arm motions (SMOOTH_MOTION=0 turns it off) and
+#    planner config overrides from the environment (AALTO_CFG_OVERRIDES, ARM_XY_OFFSET; policy/cfg_overrides.py);
+#    patch_lean.py + policy/lean.py: on the real robot (head fit tilted >= 5 deg) IK targets are mapped into the
+#    arm frame, because the robot leans (docs/research/hand-offset-real-data.md; LEAN_MAP=off turns it off);
 # 4) the Gemini key from ~/adk_key.env (GEMINI_API_KEY=..., copied in by hand, never committed) written as
 #    adk_agents/robot_sorter/.env, which the agent reads at start. Samer's decision (Sat 14 Nov ~21:15): the image
 #    carries that key, so anyone who pulls it can read it. The context copy is deleted after the build.
@@ -31,6 +35,9 @@ cp -r "$BI/third_party/aaltonomous-humanoid/aaltonomous" "$C/aaltonomous"
 cp "$URDF" "$C/"
 cp "$BI/policy/adk/Dockerfile" "$C/"
 python3 "$BI/policy/adk/patch_headpose.py" "$C/adk_agents/robot_sorter"
+cp "$BI/policy/smooth_motion.py" "$BI/policy/cfg_overrides.py" "$BI/policy/runtime.py" "$BI/policy/lean.py" "$C/"
+python3 "$BI/policy/adk/patch_smooth.py" "$C/adk_agents/robot_sorter"
+python3 "$BI/policy/adk/patch_lean.py" "$C/adk_agents/robot_sorter"
 umask 077
 if [ -n "$KEY" ]; then
   printf 'GOOGLE_API_KEY=%s\nGOOGLE_GENAI_USE_ENTERPRISE=0\nROBOT_AGENT_MODEL=%s\n' "$KEY" "$MODEL" > "$C/adk_agents/robot_sorter/.env"

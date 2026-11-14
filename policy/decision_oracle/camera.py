@@ -262,6 +262,11 @@ class CameraPerception:
             self.cal.cams[CAM].T_pelvis_optical = fit.T
             self.log(f"[camera] head pose: tilt {fit.tilt_deg:.1f} deg, shift ({fit.dxy[0] * 100:+.1f}, "
                      f"{fit.dxy[1] * 100:+.1f}) cm, yaw {fit.dyaw_deg:+.1f} deg, walls {fit.wall_score:.2f} {fit.why}")
+            try:   # real robot (fit tilted >= 5 deg): aim the arms in the arm frame, policy/lean.py
+                import lean
+                lean.set_fit(self.cal0._T(CAM), fit.T if fit.ok else None, fit.tilt_deg, self.log)
+            except ImportError:
+                pass
         return self.fit
 
     # ------------------------------------------------------------------ detection

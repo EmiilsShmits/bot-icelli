@@ -16,6 +16,7 @@ COPY aaltonomous/ /app/aaltonomous/
 COPY g1_body29_hand14.urdf /app/third_party/xr_teleoperate/assets/g1/g1_body29_hand14.urdf
 COPY agent/ /app/agent_pkg/agent/
 COPY adk_agents/ /app/adk_agents/
+COPY smooth_motion.py cfg_overrides.py runtime.py lean.py /app/
 ENV PYTHONPATH=/app:/app/agent_pkg:/app/adk_agents PORT=8000
 EXPOSE 8000
 CMD ["/opt/adk/bin/python", "-m", "robot_sorter.serve"]

@@ -37,6 +37,8 @@ Emīls + Tiya.
 | `make_report.py`, `hybrid.py` | Tables for RESULTS.md; post-hoc combinations with the rule parser |
 | `run_phase2b.sh`, `run_phase3b.sh`, `run_phase4q.sh`, `run_phase4r.sh` | Extra runs added during the night (Gemma 4 12B, E2B LoRA student, re-queued fit checks) |
 | `results/logs/` | Machine logs from both Verda machines and the watchdog log |
+| `gen_templates.py`, `run_v16g_retrain.sh`, `modal_retrain.py` | v1.6g (Sun 15 Nov): the 1B student trained again with the 14 Nov recipe (the 14 Nov checkpoint was on one laptop only), on a Modal H100 |
+| `compare_v16g.py` | v1.6g: the test sets through the policy's own instruction code (`policy/instruction_gemma.py`, `instruction_d1.py`, the rules' mapping), inside the image on the CPU |
 
 ## How to run
 ```bash

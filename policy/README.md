@@ -20,6 +20,10 @@
 | `policies/oracle_v15.py` | **v1.5:** a different base. Aalto's oracle motions (face grasps, relay, drop spots inside a bin) on the head camera only, with Emīls's upgrades from `decision_oracle/` (failure memory, grasp check, an option search over every object) + same-side arms (each arm stays on its half of the table; cross-side objects are handed over on the centre line) + a grasp for triangles lying on their side (fingers along the ridge, across the two triangular end faces) + colour × shape instructions. Offline, no API calls |
 | `policies/oracle_v16.py` | **v1.6:** v1.5 + Gemini Decision 1 (online, `GEMINI_API_KEY`). It names each new object's colour and shape from a crop, finds saturated blobs no HSV range took (kept only if Decision is sure of a colour and a shape), and reads the instruction (`instruction_d1.py`). The depth geometry keeps the final say on "lying". `V15_SIDES` defaults to `off`. No key, error, deadline (2.5 s) or low confidence: exactly v1.5. act() never waits for a call |
 | `instruction_d1.py` | v1.6 instruction stage: one Decision call started at reset() (10 slots: 9 colour × shape types + `other`), used at the first look if every slot is ≥ 0.6 confident, else the rule parser's mapping stays. Prompt fixes vs `training/instruction_parser/gemini_decision.py`: orange = red and purple = blue, no "invalid?" veto |
+| `policies/oracle_v16g.py` | **v1.6g:** v1.6 with the fine-tuned Gemma 3 1B instruction parser inside the image as the offline middle layer: Decision 1 → Gemma 1B (CPU) → rule parser. Everything else is v1.6. Without the weights or torch it runs exactly as v1.6, but `make docker-build POLICY=v1.6g` fails then, so a v1.6g image always has a working parser |
+| `instruction_gemma.py` | v1.6g's Gemma stage (`GemmaInstruction`: weights from `weights/gemma-parser-1b/`, loaded at server start with one self-test answer; one generate per episode in a background thread, deadline `V16G_GEMMA_DEADLINE` = 5 s after reset; the training prompt and answer parser themselves) and `InstructionChain` (Decision → Gemma → none, same interface as `instruction_d1`) |
+| `requirements-gemma.txt` | v1.6g only: CPU-only torch + transformers, installed by the Dockerfile when `POLICY=v1.6g` |
+| `tools/replay_instruction.py` | Aalto's synthetic replay test with a non-fixed instruction, so v1.6 / v1.6g's background instruction work runs while act() is timed |
 | `policies/look.py` | **look:** never moves (holds the measured pose, ends after `LOOK_SECONDS`=30). Logs v1.4's head-camera fit, the objects it sees with the calibration and the fitted camera, a hand check (tilted camera or leaning robot; not validated yet), depth quality and finger angles. For the first run on the real robot: `docs/runbooks/real-robot.md` |
 | `headpose.py` | Head-camera pose from one depth image (table plane + bin walls). Copied from Emīls's `decision_oracle/camera.py` (that folder stays out of the image); keep the two in sync |
 | `instruction.py` | Instruction → colour → bin, using Emīls's rule parser (`training/instruction_parser/rule_parser.py`) |
@@ -49,6 +53,15 @@ bash policy/get_urdf.sh                              # once: the G1 URDF
 make check POLICY=v1                                 # Linux/macOS: needs pin (Pinocchio) from requirements
 make docker-build POLICY=v1 IMAGE=ghcr.io/<owner>/bot-icelli-policy:v1
 make docker-build POLICY=v1.1 IMAGE=bot-icelli/policy:v1.1     # v1.1; the tuning knobs are env vars (see the file's docstring)
+```
+
+### v1.6g (Gemma 3 1B parser inside the image)
+```bash
+# weights first (git-ignored, 2.0 GB): the student checkpoint folder (config.json, model.safetensors, tokenizer ...)
+cp -r <checkpoint>/ policy/weights/gemma-parser-1b/      # training/instruction_parser/README.md says where it is
+make docker-build POLICY=v1.6g IMAGE=bot-icelli/policy:v1.6g [GEMINI_KEY_FILE=...]   # fails without working weights
+make docker-check IMAGE=bot-icelli/policy:v1.6g          # startup < 120 s (it loads the weights: ~10 s)
+python policy/tools/replay_instruction.py --container bot-icelli/policy:v1.6g   # act() timing while Gemma generates
 ```
 
 ### Triangle tool

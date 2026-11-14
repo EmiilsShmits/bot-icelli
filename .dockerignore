@@ -15,6 +15,8 @@
 !third_party/aaltonomous-humanoid/aaltonomous/sim/aalto_task/layout.py
 !training/instruction_parser/rule_parser.py
 !training/instruction_parser/spec.py
+# v1.6g: the Gemma parser's training prompt (its weights are under policy/weights/, allowed with policy/)
+!training/instruction_parser/prompts.py
 policy/tests/
 policy/decision_oracle/
 # v1.5 needs these decision_oracle modules (no API calls in them on v1.5's path)
