@@ -26,6 +26,7 @@ Details live in `docs/` and in each folder's `README.md`.
 | `docs/runbooks/` | Step-by-step how-tos (Verda + sim setup, submitting), condensed from Aalto's docs |
 | `docs/research/` | Research notes (robot, APIs/credits, Rokoko, Jetson) |
 | `sim/` | Simulation work (Marcus, Samer) |
+| `modal_pipeline/` | Marcus's Modal pipeline: sim, oracle data recording, π0.5 training, sim evaluation, policy server. Start with its `TEAM_HANDOVER.md` |
 | `training/` | Model fine-tuning work (Emīls, Tiya) |
 | `data/` | Datasets: real drops and anything we generate |
 | `policy/` | The submission: policy server + Dockerfile (currently a placeholder) |

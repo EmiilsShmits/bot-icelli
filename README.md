@@ -16,6 +16,7 @@ We're working on Aalto's challenge: make **Väiski**, a Unitree G1 humanoid with
 |---|---|---|
 | Model fine-tuning | [`training/`](training/) | Emīls, Tiya |
 | Simulation | [`sim/`](sim/) | Marcus, Samer |
+| Sim data → training → sim eval on Modal | [`modal_pipeline/`](modal_pipeline/) | Marcus |
 | Datasets | [`data/`](data/) | TBD |
 | The submission (policy server + Docker) | [`policy/`](policy/) | TBD |
 | Scoring in sim | [`eval/`](eval/) | TBD |

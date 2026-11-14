@@ -1,0 +1,2 @@
+Put the contents of lerobot-train's checkpoints/<step>/pretrained_model here
+(model.safetensors, config.json, policy_*.json, tokenizer/). See ../Dockerfile.
