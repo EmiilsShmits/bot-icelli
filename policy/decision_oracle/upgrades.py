@@ -40,6 +40,8 @@ from .policy import DecisionOraclePolicy
 GRASP_EMPTY_ERR = 0.012   # rad. Largest |measured - commanded| finger angle of the closed hand at the end of `lift`.
                           # Sim logs (56 picks): holding an object 0.021-0.100, empty hand 0.000-0.010.
 MOVED_RADIUS = 0.10       # m. Camera mode: a failed pick keeps the object's name if it is found this close.
+BASIC_PLANS_S = 6.0       # s. Least time allowed for one plan per object before grasp variants are searched.
+CROWD_RADIUS = 0.08       # m. A neighbour for another bin this close can be grabbed instead of the target (seen at 6.2 cm).
 
 
 # ---------------------------------------------------------------------------------------------------- chooser
@@ -48,35 +50,82 @@ class MemoryChooser:
       - objects that have not failed yet go first (the oracle's order among them), so easy ones are sorted before
         time is spent on a hard one;
       - never repeat an (arm, grasp) that already failed on this object while another checked option exists;
-      - for cubes and triangles prefer a face grasp, then the alternative triangle angles, then the stock claw.
-    Aalto's oracle retries with the same grasp; in our sim runs the stock claw held a triangle in 1 of 15 picks."""
+      - for cubes and triangles prefer a face grasp, then the alternative triangle angles, then the stock claw;
+      - the stock claw on a triangle is a last resort (it held in 1 of 15 sim picks and tips the triangle over):
+        such an object goes after all others, gets one try, and is given up once the claw has failed on it;
+      - an object with a neighbour for ANOTHER bin within 8 cm goes after the others: the hand can close on the
+        neighbour instead and carry it to the wrong bin (seen in sim: -1 point). A last-resort grasp is not tried
+        at all next to such a neighbour.
+    Aalto's oracle retries with the same grasp and ignores neighbours."""
     name = "memory"
     budget_s = 8.0
     wants_history = True       # UpgradedOraclePolicy then counts retries per object
     pol = None                 # set by UpgradedOraclePolicy: the failure history lives there (pol.hist)
 
+    @staticmethod
+    def _last_resort(o):
+        return o.shape == "triangle" and _grasp_kind(o.grasp) == "stock"
+
+    def _crowded(self, options, ctx):
+        """Names of objects that have a neighbour with a different target bin within CROWD_RADIUS."""
+        dets = ctx.get("dets") or []
+        if self.pol is None or not dets:
+            return set()
+        bins = {d.name: target_bin(self.pol.mapping, d) for d in dets}
+        out = set()
+        for a in dets:
+            for b in dets:
+                if a is not b and bins[a.name] != bins[b.name] \
+                        and np.linalg.norm(a.top[:2] - b.top[:2]) < CROWD_RADIUS:
+                    out.add(a.name)
+        return out
+
     def choose(self, options, ctx):
         hist = ctx.get("history") or (self.pol.hist if self.pol is not None else {})
+        crowded = self._crowded(options, ctx)
         order = {}
         for i, o in enumerate(options):
             order.setdefault(o.obj, i)
-        obj = min(order, key=lambda n: (len(hist.get(n, [])), order[n]))
-        fails = hist.get(obj, [])
-
-        def sig_fail(o):
-            return sum(1 for f in fails if f["arm"] == o.arm and f["grasp"] == o.grasp)
-
-        def kind_fail(o):
-            return sum(1 for f in fails if f["arm"] == o.arm and _grasp_kind(f["grasp"]) == _grasp_kind(o.grasp))
-
         rank = {"face": 0, "face_alt": 1, "stock": 2}
-        same = [o for o in options if o.obj == obj]
-        o = min(same, key=lambda x: (sig_fail(x), x.route != "direct", kind_fail(x), rank[_grasp_kind(x.grasp)],
-                                     not x.is_default, x.duration))
+
+        def best(obj):
+            fails = hist.get(obj, [])
+
+            def sig_fail(o):
+                return sum(1 for f in fails if f["arm"] == o.arm and f["grasp"] == o.grasp)
+
+            def kind_fail(o):
+                return sum(1 for f in fails if f["arm"] == o.arm and _grasp_kind(f["grasp"]) == _grasp_kind(o.grasp))
+
+            same = [o for o in options if o.obj == obj]
+            o = min(same, key=lambda x: (sig_fail(x), x.route != "direct", kind_fail(x), rank[_grasp_kind(x.grasp)],
+                                         not x.is_default, x.duration))
+            return o, sig_fail(o) > 0
+
+        picks = {n: best(n) for n in order}
+        skip, wait = [], []
+        for n, (o, _) in picks.items():
+            claw_failed = any(_grasp_kind(f["grasp"]) == "stock" for f in hist.get(n, []))
+            if o.shape == "triangle" and claw_failed:
+                skip.append(n)                    # the claw has most likely tipped it over: no grasp works then
+            elif self._last_resort(o) and n in crowded:
+                wait.append(n)                    # ~7 % to hold it, and the hand may take the neighbour instead:
+                                                  # not now; given up only if nothing else is left
+        live = [n for n in order if n not in skip and n not in wait]
         d = next(x for x in options if x.is_default)
-        return o, o.drop, {"chooser": self.name, "fallback": None, "changed": o is not d,
-                           "failed_before": [f"{f['arm']}/{f['grasp']}" for f in fails],
-                           "repeat": sig_fail(o) > 0}
+        rec = {"chooser": self.name, "fallback": None}
+        if not live:
+            rec.update(skip=skip + wait, changed=True, failed_before=[], repeat=False)
+            return None, None, rec
+        if skip:
+            rec["skip"] = skip
+        if wait:
+            rec["wait"] = wait
+        obj = min(live, key=lambda n: (self._last_resort(picks[n][0]), len(hist.get(n, [])), n in crowded, order[n]))
+        o, repeat = picks[obj]
+        rec.update(changed=o is not d, failed_before=[f"{f['arm']}/{f['grasp']}" for f in hist.get(obj, [])],
+                   repeat=repeat, crowded=sorted(crowded), last_resort=self._last_resort(o))
+        return o, o.drop, rec
 
 
 # ---------------------------------------------------------------------------------------------------- options
@@ -197,23 +246,25 @@ class MemoryEnumerator(OptionEnumerator):
                         if grasp.startswith("face") else None
                     add(self._option(d, p, arm, grasp, "direct", self.default_drop(d.bin), face_a=fa))
 
-        # 2a. the chooser takes the object with the fewest failures: find it, plan its grasp variants first
-        def nf(d):
-            return len(hist.get(d.name, []))
-        target = d_def
-        for d in sorted(others, key=nf):
-            if nf(d) >= nf(d_def) or out_of_time():
-                break
-            if plan_other(d):
-                target = d
-                break
-        info["target"] = target.name
-        variants(target)
-        # 2b. one plan per other object
+        # 2a. one plan per other object, whatever the budget says (with its own allowance): an object without a
+        #     plan can never be chosen, and the episode ends when the chooser has nothing left
+        t_basic = time.monotonic() + max(budget_s, BASIC_PLANS_S)
         for d in others:
-            if out_of_time():
+            if time.monotonic() > t_basic:
+                info["budget_hit"] = True
                 break
             plan_other(d)
+        deadline = time.monotonic() + budget_s          # the variants get the full budget after the basic plans
+        # 2b. grasp variants of the object the chooser would take now
+        target = d_def
+        try:
+            o, _, _ = pol.chooser.choose(options, {"dets": dets})
+            if o is not None:
+                target = o.det
+        except Exception:
+            pass
+        info["target"] = target.name
+        variants(target)
         # 2c. grasp variants of the rest
         for d in [d_def] + [d for d in others if direct_done.get(d.name)]:
             if d.name != target.name:
@@ -388,11 +439,11 @@ def analyze(path):
         c = collections.Counter()
         for r in outs:
             g = gcs.get(r["decision"])
-            if g is not None:
+            if g is not None and r["route"] == "direct":   # a relay counts as ok when the block is on the counter
                 c[("empty" if g["empty"] else "held", "pick ok" if r["ok"] else "pick failed")] += 1
         held = sorted(g["err"] for g in gcs.values() if not g["empty"])
         emp = sorted(g["err"] for g in gcs.values() if g["empty"])
-        print(f"grasp check: {sum(1 for g in gcs.values() if g['abort'])} aborted; vs outcome: "
+        print(f"grasp check: {sum(1 for g in gcs.values() if g['abort'])} aborted; vs outcome of direct picks: "
               + ", ".join(f"{k[0]} + {k[1]}: {v}" for k, v in sorted(c.items()))
               + (f"; finger error held {held[0]:.3f}-{held[-1]:.3f}" if held else "")
               + (f", empty {emp[0]:.3f}-{emp[-1]:.3f}" if emp else ""))

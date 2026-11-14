@@ -87,9 +87,9 @@ python3 policy/decision_oracle/analyze.py <run_dir>=<decisions.jsonl>    # lapto
 Don't pass `--no-cameras`: the Decision chooser needs the head image.
 
 ## Status
-- **Now (Sat 14 Nov, ~17:00):** the library, four choosers (default, Decision 1, random, prefer_face), camera perception, crop labels, logging and analysis are in place, plus the upgrades in `upgrades.py` (memory chooser, grasp check). Everything except the memory chooser and the grasp check has run in the venue-look sim with gate PASS (0 clips, 30 Hz). **The upgrades in `upgrades.py` have only passed their offline self-test so far**; their sim runs are queued on the sim machine behind the camera run.
+- **Now (Sat 14 Nov, ~17:00):** the library, four choosers (default, Decision 1, random, prefer_face), camera perception, crop labels, logging and analysis are in place, plus the upgrades in `upgrades.py` (memory chooser, grasp check). Everything has run in the venue-look sim with gate PASS (0 clips, 30 Hz). **The upgrades in `upgrades.py` have one sim run so far (e-013, 23/27, gate PASS)**, made before the option-search fix. Runs with the fix, on sort_language, with camera perception and with single upgrades switched off are going on three sim machines (Sat ~17:30).
 - **Next:**
-  - Measure the oracle upgrades on the 12 seeds (queued). If face grasps still fail on triangles: more carry routes, relay as a normal option, a nudge move.
+  - Finish measuring the oracle upgrades on the 12 seeds (running). If face grasps still fail on triangles: more carry routes, relay as a normal option, a nudge move.
   - Placement check: Decision 1 "is it in the bin?" on the head camera.
   - Real-robot gaps for camera mode: real depth noise and holes, bins not exactly at `scene.yaml` positions, the real hand sitting 4–6 cm closer than the sim hand (`sim/venue_look/README.md`). None of these is tested.
   - Turn it into a policy server (it runs in-process inside Aalto's evaluator today).
@@ -104,11 +104,14 @@ Don't pass `--no-cameras`: the Decision chooser needs the head image.
 | e-006 | sort_fixed | camera | oracle's rule (seeds 1002–1003 only) | 6/9 | 1/1 | 5/5 | 0/3 | PASS |
 | e-007 | sort_language | exact poses | Aalto's oracle | 20/28 (71 %) | 13/16 | 6/8 | 1/4 | PASS |
 | e-009 | sort_language | exact poses | Decision 1 | 21/28 (75 %) | 14/16 | 5/8 | 2/4 | PASS |
+| e-012 | sort_fixed | camera | oracle's rule | 18/27 (67 %) | 6/7 | 10/15 | 2/5 | PASS |
+| e-013 | sort_fixed | exact poses | upgrades: memory chooser + grasp check (before the option-search fix) | 23/27 (85 %) | 7/7 | 13/15 | 3/5 | PASS |
 
-Every run: 0 clipped steps, 30 commands/s in sim time, policy 110–135 Hz in real time. Sim time per sorted object: about 22 s. Full rows with logs: [`eval/RESULTS.md`](../../eval/RESULTS.md).
+Every run: 0 clipped steps, 30 commands/s in sim time, policy 110–135 Hz in real time. Sim time per sorted object: about 22 s (15 s with the grasp check, e-013). Full rows with logs: [`eval/RESULTS.md`](../../eval/RESULTS.md).
 
 - **Decision 1 as chooser shows no measurable gain** (one object of 27). 46 calls, 0.64 s median, 1.27 s max, no fallbacks. It took a non-default option in 31 of 46 looks, with confidence around 0.5. Picks where it changed the object: 9/13 ok; drop spot: 6/12; grasp or arm: 0/3; same as the oracle: 8/13.
-- **Camera perception costs nothing on the two seeds tried:** same score per seed as with exact poses. Against the truth: 2.5 mm median position error, shapes right except one cylinder seen as a cube after it was pushed, no false detections.
+- **Oracle upgrades, first sim run: 23/27, no measurable gain yet** (e-013 vs 22/27 for Aalto's oracle and 23/27 for Decision 1 on the same seeds). What did work: the grasp check aborted 11 picks and all 11 were real misses (finger error 0.000–0.001 rad with an empty hand, 0.019–0.071 with a block); it missed 1 block that was held at the lift and lost in the carry. Retries on the same object: first try 17/25, second 5/6, third 1/1. Sim time per sorted object fell from about 22 s to 15 s, because an empty hand stops at the lift. No object went to a wrong bin. This run still had a flaw in the option search (one object's grasp variants used the whole time budget, another object never got a plan and stayed on the table); the fix is in `upgrades.py` and its runs are going.
+- **Camera perception on all 6 seeds: 18/27 against 22/27 with exact poses** (e-012 vs e-004; the 2-seed smoke test e-006 had shown no difference). Localisation is not the cause: 2.4 mm median error over 180 object views, no false detections, and failed picks had the same position error as successful ones. The lost objects are grasp failures (cylinder stock claw 11/24 picks in this run) and blocks that a failed pick tipped over (0/3 picks; a lying cylinder is read as a cube). With 27 objects and picks that succeed about half the time, 4 objects is within run-to-run spread.
 - **Camera perception on 115 saved sim frames** (arms often in view): 229 of 246 objects matched, 2.5 mm median error (4.4 mm at 90 %), colour 229/229, shape 153/162 by geometry, yaw error under 0.5° median. Head pose fit: 9.79° ± 0.02° tilt on every frame.
 - **Decision 1 crop labels** on those frames: 37/37 upright blocks right on shape, 48/48 on colour, ~1 s per call; 0/11 on tipped blocks (it says "triangle"), which the geometry catches.
 
