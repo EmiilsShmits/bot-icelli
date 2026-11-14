@@ -1,0 +1,16 @@
+# secrets and local environments: never commit
+.env
+.venv/
+.adk/
+# sim_out/ (run outputs fetched from Modal: scores, logs, per-tick recordings, videos) is NOT committed in the team
+# repo (its root .gitignore keeps runs/ out, and the videos are 1.4 GB). Marcus's copy with all of it:
+# github.com/marcusoberg/junction2026. sim/out/ (older frame sheets and videos) is not committed either.
+sim_out/
+sim/out/
+__pycache__/
+*.pyc
+.DS_Store
+# the organisers' repo is cloned separately (github.com/zupermiez/aaltonomous-humanoid)
+aaltonomous-humanoid/
+# model weights
+submission/weights/

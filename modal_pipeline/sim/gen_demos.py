@@ -19,6 +19,9 @@ One folder per episode, <out>/ep_s<seed>/ (written elsewhere first, moved in whe
 success = every object in its correct bin, the oracle ended the episode itself, and no safety clip.
 Convert with sim/to_dataset.py (by default it keeps the successful pick-and-place segments of every episode).
 
+--policy skills-random records our skill library (agent/) instead of the oracle: same planner and checks, but a
+random object order and random approach parameters per pick, with every pick's skill arguments in the labels.
+
 One deliberate change to the oracle: --max-attempts (default 2) tries per OBJECT. Its own limit counts tries per
 table position, so an object that moves when a grasp fails counts as new and is retried until the time runs out
 (seen with every triangular prism: 0 of 7 sorted, 5 tries each). After the limit the object is hidden from the oracle.
@@ -106,6 +109,10 @@ def main(argv=None):
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--jpeg-quality", type=int, default=92)
     ap.add_argument("--max-attempts", type=int, default=2, help="oracle tries per object (0 = its own behaviour)")
+    ap.add_argument("--policy", default="oracle", choices=["oracle", "skills-rule", "skills-random"],
+                    help="who solves the episode: the organisers' oracle, or our skill library (agent/) with exact "
+                         "poses and the rule chooser / the random chooser (varied order, approach, speed, drop point)")
+    ap.add_argument("--variety", type=float, default=1.0, help="skills-random: 0..1, how far parameters stray")
     ap.add_argument("--tmp", default="/tmp/aalto_demo_tmp")
     a = ap.parse_args(argv)
 
@@ -131,15 +138,30 @@ def main(argv=None):
     env = AaltoEnv(backend="sim", task=a.task, seed=a.seed, time_limit=a.time_limit, realtime=True,
                    img_server_ip=a.host, head_rgbd=True,
                    head_rgbd_port=int(os.environ.get("AALTO_RGBD_PORT", "55560")), cameras=True)
-    pol = OraclePolicy(SceneClient(a.host), safety=env.filter.cfg, time_limit=a.time_limit,
-                       privileged_mapping=lambda: env.mapping, log=None)
-    client = E.LocalClient(pol)
+    skills = a.policy != "oracle"
+    if skills:
+        from agent.runtime import RandomChooser, RuleChooser, SkillPolicy
+        from agent.skills import SkillContext
+        pol = SkillPolicy(ctx=SkillContext(safety=env.filter.cfg), perception="sim", scene_client=SceneClient(a.host),
+                          time_limit=a.time_limit, max_attempts=max(1, a.max_attempts), log=None)
+        pol.mapping_source = "parsed"
+    else:
+        pol = OraclePolicy(SceneClient(a.host), safety=env.filter.cfg, time_limit=a.time_limit,
+                           privileged_mapping=lambda: env.mapping, log=None)
+    client = E.LocalClient(pol, name=a.policy)
     spec = env.filter.spec
     rest = float(env.scene.cfg["success"]["at_rest_speed"])
     stop = threading.Event()
 
     cur = {"rec": None, "segments": []}
     start_plan = pol._start
+
+    def start_skill(traj, decision, t):       # SkillPolicy keeps its own labels; add the recorder's tick
+        n = len(pol.segments)
+        start_plan(traj, decision, t)
+        if len(pol.segments) > n:
+            pol.segments[-1]["tick"] = len(cur["rec"].rows) if cur["rec"] else None
+            cur["segments"].append(pol.segments[-1])
 
     def start_and_log(plan, t):               # which object the oracle starts on, and when
         ph = [(str(n), int(s), int(e)) for n, s, e in (getattr(plan, "phases", None) or [])]
@@ -148,8 +170,8 @@ def main(argv=None):
                                 "bin": str(plan.target_bin), "side": getattr(plan, "side", None),
                                 "relay": getattr(plan, "relay", None), "plan_ticks": len(plan.arm), "phases": ph})
         return start_plan(plan, t)
-    pol._start = start_and_log
-    if a.max_attempts > 0:
+    pol._start = start_skill if skills else start_and_log
+    if a.max_attempts > 0 and not skills:
         detect = pol.perception.detect
 
         def detect_untried(*args, **kw):
@@ -175,6 +197,9 @@ def main(argv=None):
                 dr = sc.call(cmd="randomize", seed=seed).get("params") if sim_info.get("dr") else None
                 rec = DemoRecorder(tmp / name, a.jpeg_quality)
                 cur["rec"], cur["segments"] = rec, []
+                if skills:
+                    pol.chooser = RandomChooser(seed, a.variety, pol.max_attempts) if a.policy == "skills-random" \
+                        else RuleChooser(pol.max_attempts)
                 t0 = time.monotonic()
                 summary, events = run_episode(env, client, i, seed, rec, stop, a.task)
                 rtf = summary.get("rtf") or 1.0
@@ -183,7 +208,7 @@ def main(argv=None):
                 outc = [o["outcome"] for o in ev["outcomes"]]
                 clips = (summary.get("safety") or {}).get("clipped_steps") or 0
                 success = bool(ev["all_correct"]) and summary["end_reason"] == "done" and clips == 0
-                meta = {"format": FORMAT, "source": "sim-oracle", "task": a.task, "seed": seed, "variant": variant,
+                meta = {"format": FORMAT, "source": f"sim-{a.policy}", "task": a.task, "seed": seed, "variant": variant,
                         "instruction": summary["instruction"], "mapping": env.mapping, "layout": env.layout,
                         "success": success, "outcomes": ev["outcomes"], "score": ev["score"],
                         "n_objects": len(outc), "n_correct": outc.count("correct"), "all_correct": ev["all_correct"],

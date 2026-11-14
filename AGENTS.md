@@ -29,7 +29,7 @@ Details live in `docs/` and in each folder's `README.md`.
 | `docs/runbooks/` | Step-by-step how-tos (Verda + sim setup, recreating the venue-look sim, submitting) |
 | `docs/research/` | Research notes (robot, APIs/credits, Rokoko, Jetson) |
 | `sim/` | Simulation work (Marcus, Samer) |
-| `modal_pipeline/` | Marcus's Modal pipeline: sim, oracle data recording, π0.5 training, sim evaluation, policy server. Start with its `TEAM_HANDOVER.md` |
+| `modal_pipeline/` | Marcus's work, copied from his repo (github.com/marcusoberg/junction2026): Modal pipeline (sim in our venue look by default, oracle data recording, π0.5 training, sim evaluation), skill runtime, ADK agent. Start with its `README.md` and `TEAM_HANDOVER.md` |
 | `training/` | Model fine-tuning work (Emīls, Tiya) |
 | `data/` | Datasets: real drops and anything we generate |
 | `policy/` | The submission: policy server + Dockerfile. Candidates v1, v1.1, v1.2 in `policy/policies/` (status in `policy/README.md`) |

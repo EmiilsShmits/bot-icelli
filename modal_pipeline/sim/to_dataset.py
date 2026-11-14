@@ -145,7 +145,8 @@ def convert(raw, root, repo_id, schema_name="drop1", max_idle=15, only_success=F
                 marks.append({"frame": int(sum(len(x) for x in keeps)), "frames": int(len(k)), "object": seg["object"],
                               "shape": seg["object"].split("_")[2] if seg["object"].count("_") >= 2 else None,
                               "color": seg["color"], "bin": seg["bin"], "arm": seg["side"],
-                              "relay": str(seg["bin"]).startswith("relay")})
+                              "relay": str(seg["bin"]).startswith("relay"),
+                              "skill": seg.get("skill", "pick_and_place"), "args": seg.get("args")})
                 keeps.append(k)
             if not keeps:
                 print(f"{d.name}: {meta.get('n_correct')}/{meta.get('n_objects')} objects sorted -> nothing kept", flush=True)

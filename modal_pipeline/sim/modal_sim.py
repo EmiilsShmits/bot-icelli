@@ -18,6 +18,11 @@ OMNI_KIT_ACCEPT_EULA=YES).
     modal run sim/modal_sim.py --action baseline --trials 3       # their oracle baseline, rung 1
     modal run sim/modal_sim.py --action eval-model --ckpt pi05-pickcube-v1/checkpoints/002000 --trials 2
                                                    # scores + a head-camera video of every trial
+    modal run sim/modal_sim.py --action eval-skills --trials 5 --seed 1000     # the skill policy in agent/ (camera)
+    modal run sim/modal_sim.py --action eval-agent --trials 2 --seed 1000      # Gemini drives the skills (secret `gemini`)
+    modal run sim/modal_sim.py --action eval-adk --trials 2 --seed 1000        # the ADK agent in adk_agents/ (key from its .env)
+    modal run sim/modal_sim.py --action eval-adk --trials 5 --seed 2000 --variant "--colors real --dr wide" --dr wide
+                                                   # ... on a varied scene: see sim/scene_variant.py
     modal run sim/modal_sim.py --action sh --script "aalto sim && aalto eval --policy oracle --task sort_language --trials 2"
 Demonstrations for training: the oracle sorts, we record every tick (sim/gen_demos.py), then convert to a LeRobot
 dataset in the format of the real-robot drop (sim/to_dataset.py). --shards sims run in parallel, one L40S each;
@@ -27,11 +32,18 @@ an oracle episode takes about 2.5 minutes at this sim's speed.
     modal run sim/modal_sim.py --action convert --name sim_fixed_v1 --tag sim_fixed_v1a   # ... into another dataset,
                                               # e.g. the episodes recorded so far while the sims are still running
     modal run training/modal_pi05.py --action prepare --src sim_fixed_v1 --name sim_fixed_v1     # then train on it
+  --gen-args "--policy skills-random" records our skill library (agent/) with random object order and approach
+  parameters instead of the oracle (more varied demonstrations, each pick labelled with its skill arguments).
   --dr train = the organisers' training randomisation in every sim, none = nominal scene, mix = 3 of 4 sims
   randomised. --mode segments (default) keeps one training episode per successful pick-and-place and leaves the
   oracle's failed grasps out; --mode episodes keeps whole episodes. --eval-task sort_language records rung-2 episodes. Seeds start at --seed (default 100000; the
   evaluator uses 1000+), shard k uses seed + 1000 k. Re-running the same command skips episodes already recorded.
   Raw episodes: aalto-data volume, sim_raw/<name>/. Dataset: aalto-data volume, raw/<name>.
+Scene: every action runs in our venue look by default (bot-icelli `sim/venue_look/`: the real table, bins, lighting
+and a head camera 10 deg further down, objects scattered where the real ones lie). --look none = the organisers'
+nominal scene. The look is applied after --variant, so a variant's colours and instructions still count; its
+--placement wide is replaced by the venue's object spread (yaw still applies).
+    modal run sim/modal_sim.py --action boot --look none                # the nominal scene, as before
 Outputs (sim log, snapshots, runs/eval/...) land on the `aalto-sim-out` volume under <tag>/:
     mkdir -p sim_out && modal volume get aalto-sim-out <tag> sim_out     # the folder must exist first
 """
@@ -49,6 +61,15 @@ HERE = Path(__file__).resolve().parent
 REPO = next((p for p in (HERE.parent / "aaltonomous-humanoid", HERE.parent.parent / "third_party" / "aaltonomous-humanoid")
              if (p / "aaltonomous").is_dir()), HERE.parent / "aaltonomous-humanoid")
 APP_DIR = "/opt/aalto"
+# Our venue look: sim/venue_look/ at the root of the team repo (this folder is modal_pipeline/sim/).
+VENUE = HERE.parent.parent / "sim" / "venue_look"
+# Run at the start of a session with --look venue: write scene_venue.yaml (the organisers' scene.yaml, as edited by
+# any --variant, plus the geometry of venue.yaml: 7.5 cm bin walls, object spread), then switch the look on for
+# every process the script starts (sim, evaluator, policy server), so they all use the same scene.
+VENUE_ON = ("python -c \"import sys; sys.path.insert(0, '/opt/venue_look'); import make_assets; "
+            f"make_assets.scene_venue('{APP_DIR}/aaltonomous/scene/scene.yaml')\" "
+            "&& export AALTO_LOOK=/opt/venue_look/venue.yaml AALTO_SCENE=/opt/venue_look/scene_venue.yaml")
+LOOKS = ("venue", "none")
 KITCACHE = "/root/miniforge3/envs/isaac/lib/python3.12/site-packages/isaacsim/kit/cache"
 SETUP = f"cd {APP_DIR} && AALTO_NO_GPU=1 bash aaltonomous/cloud/setup_instance.sh"
 RETRY = f"/usr/local/bin/python {APP_DIR}/retry_setup.py"
@@ -87,8 +108,19 @@ image = (
     # next to the sim the way a submission container would (the sim's own env is left exactly as they built it).
     .run_commands("/usr/local/bin/python -m venv /opt/policy && /opt/policy/bin/pip install --no-cache-dir "
                   "'lerobot[pi]==0.7.0' msgpack 'websockets>=12' pin pyyaml")
+    # The venue look. patch_aalto.py only adds two switches to the organisers' scene code (AALTO_LOOK = appearance
+    # and head camera pose, AALTO_SCENE = geometry); with neither set the sim is exactly their nominal scene.
+    .add_local_dir(VENUE, "/opt/venue_look", copy=True,
+                   ignore=["**/__pycache__", "**/*.pyc", "tools", "tools/**", "*.md", "scene_venue.yaml"])
+    .run_commands(f"/usr/local/bin/python /opt/venue_look/patch_aalto.py {APP_DIR}")
     .add_local_file(HERE.parent / "submission/server.py", "/opt/submission/server.py")
     .add_local_file(HERE / "gen_demos.py", "/opt/sim/gen_demos.py")
+    .add_local_file(HERE / "scene_variant.py", "/opt/sim/scene_variant.py")
+    .add_local_dir(HERE.parent / "agent", "/opt/agent_pkg/agent", ignore=["**/__pycache__", "**/*.pyc", "**/*.md"])
+    # The ADK agent (adk_agents/robot_sorter). Its .env holds the API key and must not leave the laptop: the key
+    # comes from the Modal secret `gemini` instead.
+    .add_local_dir(HERE.parent / "adk_agents", "/opt/adk_agents",
+                   ignore=["**/__pycache__", "**/*.pyc", "**/*.md", "**/.env", "**/.adk", "**/.DS_Store"])
 )
 # Converting recorded episodes to a LeRobot dataset needs no GPU and no sim: a small image of its own.
 convert_image = (
@@ -111,7 +143,7 @@ runs_vol = modal.Volume.from_name("aalto-runs", create_if_missing=True)         
 data_vol = modal.Volume.from_name("aalto-data", create_if_missing=True)          # datasets (the training app reads it)
 SIM_RAW, SIM_DS, RAW = Path("/data/sim_raw"), Path("/data/sim_ds"), Path("/data/raw")
 SHELL_PREFIX = (f"source /root/miniforge3/etc/profile.d/conda.sh && conda activate isaac && cd {APP_DIR} "
-                f"&& export PYTHONPATH={APP_DIR} && ")
+                f"&& export PYTHONPATH={APP_DIR}:/opt/agent_pkg && ")
 
 
 def bash(script, check=False, timeout=None):
@@ -148,9 +180,15 @@ def collect(tag):
 
 @app.function(image=image, gpu="L40S", cpu=12, memory=49152, timeout=4 * 3600,
               volumes={"/kitcache": kit_vol, "/out": out_vol, "/runs": runs_vol, "/data": data_vol})
-def session(script: str, tag: str, dr: str = "", task: str = "Aalto-Sort-G129-Dex3-Joint"):
-    """Run a shell script inside the sim environment (the `aalto` CLI is on PATH), then save the outputs."""
+def session(script: str, tag: str, dr: str = "", task: str = "Aalto-Sort-G129-Dex3-Joint", look: str = "venue",
+            variant: str = ""):
+    """Run a shell script inside the sim environment (the `aalto` CLI is on PATH), then save the outputs.
+    variant: arguments for scene_variant.py (edits the scene first); look: "venue" (default) or "none"."""
     os.environ["TASK"] = task
+    first = ([f"python /opt/sim/scene_variant.py {variant}"] if variant else []) + ([VENUE_ON] if look == "venue" else [])
+    if first:
+        script = " && ".join(first) + " && " + script
+    print(f"scene: look={look}" + (f", variant {variant}" if variant else ""), flush=True)
     if dr and dr != "none":
         os.environ["AALTO_DR"] = dr          # e.g. train (aaltonomous/sim/dr/train.yaml)
     prepare_container()
@@ -211,7 +249,7 @@ def merge(name: str, expect: int = 0):
 @app.function(image=convert_image, cpu=1, timeout=8 * 3600, volumes={"/data": data_vol})
 def datagen(name: str, shards: int = 1, episodes: int = 2, seed: int = 100000, eval_task: str = "sort_fixed",
             dr: str = "train", task: str = "Aalto-Sort-G129-Dex3-Joint", schema: str = "drop1", max_idle: int = 15,
-            record: bool = True, mode: str = "segments", out: str = ""):
+            record: bool = True, mode: str = "segments", out: str = "", gen_args: str = "", look: str = "venue"):
     """Record `episodes` oracle episodes in each of `shards` parallel sims, convert each shard as soon as its sim
     is done, then merge. Runs on Modal (not in the local entrypoint) so `modal run --detach` sees it through."""
     from concurrent.futures import ThreadPoolExecutor
@@ -221,9 +259,9 @@ def datagen(name: str, shards: int = 1, episodes: int = 2, seed: int = 100000, e
         variant = ("none" if k % 4 == 0 else "train") if dr == "mix" else dr
         if record:
             script = (f"aalto sim && python /opt/sim/gen_demos.py --task {eval_task} --seed {seed + 1000 * k} "
-                      f"--episodes {episodes} --out {SIM_RAW / name / shard}")
+                      f"--episodes {episodes} --out {SIM_RAW / name / shard} {gen_args}")
             try:
-                rc = session.remote(script, f"{name}-{shard}", variant, task)
+                rc = session.remote(script, f"{name}-{shard}", variant, task, look=look)
                 print(f"{shard} ({variant}): recording finished, exit code {rc}", flush=True)
             except Exception as e:           # a lost sim still leaves its finished episodes on the volume
                 print(f"{shard} ({variant}): recording failed: {e!r}", flush=True)
@@ -253,14 +291,18 @@ def datagen(name: str, shards: int = 1, episodes: int = 2, seed: int = 100000, e
 def main(action: str = "boot", script: str = "", trials: int = 3, dr: str = "", tag: str = "",
          task: str = "Aalto-Sort-G129-Dex3-Joint", ckpt: str = "", eval_task: str = "sort_fixed", video: bool = True,
          name: str = "", shards: int = 1, episodes: int = 2, seed: int = 100000, schema: str = "drop1",
-         max_idle: int = 15, mode: str = "segments", background: bool = False, server_env: str = ""):
+         max_idle: int = 15, mode: str = "segments", background: bool = False, server_env: str = "",
+         gen_args: str = "", variant: str = "", look: str = "venue"):
     # --background (with `modal run --detach`): start the job and return, so it does not depend on this computer
     # staying awake and online. Results land on the volumes as usual.
+    if look not in LOOKS:
+        raise SystemExit(f"--look {look}: use one of {', '.join(LOOKS)}")
     if action in ("datagen", "convert"):
         if not name:
             raise SystemExit(f"--action {action} needs --name <dataset name>")
         args = (name, shards, episodes, seed, eval_task, dr or "train", task, schema, max_idle)
-        kw = dict(record=action == "datagen", mode=mode, out=tag if action == "convert" else "")
+        kw = dict(record=action == "datagen", mode=mode, out=tag if action == "convert" else "", gen_args=gen_args,
+                  look=look)
         if background:
             print(f"started {action} {name} in the background (call {datagen.spawn(*args, **kw).object_id})")
         else:
@@ -277,20 +319,65 @@ def main(action: str = "boot", script: str = "", trials: int = 3, dr: str = "", 
              + (EVAL_WITH_VIDEO if video else "aalto eval")
              + f" --policy ws://localhost:8000 --team model --task {eval_task} --trials {trials}; rc=$?; "
              + "grep 'episode end' /tmp/policy.log | tail -3; exit $rc")
+    # eval-skills: our skill policy (agent/runtime/server.py) in the sim's own environment, scored the same way.
+    #   --server-env "AGENT_PERCEPTION=sim" for exact poses instead of the head camera, "AGENT_CHOOSER=random", ...
+    skills = (f"({server_env} PYTHONPATH={APP_DIR}:/opt/agent_pkg python -m agent.runtime.server > /tmp/policy.log 2>&1 &); "
+              f"aalto sim && sleep 10; grep ' ready' /tmp/policy.log; "
+              + (EVAL_WITH_VIDEO if video else "aalto eval")
+              + f" --policy ws://localhost:8000 --team skills --task {eval_task} --trials {trials} --seed {seed}; rc=$?; "
+              + "grep 'episode end\\|Traceback\\|Error' /tmp/policy.log | tail -8; exit $rc")
+    # eval-agent: the Gemini-driven loop (agent/runtime/agent_policy.py). Needs a Modal secret named `gemini`
+    # holding GEMINI_API_KEY. It runs in the policy venv (google-genai is installed there at start).
+    agent_script = ("/opt/policy/bin/pip install -q google-genai 2>&1 | tail -1; "
+                    f"(AGENT_MODE=gemini {server_env} PYTHONPATH={APP_DIR}:/opt/agent_pkg /opt/policy/bin/python "
+                    f"-m agent.runtime.server > /tmp/policy.log 2>&1 &); aalto sim && sleep 15; grep ' ready\\|Error' /tmp/policy.log; "
+                    + (EVAL_WITH_VIDEO if video else "aalto eval")
+                    + f" --policy ws://localhost:8000 --team agent --task {eval_task} --trials {trials} --seed {seed}; rc=$?; "
+                    + "grep 'agent t=\\|episode end\\|Traceback\\|Error' /tmp/policy.log | tail -60; exit $rc")
+    # eval-adk: the Google ADK agent (adk_agents/robot_sorter/serve.py) as the policy server. The API key and the
+    # model are taken from adk_agents/robot_sorter/.env on this computer when the run is started (the file itself is
+    # not uploaded). ADK gets an environment of its own, made at start (about a minute), with the
+    # versions the agent was tested with; nothing in the image or the sim's environment changes.
+    #   --server-env "ROBOT_AGENT_MODEL=gemini-4-argon"   another model (default gemini-3.8-flash)
+    # pyzmq is deliberately NOT installed there: without it the policy process cannot talk to the sim's scene
+    # service (the only source of ground-truth object poses), whatever the code does.
+    #   --variant "--colors real --dr wide --placement wide --instructions shape" --dr wide
+    #       edit the container's scene before the sim starts (sim/scene_variant.py): other object colours, shades,
+    #       placements, shape-based instructions. With "--dr wide" in the variant also pass --dr wide.
+    adk_script = ("/usr/local/bin/python -m venv /opt/adk && /opt/adk/bin/pip install -q google-adk==2.14.1 numpy==2.2.6 "
+                  "scipy==1.15.2 opencv-python-headless==4.10.0.84 pyyaml msgpack 'websockets>=12' pin==3.3.1 "
+                  "2>&1 | tail -2; "
+                  f"({server_env} PYTHONPATH={APP_DIR}:/opt/agent_pkg:/opt/adk_agents /opt/adk/bin/python "
+                  f"-m robot_sorter.serve > /tmp/policy.log 2>&1 &); aalto sim && "
+                  f"for i in $(seq 60); do grep -q ' ready\\|Traceback\\|Error' /tmp/policy.log && break; sleep 2; done; "
+                  f"grep ' ready\\|Traceback\\|Error' /tmp/policy.log | tail -5; "
+                  + (EVAL_WITH_VIDEO if video else "aalto eval")
+                  + f" --policy ws://localhost:8000 --team adk --task {eval_task} --trials {trials} --seed {seed}; rc=$?; "
+                  + "grep 'agent\\|robot t=\\|Traceback\\|Error' /tmp/policy.log | cut -c1-400 | tail -80; exit $rc")
     scripts = {
         "boot": "aalto sim && aalto check; aalto snap",
+        "eval-skills": skills,
+        "eval-agent": agent_script,
+        "eval-adk": adk_script,
         "baseline": f"aalto sim && aalto baseline --trials {trials}",
         "eval-model": model if ckpt else "",
         "sh": script,
     }
     if action not in scripts or not scripts[action]:
-        raise SystemExit("--action boot | baseline | eval-model --ckpt <run>/checkpoints/<step> | sh --script '...' "
+        raise SystemExit("--action boot | baseline | eval-model --ckpt <run>/checkpoints/<step> | eval-skills | eval-agent | eval-adk | sh --script '...' "
                          "| datagen --name <dataset> | convert --name <dataset>")
     tag = tag or f"{action}-{time.strftime('%m%d-%H%M%S')}"
+    if action == "eval-adk":       # the key and model come from the agent's own .env, read here and never stored
+        env_file = HERE.parent / "adk_agents" / "robot_sorter" / ".env"
+        pairs = [line.split("=", 1) for line in env_file.read_text().splitlines()
+                 if "=" in line and not line.lstrip().startswith("#")]
+        fn = session.with_options(secrets=[modal.Secret.from_dict({k.strip(): v.strip().strip("'\"") for k, v in pairs})])
+    else:
+        fn = session.with_options(secrets=[modal.Secret.from_name("gemini")]) if action == "eval-agent" else session
     if background:
-        call = session.spawn(scripts[action], tag, dr, task)
+        call = fn.spawn(scripts[action], tag, dr, task, look=look, variant=variant)
         print(f"started {action} in the background (call {call.object_id}); when it is done:\n"
               f"  mkdir -p sim_out && modal volume get aalto-sim-out {tag} sim_out")
         return
-    rc = session.remote(scripts[action], tag, dr, task)
+    rc = fn.remote(scripts[action], tag, dr, task, look=look, variant=variant)
     print(f"tag {tag}: exit code {rc}")

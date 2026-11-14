@@ -49,6 +49,7 @@ source /root/venue_look/venue_env.sh                   # needed in EVERY shell: 
 bash aaltonomous/cloud/aalto.sh sim
 bash aaltonomous/cloud/aalto.sh check                  # 9 PASS
 ```
+- **On Modal:** `modal_pipeline/sim/modal_sim.py` builds this folder into its image and uses the look for every action by default (`--look none` turns it off). See `modal_pipeline/README.md`.
 - **Back to Aalto's default:** `aalto.sh stop`, `unset AALTO_LOOK AALTO_SCENE`, `aalto.sh sim`.
 - **After any change in this folder:** copy it to the machine and run `bash /root/venue_look/redeploy.sh`; it does the steps above.
 - **After editing `patch_aalto.py`, by hand:** on the machine, `git checkout aaltonomous/scene/scene.py aaltonomous/sim/aalto_task/scene_cfg.py aaltonomous/sim/aalto_task/hooks.py` in Aalto's clone, then run the patch again (it skips files it has already patched).

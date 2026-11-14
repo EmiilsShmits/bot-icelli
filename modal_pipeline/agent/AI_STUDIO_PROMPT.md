@@ -4,13 +4,13 @@ How to use: start a new chat in AI Studio with the team's hackathon key, attach 
 "Files to attach", then paste everything below the line. The files matter more than the summary: the model
 should read the real code, not our description of it.
 
-**Files to attach** (all under `third_party/aaltonomous-humanoid/aaltonomous/` unless noted; our own are in
-`modal_pipeline/`):
+**Files to attach** (all under `aaltonomous-humanoid/aaltonomous/` unless noted):
 `sim/oracle.py`, `baselines/classical/planner.py`, `baselines/classical/kinematics.py`,
 `baselines/classical/policy.py`, `baselines/classical/perception.py`, `baselines/classical/config.yaml`,
 `interface/safety.py`, `interface/tasks.py`, `interface/calibration.yaml`, `interface/joint_spec.yaml`,
 `scene/scene.yaml`, `deploy/policy_server.py`, `deploy/protocol.py`, `sim/scene_client.py`,
-and from our own code `submission/server.py` and `sim/gen_demos.py`.
+and from our own code: everything under `agent/` (`README.md`, `skills/*.py`, `runtime/*.py`,
+`tests/test_skills.py`), `submission/server.py` and `sim/gen_demos.py`.
 
 ---
 
@@ -92,17 +92,40 @@ pelvis frame (colour and position, no shape). The organisers measured about 4 mm
 the pick-and-place motion but is still imprecise (3 of 12 objects sorted). It could become one more tool
 ("run the learned skill with this prompt for N seconds").
 
+**Our skill library and runtime** (`agent/`, read `agent/README.md` first). Already written and tested offline:
+- `agent/skills/`: `SkillContext`; `detect_camera`, `detect_sim`, `joint_state`; checked motion skills
+  `pick_and_place`, `pick`, `place`, `place_on_counter`, `relocate`, `go_home`, `set_hand` returning a `Trajectory`;
+  `Approach` (finger direction, tilt, slanted descent, speed, carry height, grasp height, position correction).
+  With default arguments `pick_and_place` is identical to the oracle planner.
+- `agent/runtime/`: `SkillPolicy` (non-blocking `act()`, one background decision per move, attempt tracking, a
+  hard attempt budget), `RuleChooser`, `RandomChooser`, `LLMChooser(ask, fallback, timeout_s)`, `parse_mapping`
+  (instruction → colour/shape → bin, no model), and a policy server.
+- `agent/skills/tools.py`: tool declarations (`pick_and_place`, `relocate`, `done`), a system prompt, `validate`.
+- `agent/runtime/agent_policy.py`: **`AgentPolicy`, the loop we want to run.** A tool-calling model
+  (`brain.decide(view)`) gets the raw head and wrist images and answers with one tool call, naming an object by
+  pointing at it in the head image (`[y, x]`, 0..1000); pointing + depth gives the 3D target. A fast closed-question
+  model (`reflex.answer(view, questions)`) is asked during a move (after the lift: is the hand holding an object?)
+  and a confident "no" aborts the move. Tested offline with stand-in models.
+- `agent/runtime/gemini.py`: `GeminiBrain` (`client.interactions.create` with tools and image blocks, default
+  `gemini-4-hydrogen`) and `GeminiReflex` (`client.decisions.create`, `gemini-decision-1`). **Written from the
+  docs, never run.** Check every call in it against the current API and fix it.
+- In the Isaac sim the skills with a rule-based chooser sort 16 of 20 objects with zero safety clips.
+- **What we want from you:** make `gemini.py` correct; improve the prompts and tool descriptions; more reflex
+  questions during a move (object slipping, about to hit a bin wall, object knocked over) and what to do on each
+  answer; the skills listed in 4A that do not exist yet; level 3.
+
 **A demonstration recorder** (`sim/gen_demos.py`): runs the oracle in the sim and stores every tick (three camera
 images, joint states, commands) plus, per pick-and-place, the object, colour, shape, bin, arm and phase timings.
 
 ## 4. What we want from you
 
-### A. A skill library we can import from a new `agent/` package
+### A. Extend the skill library in `agent/`
 
-Refactor by wrapping, not by editing the organisers' files (import `Planner`, `ArmKinematics`, `Scene`,
-`SafetyFilter`, `Perception` and build on them). Each skill is a plain Python function with typed arguments and a
-JSON-serialisable result, so the same function can be (1) called by the Gemini agent as a tool, (2) called by a
-rule-based fallback planner, (3) called with randomised parameters to record more varied demonstrations.
+Review what is there, tell us what is wrong or fragile, and extend it in the same style: wrap, do not edit the
+organisers' files; each skill is a plain Python function with typed arguments and a JSON-serialisable result, so
+the same function can be (1) called by the Gemini agent as a tool, (2) called by the rule-based fallback, (3)
+called with randomised parameters to record more varied demonstrations. The lists below are the full set we would
+like; the README says which already exist.
 
 Perception and state tools, for example:
 - `get_joint_state()` → arm and hand angles, grasp-point pose of each hand (forward kinematics), what each hand
@@ -128,9 +151,10 @@ which of these are worth having for this task and implement the ones that are.
 
 ### B. The agent runtime
 
-- A `Policy` subclass for the policy server. `act()` never blocks: it returns the next ticks of the trajectory
-  being executed, or a hold.
-- A background agent loop that observes (tools above, plus head camera images when useful), asks Gemini what to do
+- `agent/runtime/policy.py` already gives a `Policy` whose `act()` never blocks and a background decision per
+  move through a chooser. Build on it: write the Gemini-backed `ask(world)` for `LLMChooser`, and change the loop
+  where the model needs more than one call per move (for example look, then decide).
+- The agent loop observes (tools above, plus head camera images when useful), asks Gemini what to do
   next, validates the answer, and queues skills. One decision per pick-and-place is the right granularity; the
   30 Hz loop is never waiting on the network.
 - We want to use the **Gemini Decisions API** that Google released this week, and we have a hackathon API key. We

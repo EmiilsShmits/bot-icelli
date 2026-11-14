@@ -1,9 +1,19 @@
-# Junction 2026, Aaltonomous Humanoid: where we are (Sat 14 Nov, 14:15)
+# Junction 2026, Aaltonomous Humanoid: where we are (Sat 14 Nov, 17:40)
 
 Read this top to bottom once; after that the command list in section 4 is all you need day to day.
 
-In this repo all paths below are relative to `modal_pipeline/`, and Aalto's repo (`aaltonomous-humanoid/` in
-the text) is the submodule `third_party/aaltonomous-humanoid/`.
+## 0. Getting this repository to run
+
+```bash
+git clone https://github.com/zupermiez/aaltonomous-humanoid.git      # the organisers' repo, next to this file (not committed here)
+uv venv .venv --python 3.11
+uv pip install --python .venv/bin/python google-adk==2.14.1 numpy==2.2.6 scipy==1.15.2 opencv-python-headless==4.10.0.84 pyyaml msgpack "websockets>=12" pin==3.3.1
+cp adk_agents/robot_sorter/.env.example adk_agents/robot_sorter/.env   # then put the Gemini API key in it
+```
+
+Not in the repository: the API key (`.env`), the virtual environment, and run outputs (`sim_out/`, `sim/out/`:
+videos and logs, fetched from the Modal volume `aalto-sim-out`). The current work is the ADK agent in `adk_agents/`;
+start with `adk_agents/README.md`.
 
 ## 1. The challenge in short
 
@@ -32,7 +42,9 @@ the text) is the submodule `third_party/aaltonomous-humanoid/`.
 | `submission/server.py`, `submission/Dockerfile` | Our policy server and its image. **The image has never been built** (no Docker on the laptop used so far). |
 | `ORGANIZER_ISSUES.md` | Everything we found wrong or unclear in the organisers' material (A1–A11, B–E). Send them this. |
 | `sim/out/` | Videos and frame sheets: the oracle with all three cameras, and our checkpoints in the sim. |
-| `agent/AI_STUDIO_PROMPT.md` | Prompt for Google AI Studio to design the Gemini agent and tool library (section 8). |
+| `agent/` | The oracle-based skills (`agent/skills/`), which the ADK agent's tools call, and an earlier hand-written Gemini loop (`agent/runtime/`) that has never been run and is superseded by `adk_agents/`. |
+| `agent/AI_STUDIO_PROMPT.md` | Prompt for Google AI Studio to review and extend the agent. |
+| `adk_agents/robot_sorter/` | **Current focus.** A Google ADK agent: `gemini-4-hydrogen`, through the Gemini API with the key in its `.env`, looks at the camera images and calls the skills as tools. It runs in the Isaac sim on Modal (`--action eval-adk`); scores are in section 5. Start with `adk_agents/README.md`. |
 
 Everything heavy lives on Modal volumes, not on a laptop: `aalto-data` (datasets, raw recordings), `aalto-runs`
 (checkpoints), `aalto-sim-out` (sim results and videos), `aalto-kitcache`, `aalto-hf-cache`.
@@ -101,7 +113,24 @@ Our π0.5 checkpoints in the sim, rung 1, seeds 1000–1002, gate passed in ever
 | `pi05-sim-v2` 5,000 | same | 3 of 12 | +0.33 |
 | `pi05-sim-v2-full` 1,000 (whole model, on top of the 5,000) | same | 2 of 12 | +0.33 |
 
-The model now runs the full motion (reach, grasp, lift, carry, release, return) and keeps working for the whole
+| `pi05-sim-v2-full` 3,000 | same | 4 of 12 | +1.33 |
+
+Not learned, same evaluator, seeds 1000–1004 (5 episodes, 20 objects), gate passed, 0 clips:
+
+| Policy | Objects sorted | Mean score |
+|---|---|---|
+| Organisers' classical baseline (camera colour blobs + their planner; their reference submission) | 16 of 20 | 3.2 |
+| Our skill library, rule-based chooser, camera positions (`agent/`, no model) | 16 of 20 | 3.2 |
+| Our skill library, rule-based chooser, exact simulator positions | 16 of 20 | 3.2 |
+| **ADK agent, `gemini-4-hydrogen`** (`adk_agents/`), seeds 1000–1002, run `adk-1` | 10 of 12 | 3.33 |
+| ADK agent, `sort_language` (2 points per object), seeds 1000–1002, run `adk-3-lang` | 9 of 11 | 6.0 |
+| Earlier hand-written Gemini loop (`agent/runtime/agent_policy.py`) | never run; superseded by the ADK agent | |
+
+So the planner-based route is at 80 % in the sim, the Gemini agent on top of it at 82-83 % (it retries missed
+grasps and reads the instruction itself), the neural policy at about 33 %. Every agent run above made real Gemini API
+calls; none failed.
+
+The neural policy now runs the full motion (reach, grasp, lift, carry, release, return) and keeps working for the whole
 episode. What still fails: grasps miss by a centimetre or two, and red objects tend to land in the centre bin.
 12 objects per evaluation is a small sample; differences of one object mean nothing.
 
@@ -125,16 +154,20 @@ episode. What still fails: grasps miss by a centimetre or two, and red objects t
 - The real-robot data drop (`zupermiez/g1_pick_cube`, 20 episodes) shows a blue cube going to the LEFT bin,
   which contradicts rung 1, uses different camera names than the docs, and has only 7 clean episodes.
 
-## 7. Running right now (started 13:00–13:20)
+## 7. Running right now (15:00)
 
-- `pi05-sim-v2-full`: whole-model fine-tune on the B200, 6,000 steps, done around 15:35. Checkpoints every 1,000.
-- `sim_fixed_v3`: second batch of demonstrations, 7 sims × 18 episodes, new seeds (300000+), done around 14:30.
-  It appears on `aalto-data` as `raw/sim_fixed_v3`; then `prepare`, `merge` with `sim_fixed_v2`, and train on both.
-- Sim evaluations of the 3,000 and 6,000 checkpoints are started by a helper script on one laptop; if that laptop
-  is closed, start them by hand with the command in section 4.
+- `pi05-sim-v23-full`: whole-model fine-tune on both demonstration batches (`sim_fixed_v23`), 8,000 steps on the
+  B200, started 14:48, about 3.3 hours and about $20 if left to finish. Nobody needs it for the agent route; stop
+  it from the Modal dashboard (app `aalto-pi05`) if the budget matters. Checkpoints every 1,000 steps are kept.
+- Sim evaluations of its checkpoints are started by helper scripts on one laptop.
+- Nothing else. The second data batch (`sim_fixed_v3`, 7 × 18 episodes) is finished and merged.
 
 ## 8. Open problems and ideas, most useful first
 
+0. **The ADK agent on varied scenes.** In the nominal scene it sorts 82-83 % of the objects, never into a wrong
+   bin, gate passed. With the real object colours (yellow, purple, orange), varied shades, lighting and placements
+   (`sim/scene_variant.py`) the first runs are much worse and include wrong bins; the cause is not known yet.
+   Runs are fetched with `modal volume get aalto-sim-out <tag> sim_out`; every decision is in `policy.log`.
 1. **More data and longer training.** Scores only started moving after 4,000–5,000 steps; 125 episodes is small.
 2. **Tell the model which object and which bin.** Rung 1's instruction is the same sentence in every episode, so
    it carries no information and the model has to work out "which object next, which bin" from pixels alone. The

@@ -125,6 +125,23 @@ Severity: **A** = can change scores or break a build, **B** = sim/real mismatch 
   policy that sends `done` when it sees nothing to sort would end the episode at once.
 - Ask: wait for a fresh frame from every camera before `reset()` returns. (We now hold for 15 ticks ourselves.)
 
+### A12. Nothing prevents the two arms from hitting each other, and the oracle's own moves do
+
+- Seen in the Isaac sim, run `adk-1`, `episode_000.mp4`, t = 19-20 s: the right arm carries an object to the centre bin
+  and its wrist camera mount hits the left hand's thumb, which is resting at the home pose.
+- Numbers (forward kinematics on the recorded joint angles, hand / finger / wrist / elbow link origins): at the task's
+  home pose (`layout.ARM_HOME`) the two hands are 13 cm apart in front of the robot. During that move the right wrist
+  comes within 9.8 cm of a left-hand link origin; during the next one (blue object to the right bin) 6.8 cm. The links
+  and the camera mount have width, so these are contacts or near-contacts.
+- The trajectories are the oracle planner's, unchanged. `interface/safety.py` says self-collision (arm vs arm) is "not
+  covered (yet)", and the planner checks only the moving hand against the counter and the bin rims.
+- The home pose also puts both hands inside the head camera's view, partly hiding objects in the middle of the counter.
+- What we do about it: between moves we park both arms out to the sides (hand at x 0.27, y +-0.33, 0.22 m above the
+  counter): about 30 cm between the arms during the same motions, and the hands are outside the head image. We also
+  refuse a planned move that brings the arms within 12 cm of each other.
+- Question: will the real-robot episodes start from `ARM_HOME` as well, and is a submission expected to avoid arm-arm
+  contact by itself?
+
 ## B. Numbers marked "(default)" that we need measured
 
 | Item | Value in repo | Where |
