@@ -1,11 +1,11 @@
 # Strategy proposal: how we win the Aalto challenge
 
 **Status: proposal, not agreed.** Written Sat 14 Nov ~12:30 by Samer with Claude, from Aalto's repo (`36daf5b`, unchanged since Fri 21:54), the Aalto Discord channel and the two real-data drops. Discuss it, then move what we agree into [`DECISIONS.md`](DECISIONS.md) and [`BRIEF.md`](BRIEF.md).
-**Updated ~13:00** with Aalto's answers: **one deadline for everything, Sun 10:00**, and **the finals PC has internet**. Colours re-measured in the robot's own camera. **But Aalto's brief says the finalists are picked on Saturday:** until Aalto confirms, treat v1 as due today.
+**Updated ~13:00** with: Junction's deadline is **Sun 10:00** (Aalto's image deadline is **not announced**; their brief says finalists are picked Saturday), and **the finals PC has internet**. Colours re-measured in the robot's own camera. Treat v1 as due today until Aalto announces the time.
 Evidence: [`research/real-data-findings.md`](research/real-data-findings.md) (what's in the drops) and [`research/aalto-discord-notes.md`](research/aalto-discord-notes.md) (organiser answers).
 
 ## TL;DR
-1. **Get a valid v1 submitted tonight, before anything clever.** Baseline + a parser that knows orange/purple/box + colour detection for the real objects + our own speed guard, through Docker → GHCR → the form. Finalists are picked in sim from what's submitted by Sun 10:00; submitting v1 early lets Aalto's pre-check catch problems while there's time to fix them. Don't wait for the fine-tuning results to start this.
+1. **Get a valid v1 submitted tonight, before anything clever.** Baseline + a parser that knows orange/purple/box + colour detection for the real objects + our own speed guard, through Docker → GHCR → the form. Finalists may be picked in sim as early as tonight; submitting v1 early lets Aalto's pre-check catch problems while there's time to fix them. Don't wait for the fine-tuning results to start this.
 2. **Win on reliability.** Every point needs a physical pick on the real robot. A classical core (perception → IK → scripted grasps) is the default; π0.5 joins only as a plug-in skill if it beats the classical skill in sim with randomisation on (checkpoint tonight).
 3. **Stand out by making every module work on the real setup.** Each part is fitted to or checked against Aalto's scarce real data: colours, camera calibration, grip detection, triangle grasps. The instruction goes through an offline fine-tuned Gemma with a measured accuracy. Both arms work at once, and every pick is checked and retried.
 4. **Tech challenges:** Verda and Gemma (natural fit, little extra work), plus Gemini once v1 is in. The finals PC has internet, so Gemini Robotics-ER can label our data before the finals *and* give a live second opinion during them (with an offline fallback). Skip the rest.
@@ -23,7 +23,7 @@ Evidence: [`research/real-data-findings.md`](research/real-data-findings.md) (wh
 - **Attempt anything we can classify:** an attempt pays off whenever P(right bin) > 1/3. Leave unknown objects (distractors) alone.
 - **Judging is unclear.** The challenge page weights real-world result 40 %, generality 25 %, originality 20 %, presentation 15 %; the repo says ranking = real-robot score. Ask (§10). Either way it's reliability first, then generality and originality.
 - **Finalists come from the held-out sim variant** (other textures, lighting, poses, camera jitter). Tune with `AALTO_DR=train` on, not only on the nominal scene and not only on the venue look.
-- **Deadline:** Sun 10:00 for both the sim evaluation that picks finalists and the finals image (Aalto, Sat ~12:50). The last image submitted before then is the one that runs. **Aalto's brief says finalists are picked on Saturday,** so confirm which image they use and when; submit v1 as early as possible today.
+- **Deadlines:** Junction's project page closes **Sun 15 Nov 10:00** (official schedule). Aalto has **not** published a time for the Docker image: their brief says finalists are picked in sim on **Saturday**, and the final image is due Sunday at a time they'll post in the Aalto Discord channel. ("Sun 10:00 for the image" was our assumption, not Aalto's answer.) Until they announce it, submit a working image as early as possible on Saturday.
 - **Gate:** 0 clipped steps, ≥ 27 Hz measured on *our own* wall-clock latency, no crash or watchdog.
 
 ## 2. What the data and Discord tell us (others may miss some of this)
@@ -78,7 +78,7 @@ The pitch line: **"Sim is free, reality is scarce, so we spent our reality caref
 
 ## 5. Plan and checkpoints
 
-**Deadline: Sun 10:00** for everything (Aalto, Sat ~12:50).
+**Deadlines:** Junction project page Sun 10:00; Aalto image time not announced (finalists possibly picked Saturday). Times below assume v1 must be in tonight.
 
 | When | Goal | Done when |
 |---|---|---|
@@ -87,7 +87,7 @@ The pitch line: **"Sim is free, reality is scarce, so we spent our reality caref
 | **22:00** | **Checkpoint: π0.5 go / no-go** | It stays only if it beats the classical skill on the same seeds with randomisation on and 0 clips |
 | 02:00 → 06:00 | The sim farm runs long evals overnight; fix the top failure each round | — |
 | **06:00** | **Freeze features.** Real-data checks (calibration, Drop 1 colours), pitch + video | Only bug fixes after this |
-| **~08:30** | **Final submission**, leaving time to react to Aalto's pre-check | The last good digest is written down in `eval/RESULTS.md` |
+| **Before Aalto's announced time (else ~08:00)** | **Final submission**, leaving time to react to Aalto's pre-check; Junction page by 10:00 | The last good digest is written down in `eval/RESULTS.md` |
 
 **Rule:** only submit an image that passed the full gate on ≥ 10 randomised seeds. The last image before the deadline is the one that runs in the finals.
 
@@ -130,7 +130,7 @@ Claude (through Samer) takes the rule parser, the speed guard, the Docker/GHCR p
 - **Link to the Aalto project:** glove demos of hard cases can tune the triangle grasp (hand posture at grasp time) without training a big model.
 
 ## 10. Questions for Aalto (ask in person today)
-1. **When is the submission for picking finalists due?** Aalto said one deadline (Sun 10:00), but their brief says finalists are picked on Saturday. **Another team asked exactly this in the channel (Sat ~14:10); watch for Aalto's reply.**
+1. **When is the submission for picking finalists due?** Not announced; their brief says finalists are picked on Saturday (Sun 10:00 is only Junction's platform deadline). **Another team asked exactly this in the channel (Sat ~14:10); watch for Aalto's reply.**
 2. Is the winner the real-robot score only (repo), or the 40/25/20/15 criteria on the challenge page?
 3. Will the finals instructions say orange/purple or red/blue? In rung 1, is orange "red" and purple "blue"? What are the black shapes on the table for?
 4. ~~Does the finals PC have internet?~~ **Answered: yes.**
@@ -144,8 +144,7 @@ Claude (through Samer) takes the rule parser, the speed guard, the Docker/GHCR p
 
 | Risk | Mitigation |
 |---|---|
-| No valid submission at Sun 10:00 | P0 first; submit v1 tonight even if it's only the baseline plus fixes; final submission ~08:30, not 09:55 |
-| Orange/yellow not detected on the real robot | Widened ranges fitted on real frames; test on venue-look sim and on drop frames |
+| No valid submission when Aalto picks finalists | P0 first; submit v1 tonight even if it's only the baseline plus fixes; final image well before Aalto's announced time | Orange/yellow not detected on the real robot | Widened ranges fitted on real frames; test on venue-look sim and on drop frames |
 | Calibration off on the real robot | FK overlay check on drop frames; ask for the AprilTag result; ask for a dry run |
 | Grasps slip with real (less grippy) pads | Lower friction in randomisation; grasp check + retry |
 | Gate fails on rate (real-time latency) | Planning in a background thread; watch `policy_hz_rt` in every eval |
