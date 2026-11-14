@@ -11,7 +11,7 @@ Sources, read 2026-11-13:
 
 | What | Amount | Why it matters for us | How to claim |
 |---|---|---|---|
-| **Verda** GPU cloud | **€200 per team** | The Aalto sim needs an RTX-class GPU (RTX Pro 6000 / L40S / A6000 class, not A100/H100). Use on-demand instances + a persistent volume. Also covers VLA fine-tuning (80 GB GPUs). Fits the stackable **Verda Compute Track** ($10k prize), whose example ideas literally include "train … policies for Aalto's Unitree G1" and "Rokoko motion-capture teleoperation data" | 1) sign up at console.verda.com; 2) claim form linked on the hackerpack card; 3) redeem and share with the team ([docs](https://docs.verda.com/resources/obtaining-free-credits/how-to-redeem-credits/)). Booth #6, floor 3. Workshop Fri 20:30 |
+| **Verda** GPU cloud | **€200 per member** (personal account + API credentials; €800 for 4) | The Aalto sim needs an RTX-class GPU (RTX Pro 6000 / L40S / A6000 class, not A100/H100). Use on-demand instances + a persistent volume. Also covers VLA fine-tuning (80 GB GPUs). Fits the stackable **Verda Compute Track** ($10k prize), whose example ideas literally include "train … policies for Aalto's Unitree G1" and "Rokoko motion-capture teleoperation data" | 1) submit the claim form on the hackerpack card, and the credits arrive by email; 2) log in to console.verda.com and claim them; 3) **a payment card is required** (Verda: "for security reasons", not charged, removable right away; whether usage can exceed the credits is unanswered); 4) each member does this for their own account ([docs](https://docs.verda.com/resources/obtaining-free-credits/how-to-redeem-credits/)). Booth #6, floor 3 |
 | **Modal** serverless GPUs | **$100 per participant** ($400 team) | Training and fine-tuning on A100/H100/H200/B200. Also has RTX PRO 6000 and L40S. Python-native (`modal run`), per-second billing. Good for training jobs; running Isaac Sim there is untested | Code in `MODAL_PROMO_CODE`; starter kit + workshop at the Modal booth |
 | **Qualia** data platform | Free (environment closes after 7 days) | Upload **Rokoko mocap** or arm demos; it flags bad takes, timing issues and inconsistent demos; curate a versioned set; export to train e.g. **π0.5 with LeRobot**. Directly fits a "glove demos → policy" story | Sign up at https://junction.qualiastudios.dev/login, create a team workspace; [upload guide](https://junction-docs.qualiastudios.dev/global/guides/data-collection/). Contact: Agnes Leth |
 | **Wendy** | Free, open source | "Plug a Jetson … into your laptop, run `wendy run`". Deploys Python/ROS apps to the Jetson. On-site help | https://wendy.dev/ |
@@ -70,7 +70,7 @@ Notes:
 
 | Use | Credits |
 |---|---|
-| GPU compute | Verda €200 + Modal $400 (+ CRACI €1,000, mainly CI/CD) |
+| GPU compute | Verda €800 (€200 × 4) + Modal $400 (+ CRACI €1,000, mainly CI/CD) |
 | LLM APIs | Claude $80 + Featherless $200 + Gemini (team form) + Nemotron free tier |
 
 Plan: spend Verda on the RTX sim box and Modal on training bursts.

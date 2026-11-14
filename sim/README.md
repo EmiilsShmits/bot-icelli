@@ -11,21 +11,22 @@
 - **Machine setup:** [`../docs/runbooks/verda-sim-setup.md`](../docs/runbooks/verda-sim-setup.md).
 - **Inside the sim container:**
   - `aalto sim`
-  - `aalto check`: expect 8 PASS
+  - `aalto check`: expect 9 PASS (Aalto's quickstart says 8)
   - `aalto baseline`
   - `AALTO_DR=train aalto sim`: domain randomisation
+- **Venue look** (sim that resembles the real table): [`venue_look/README.md`](venue_look/README.md).
 - **Aalto's references:**
   - `third_party/aaltonomous-humanoid/aaltonomous/sim/README.md`
   - `…/cloud/QUICKSTART.md`
 
 ## Status
-- **Now:** —
+- **Now:** Aalto sim runs bare-metal on a Verda RTX 6000 Ada (`bot-icelli-sim`, on Emīls's account; ask him for SSH access). 9/9 scene checks, oracle baseline 92 % (gate PASS). How: `docs/runbooks/verda-sim-setup.md`. A switchable venue look (plywood table, real object colours) is in `venue_look/`.
 - **Next:** —
-- **Blockers:** —
+- **Blockers:** sim speed is 0.31× real time on 10 vCPU (Aalto quotes ~0.7×).
 
 ## Facts and gotchas (from Aalto's docs)
 - **GPU:** needs an RTX-class GPU with ≥ 24 GB (RTX Pro 6000 / L40S / A6000 / 4090 / 5090). **A100/H100 can't render the cameras.** Use on-demand instances with a persistent volume.
-- **Speed:** the sim runs at ~0.7× real time, so a 120 s episode takes ~220 s of wall time. More than one sim per machine slows it further and can fail the 27 Hz gate.
+- **Speed:** Aalto quotes ~0.7× real time (a 120 s episode takes ~220 s of wall time); we measured 0.31× on a 10-vCPU machine. More than one sim per machine slows it further and can fail the 27 Hz gate.
 - **First start** compiles shaders (5–10 min). Keep the `aalto-kitcache` volume.
 - **Privileged object poses** (scene service) are allowed for training and data generation, **not** inside a submission.
 - **Stopping:** use `aalto stop`, never `pkill -f sim_main`.
