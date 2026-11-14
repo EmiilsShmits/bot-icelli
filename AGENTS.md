@@ -3,6 +3,8 @@
 This file is for AI coding tools (Codex, Cursor, Copilot, Claude Code, Gemini CLI, …) and for humans. Keep it short and factual.
 Details live in `docs/` and in each folder's `README.md`.
 
+**Start here: [`docs/CONTEXT.md`](docs/CONTEXT.md)**, the current situation in one file. It separates **FACTS** (each with its source), **OPINIONS** (Samer + Claude's recommendations, not team decisions) and **OPEN** questions. Read it before starting work. Never present an opinion from it as decided, and update it when you change something it describes.
+
 ## Project
 - **Junction 2026 hackathon** (Fri 13 – Sun 15 Nov 2026), team bot-icelli.
 - **Working on:** Aaltonomous Humanoid (Aalto University), mostly in simulation. A Unitree G1 with Dex3 three-finger hands must sort coloured blocks into 3 bins on its own. Our brief is still to be agreed (`docs/BRIEF.md`).
@@ -17,6 +19,7 @@ Details live in `docs/` and in each folder's `README.md`.
 ## Map: read the relevant file before acting
 | Path | What |
 |---|---|
+| `docs/CONTEXT.md` | **Read first.** Where we stand: facts (sourced) vs Samer + Claude's opinions vs open questions |
 | `docs/BRIEF.md` | Our brief: focus, priorities, stacked tech challenges. **Blank until the team agrees** |
 | `docs/PLAN.md` | Approach, milestones, demo/pitch. Not started |
 | `docs/STRATEGY.md` | Strategy proposal (Sat 14 Nov): plan, architecture, who does what, tech challenges. **Not agreed yet** |
@@ -29,7 +32,7 @@ Details live in `docs/` and in each folder's `README.md`.
 | `modal_pipeline/` | Marcus's Modal pipeline: sim, oracle data recording, π0.5 training, sim evaluation, policy server. Start with its `TEAM_HANDOVER.md` |
 | `training/` | Model fine-tuning work (Emīls, Tiya) |
 | `data/` | Datasets: real drops and anything we generate |
-| `policy/` | The submission: policy server + Dockerfile (currently a placeholder) |
+| `policy/` | The submission: policy server + Dockerfile. Candidates v1, v1.1, v1.2 in `policy/policies/` (status in `policy/README.md`) |
 | `policy/decision_oracle/` | Sim-only exploration, **not in the submission**: Aalto's oracle as motion functions, Gemini Decision 1 / rule choosers, camera-only perception. Has its own README with results |
 | `eval/` | Scoring policies in sim |
 | `third_party/aaltonomous-humanoid/` | Aalto's starter repo (git submodule, pinned). **Never edit it** |
@@ -75,7 +78,7 @@ make setup          # init submodule + .venv with policy deps (needs Python ≥ 
 make serve          # run the placeholder policy server on :8000
 make check          # Aalto's synthetic replay test against our server (shapes + ≥ 27 Hz)
 make mock           # full episodes on Aalto's mock backend (needs the G1 URDF; see policy/README.md)
-make docker-build   # build the submission image (linux/amd64), untested so far
+make docker-build   # build the submission image (linux/amd64); works on the Verda sim machine (v1 image 1.46 GB)
 make docker-check   # replay test against the built image
 make eval           # score in Isaac sim on the Verda sim machine, untested so far
 make update-aalto   # pull the latest Aalto starter repo into the submodule
