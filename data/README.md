@@ -8,10 +8,15 @@
 - **Out:** _to be agreed._
 
 ## How to run
-_Nothing yet._
+- **Health report for a real-data drop** (speed-cap violations, spikes, how much to slow it down, grip signal):
+  ```bash
+  pip install -r data/requirements.txt
+  python data/tools/drop_health.py zupermiez/g1_junction_drop_2    # downloads the joint data (~5 MB) to artifacts/drops/
+  ```
+  Findings so far: [`../docs/research/real-data-findings.md`](../docs/research/real-data-findings.md).
 
 ## Status
-- **Now:** —
+- **Now:** `tools/drop_health.py` checks Aalto's drops. Both drops so far break the speed caps (retime before training) and have no success labels.
 - **Next:** —
 - **Blockers:** —
 

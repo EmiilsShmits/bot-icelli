@@ -19,6 +19,7 @@ Details live in `docs/` and in each folder's `README.md`.
 |---|---|
 | `docs/BRIEF.md` | Our brief: focus, priorities, stacked tech challenges. **Blank until the team agrees** |
 | `docs/PLAN.md` | Approach, milestones, demo/pitch. Not started |
+| `docs/STRATEGY.md` | Strategy proposal (Sat 14 Nov): plan, architecture, who does what, tech challenges. **Not agreed yet** |
 | `docs/PROGRESS.md` | Team-level status + log |
 | `docs/DECISIONS.md` | Open decisions + append-only log of choices made |
 | `docs/TEAM.md` | Who's who, skills, hardware |
@@ -49,6 +50,9 @@ Read it before working there, and update its Status when you change something.
 - **Image:** linux/amd64, CUDA ≥ 12.8, server on port 8000 within 120 s, weights inside the image, ≤ 32 GB VRAM, ≤ 40 GB image.
 - **Network:** none guaranteed at the finals, so any API call needs an offline fallback.
 - **Aalto's real demos:** LeRobot v3.0, 30 Hz, `observation.state` and `action` = 28 values each (14 arm + 14 hand joints, absolute radians), plus a GR00T-format copy.
+  - The drops so far (HF `zupermiez/g1_pick_cube`, `zupermiez/g1_junction_drop_2`) differ from Aalto's data card: camera keys `cam_high` / `cam_*_wrist`, no head depth, no success labels.
+  - **They break the speed caps** (arms 2–4 rad/s, fingers up to 25 rad/s). Retime before training on them: `docs/research/real-data-findings.md`.
+- **Real objects:** orange, yellow, purple (the sim uses red, yellow, blue); the bins are orange too. Drop 2's instructions say "orange", "purple" and "box". How rung 1's "red" / "blue" map to the real colours is unconfirmed: `docs/research/aalto-discord-notes.md`.
 
 ## Working rules
 - **Demo beats completeness.** Judge every task by "does this help the real-robot result or the pitch?"

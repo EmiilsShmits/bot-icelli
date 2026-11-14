@@ -11,6 +11,9 @@ _Update at the end of every session. Newest state at the top; keep it short._
   - `docs/research/llm-vlm-uses.md` covers where an LLM/VLM could help: mainly an offline rung-2 instruction parser that could also fit the Gemma prize.
   - Its overnight test plan is `training/instruction_parser/EXPERIMENT.md`.
   - Aalto's "difficulty knobs" (possible harder finals: colour + shape, negation, a distractor object) are now in `docs/research/aalto-humanoid.md` §5.
+- **Strategy proposal (Sat 14 Nov 12:30, Samer + Claude):** [`STRATEGY.md`](STRATEGY.md). **Not agreed yet: read it and discuss.** It proposes getting a valid submission in today, a classical core with π0.5 as an optional skill, and Verda + Gemma as tech challenges. Evidence:
+  - [`research/real-data-findings.md`](research/real-data-findings.md): the drops break the speed caps; the real hand shows grip
+  - [`research/aalto-discord-notes.md`](research/aalto-discord-notes.md): organiser answers; the real colours are orange / yellow / purple
 - **In progress:** working on the Aalto humanoid, mostly in sim. Team split: fine-tuning (Emīls, Tiya), simulation (Marcus, Samer)
 - **Next:** agree on the open items at the top of `docs/DECISIONS.md` (brief, approach, handoffs, storage, workflow, owners)
 - **Blockers:** open team decisions (see `docs/DECISIONS.md`). Open questions for mentors are listed at the end of `docs/research/aalto-humanoid.md` (real-G1 teleop access, Coil Pro/suit for wrist tracking)
@@ -19,6 +22,8 @@ _Update at the end of every session. Newest state at the top; keep it short._
 _Anything hardcoded or faked, so nobody is surprised at demo time._
 
 ## Gotchas
+- **Aalto's real demos break the speed caps:** arms at 2–4 rad/s (cap 1), fingers up to 25 rad/s (cap 3), in every drop-2 episode. Retime them before training (`data/tools/drop_health.py`, `docs/research/real-data-findings.md`).
+- **The real objects are orange / yellow / purple** (Aalto, Discord Sat 11:41) and the bins are orange. The baseline's HSV ranges were tuned on the sim's red / blue and likely miss orange.
 - Challenge pages contain shared API keys and promo codes. They live in `.env.challenges` only; the docs reference them by variable name.
 - Verda credits and API keys are personal (€200 per member). They need a payment card on the account (Verda: not charged, removable). It's unconfirmed whether usage beyond the €200 would be charged, so stop machines when idle.
 - Oxylabs credits require buying a $500/month plan with a 100% first-month discount. If we use it, cancel the subscription after the event.
@@ -40,3 +45,4 @@ _Anything hardcoded or faked, so nobody is surprised at demo time._
 - 2026-11-14 — Verda sim machine up; Aalto sim installed bare-metal (3 install workarounds), 9/9 scene checks, oracle baseline 92 % / gate PASS. Camera snapshots in `artifacts/sim-snap/` (local).
 - 2026-11-14 — Built `sim/venue_look/` from a phone photo of the real table; 9/9 scene checks pass with it.
 - 2026-11-14 — Research notes on Nemotron uses, LLM/VLM uses, Gemma prize and credits; Aalto difficulty knobs added; Gemma instruction-parser experiment planned for overnight.
+- 2026-11-14 — Strategy proposal (`docs/STRATEGY.md`), real-data health check (`data/tools/drop_health.py`, `docs/research/real-data-findings.md`), Aalto Discord digest (`docs/research/aalto-discord-notes.md`).
