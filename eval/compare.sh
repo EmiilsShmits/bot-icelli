@@ -25,7 +25,9 @@ for task in $TASKS; do
       kill $sp 2>/dev/null; wait $sp 2>/dev/null
     else
       img=$IMAGE; [ "$pol" = v1 ] || img=$pol
-      $W eval --container "$img" --host-port $PORT --team "${pol//[:\/]/_}" --task $task --trials $TRIALS --seed $SEED --out "$OUT"
+      # --policy is required: Aalto's evaluate.py checks `--policy == oracle` (its default) BEFORE --container, so
+      # --container alone runs the privileged oracle and never starts the image (our runs before Sat 15:19 UTC).
+      $W eval --policy ws://localhost:$PORT --container "$img" --host-port $PORT --team "${pol//[:\/]/_}" --task $task --trials $TRIALS --seed $SEED --out "$OUT"
       rc=$?
     fi
     echo "=== $(date +%H:%M:%S) $pol / $task: exit $rc (0 = sim gate passed, 2 = gate failed, else crashed)"

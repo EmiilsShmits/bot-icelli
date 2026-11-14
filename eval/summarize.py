@@ -2,6 +2,10 @@
 """Markdown table of every eval.json (aaltonomous.sim.evaluate output) under a folder, oldest run first.
 
     python3 summarize.py [folder, default ~/runs/eval] [--trials]     # --trials: one row per trial as well
+
+The policy column shows what really ran: Aalto's evaluator stores `oracle_events` in every trial of an oracle run,
+so a run is labelled "ORACLE" whatever its folder or --team name says (`--container` without `--policy` silently
+runs the oracle; that mislabelled two of our runs on Sat 14 Nov).
 """
 import json
 import sys
@@ -16,6 +20,15 @@ def kv(d):
     return ", ".join(f"{k} {v}" for k, v in sorted((d or {}).items()))
 
 
+def who(d):
+    """What ran, from the trials themselves: the oracle leaves `oracle_events` in each trial."""
+    s = d["summary"]
+    name = s.get("team") or s["policy"]
+    if any("oracle_events" in t for t in d.get("trials", [])):
+        return "ORACLE (privileged poses)" + ("" if name == "oracle" else f", labelled {name}")
+    return name
+
+
 print("| run | policy | task | variant | trials (seeds) | score mean ± sd | % of max | objects correct "
       "| episodes all correct | outcomes | end reasons | clips | min cmd Hz | min real-time Hz | gate |")
 print("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
@@ -26,7 +39,7 @@ for f in runs:
     if not s.get("trials"):
         continue
     gate = "PASS" if s["gate"]["passed"] else f"FAIL {s['gate']['failed_trials']}"
-    print(f"| {f.parent.name} | {s.get('team') or s['policy']} | {s['task']} | {s['variant']} "
+    print(f"| {f.parent.name} | {who(d)} | {s['task']} | {s['variant']} "
           f"| {s['trials']} ({s['seeds'][0]}–{s['seeds'][-1]}) | {s['score_mean']:+.2f} ± {s['score_std']:.2f} "
           f"| {100 * s['score_frac']:.0f} % | {s['objects_correct']}/{s['objects']} | {s['episodes_all_correct']}/{s['trials']} "
           f"| {kv(s['outcome_counts'])} | {kv(s['end_reasons'])} | {s['safety_clipped_steps_total']} "
