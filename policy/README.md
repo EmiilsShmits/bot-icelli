@@ -21,6 +21,7 @@
 | `Dockerfile` | Submission image (CUDA 12.8 base). The build context allowlist is in `/.dockerignore` |
 | `requirements.txt` | Image dependencies (keep them small) |
 | `requirements-dev.txt` | Local test dependencies |
+| `decision_oracle/` | **Not part of the submission.** Sim-only exploration: Aalto's oracle as motion functions with a Gemini Decision 1 chooser and camera-only perception. See its [README](decision_oracle/README.md) |
 
 ## How to run
 ```bash

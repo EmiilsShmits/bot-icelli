@@ -13,5 +13,6 @@
 !training/instruction_parser/rule_parser.py
 !training/instruction_parser/spec.py
 policy/tests/
+policy/decision_oracle/
 **/__pycache__
 **/*.pyc
