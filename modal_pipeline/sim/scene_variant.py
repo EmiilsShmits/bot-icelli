@@ -23,9 +23,22 @@ evaluator and the scoring all read the same edited files, so they stay consisten
 
   --tip triangles      every triangular prism lies on a rectangular face (ridge up, any yaw) instead of standing on
                        a triangular one, as a prism looks after it fell over (tests the v1.5 ridge grasp).
+  --task3 request      rung 3 as we asked Aalto to set it up (docs/research/task3-lid-placement.md): the real lid
+                       (bot-icelli sim/task3/lid_shape_holes_200mm.stl, plate on top, triangle hole nearest the robot,
+                       square on its right) on the left bin moved to 39 cm in front of the pelvis and 15 cm left, the
+                       centre bin taken away, 3 blocks in the right half of the band. Start the sim with
+                       TASK=Aalto-Insert-G129-Dex3-Joint (modal_sim.py --task) and score with --eval-task insert_shapes.
 
-What a variant does NOT change: object size, the bins, the counter, the camera. Without --tip, prisms always stand
-on a triangular face (the sim has no lying prisms).
+  --lean DEG           the robot leans DEG forward against the table: its fixed base is pitched about the pelvis, so the
+                       head camera (mounted on the pelvis link) and both arms tilt together and the table stays level.
+                       That is what Aalto's real footage shows (docs/research/hand-offset-real-data.md: 5-10 deg).
+  --cam-mount DEG      the head camera also looks DEG further down on its mount (real fit: ~2.4).
+                       Both edit only the sim's scene_cfg.py: calibration.yaml and scene.yaml stay nominal, so a policy
+                       sees what it would see on the real robot. Use with --look none (the venue look tilts the camera
+                       10 deg on its mount, which is the other explanation of the real footage).
+
+What a variant does NOT change: object size, the bins, the counter, the camera (except --lean / --cam-mount).
+Without --tip, prisms always stand on a triangular face (the sim has no lying prisms).
 """
 import argparse
 import re
@@ -140,6 +153,68 @@ def assign(sc, layout):
 '''
 
 
+TASK3_LID = [Path("/opt/task3/lid_shape_holes_200mm.stl"),
+             ROOT.parent.parent / "sim" / "task3" / "lid_shape_holes_200mm.stl"]
+
+
+def write_task3_lid(src, dst):
+    """Aalto's lid STL (binary, mm, a tray: 4 mm plate at z 0-4 with a 12 mm rim) -> the sim's lid_shapes.stl (mm, mat
+    axes around the lid centre, bottom at z = 0): turned 180 deg about x, so the plate is on top (z 8-12 mm, the rim
+    hangs down) and the triangle hole (lid +v) is nearest the robot (mat -y); square (lid -u) on the robot's right."""
+    import struct
+
+    import numpy as np
+    b = Path(src).read_bytes()
+    n = struct.unpack("<I", b[80:84])[0]
+    dt = np.dtype([("n", "<f4", 3), ("v", "<f4", (3, 3)), ("a", "<u2")])
+    t = np.frombuffer(b, dtype=dt, count=n, offset=84)
+    v, nr = t["v"].astype(np.float64), t["n"].astype(np.float64)
+    out = np.zeros(n, dtype=dt)
+    out["v"] = np.stack([v[..., 0], -v[..., 1], v[..., 2].max() - v[..., 2]], axis=-1)   # a rotation: winding kept
+    out["n"] = np.stack([nr[:, 0], -nr[:, 1], -nr[:, 2]], axis=-1)
+    Path(dst).write_bytes(b"bot-icelli task3 lid".ljust(80, b" ") + struct.pack("<I", n) + out.tobytes())
+    return float(v[..., 2].max())
+
+
+def task3_scene(s):
+    """scene.yaml text -> rung 3 as requested: lid on the left bin at mat (0.60, 0.25) = pelvis (0.39, +0.15), centre
+    bin out of the way, 3 blocks in mat x 0.28-0.42, y 0.12-0.19 (pelvis x 0.26-0.33, y -0.17..-0.03)."""
+    for pat, value in ((r"(\n    left:\s+)\[[^\]]*\]", "[0.60, 0.25]"), (r"(\n    center:\s+)\[[^\]]*\]", "[0.45, 3.0]"),
+                       (r"(\n  region_x: )\[[^\]]*\]", "[0.28, 0.42]"), (r"(\n  region_y: )\[[^\]]*\]", "[0.12, 0.19]"),
+                       (r"(\n  n_cubes: )\[[^\]]*\]", "[3, 3]"), (r"(\n  thickness: )[0-9.]+", "0.012")):
+        s, n = re.subn(pat, lambda m: m.group(1) + value, s, count=1)
+        assert n == 1, f"task3: {pat} not found in scene.yaml"
+    return s
+
+
+def lean_scene_cfg(path, lean_deg, cam_deg):
+    """--lean / --cam-mount: pitch the robot's fixed base forward by lean_deg about the pelvis (+y, Isaac Lab xyzw
+    quaternion via the file's own rotmat_to_quat_xyzw) and tilt the head camera cam_deg further down on its mount
+    (about the optical x axis, as the venue look's camera.head.pitch_down_deg). Idempotent."""
+    import math
+    src = path.read_text()
+    if "added by sim/scene_variant.py --lean" in src:
+        return
+    robot = "init_rot=(0.0, 0.0, 0.0, 1.0))"
+    assert src.count(robot) == 1, f"{path.name}: robot init_rot not found"
+    cam = '    T = np.asarray(cal["T_pelvis_optical"], float)\n'
+    assert src.count(cam) == 1, f"{path.name}: head camera pose line not found"
+    anchor = "def head_camera_cfg():\n"
+    assert src.count(anchor) == 1, f"{path.name}: head_camera_cfg not found"
+    src = src.replace(robot, "init_rot=_LEAN_Q)").replace(cam, cam + "    T = T.copy()\n    T[:3, :3] = T[:3, :3] @ _CAM_MOUNT_R\n")
+    t, c = math.radians(lean_deg), math.radians(cam_deg)
+    # Before head_camera_cfg: the module builds the scene classes at import time (make_scene_cfg_class() near the
+    # end), so the constants must exist by then; rotmat_to_quat_xyzw is defined above this point.
+    block = (f"# ---- added by sim/scene_variant.py --lean {lean_deg} --cam-mount {cam_deg} ----\n"
+             f"_LEAN_R = np.array([[{math.cos(t)!r}, 0.0, {math.sin(t)!r}], [0.0, 1.0, 0.0], "
+             f"[{-math.sin(t)!r}, 0.0, {math.cos(t)!r}]])   # about +y: forward (+x) tips down\n"
+             f"_LEAN_Q = rotmat_to_quat_xyzw(_LEAN_R)\n"
+             f"_CAM_MOUNT_R = np.array([[1.0, 0.0, 0.0], [0.0, {math.cos(c)!r}, {math.sin(c)!r}], "
+             f"[0.0, {-math.sin(c)!r}, {math.cos(c)!r}]])   # about optical x by -cam_deg: view tips down\n\n\n")
+    src = src.replace(anchor, block + anchor)
+    path.write_text(src)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--colors", choices=sorted(COLORS), default=None)
@@ -147,6 +222,9 @@ def main():
     ap.add_argument("--placement", choices=["wide"], default=None)
     ap.add_argument("--instructions", choices=["shape"], default=None)
     ap.add_argument("--tip", choices=["triangles"], default=None)
+    ap.add_argument("--task3", choices=["request"], default=None)
+    ap.add_argument("--lean", type=float, default=None, help="robot pitched forward this many degrees vs the table")
+    ap.add_argument("--cam-mount", type=float, default=0.0, help="head camera this many degrees further down on its mount")
     a = ap.parse_args()
     pkg = REPO / "aaltonomous"
     scene, tasks = pkg / "scene" / "scene.yaml", pkg / "interface" / "tasks.py"
@@ -173,10 +251,20 @@ def main():
         lay = pkg / "sim" / "aalto_task" / "layout.py"
         if "--tip triangles" not in lay.read_text():
             lay.write_text(lay.read_text() + TIP_TRIANGLES)
+    if a.task3:
+        s = task3_scene(s)
+        src = next((p for p in TASK3_LID if p.exists()), None)
+        assert src is not None, f"task3: lid STL not found in {TASK3_LID}"
+        h = write_task3_lid(src, pkg / "scene" / "assets" / "lid_shapes.stl")
+        print(f"task3: lid {src.name} ({h:.0f} mm high) on the left bin at mat (0.60, 0.25)")
+    if a.lean is not None or a.cam_mount:
+        lean_scene_cfg(pkg / "sim" / "aalto_task" / "scene_cfg.py", a.lean or 0.0, a.cam_mount or 0.0)
+        print(f"lean: robot pitched {a.lean or 0.0:.1f} deg forward vs the table, head camera {a.cam_mount:.1f} deg "
+              f"further down on its mount (sim only; calibration.yaml unchanged)")
     scene.write_text(s)
     tasks.write_text(t)
     print(f"scene variant applied in {REPO}: colors={a.colors} dr={a.dr} placement={a.placement} "
-          f"instructions={a.instructions} tip={a.tip}")
+          f"instructions={a.instructions} tip={a.tip} task3={a.task3} lean={a.lean} cam_mount={a.cam_mount}")
 
 
 if __name__ == "__main__":
