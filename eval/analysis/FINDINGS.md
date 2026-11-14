@@ -116,7 +116,7 @@ Most slips in the carry are cylinders.
 5. **Hand-overs:** find out why seed 1001's red cube is lost after its hand-over (v1.1 video, ~68 s).
 6. **Randomisation:** run v1.2 with `AALTO_DR=train`. The held-out variant looks like this, and the baseline drops from 65 % to 28 % there. Check colour recognition there too (the missed blue cylinder in seed 1000).
 7. **Objects near the robot** (x < 0.30 m): a different approach or a nudge outwards.
-8. **Trace every new run** with [`traced_eval.py`](traced_eval.py) (object positions 5 times a second, the container's log, video), then [`trace.py`](trace.py) and [`numbers.py`](numbers.py).
+8. **Trace every new run** with [`trace.py`](trace.py) and [`numbers.py`](numbers.py). Plain run folders work, plus the policy's log. [`traced_eval.py`](traced_eval.py) would add object positions 5 times a second, the container's log and video. It has not been run end-to-end yet: test it on one trial first.
 
 ## Episodes worth looking at
 | Run / seed | What happens |
@@ -136,6 +136,6 @@ The videos are on Samer's laptop and the sim machine (`~/video/out/`). The repo 
 - **No object positions during these runs.**
   - The object a grasp aimed at is matched from start positions and the policy log, so a few grasps may be attributed to the wrong object.
   - Where each object ended is exact: it comes from Aalto's end-of-episode poses and outcomes.
-  - New runs through `traced_eval.py` record positions 5 times a second.
+  - New runs through `traced_eval.py` would record positions 5 times a second (not run end-to-end yet).
 - **Physics is not deterministic.** The same seed can end differently; Aalto expects ±10 % between runs. Small differences (one object in 15) are noise.
 - sort_fixed only, so far. sort_language doubles every point, so the same failures cost twice as much there.

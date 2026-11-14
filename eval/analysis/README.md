@@ -8,12 +8,13 @@
 | [`FINDINGS.md`](FINDINGS.md) | What fails and what to build next: facts and opinions kept apart | – |
 | [`data/<snapshot>/`](data/) | The tables below for one set of runs (~300 KB, CSV / JSONL) | – |
 | [`trace.py`](trace.py) | Run folders (+ policy logs) → the tables | where Aalto's sim is installed (needs Pinocchio + the G1 URDF), e.g. the Verda sim machine |
-| [`traced_eval.py`](traced_eval.py) | Aalto's evaluator plus object positions 5×/s, the container's log, video; also adds the missing `--policy` (see below) | the sim machine |
+| [`traced_eval.py`](traced_eval.py) | Aalto's evaluator plus object positions 5×/s, the container's log, video; also adds the missing `--policy` (see below). **Not run end-to-end yet:** test it on one trial before using it for a scored run | the sim machine |
 | [`numbers.py`](numbers.py) | Every number in FINDINGS.md from a data folder | anywhere with pandas |
 
 ## How to run
 ```bash
-# 1. New runs, on the sim machine (same arguments as `aalto.sh eval`; 2nd sim: AALTO_INSTANCE=b and --host-port 8001)
+# 1. New runs, on the sim machine (same arguments as `aalto.sh eval`; 2nd sim: AALTO_INSTANCE=b and --host-port 8001).
+#    traced_eval.py has not been run end-to-end yet: try --trials 1 first. Plain `aalto.sh eval` runs work with step 2 too.
 cd ~/aaltonomous-humanoid
 bash aaltonomous/cloud/aalto.sh py ~/bot-icelli/eval/analysis/traced_eval.py --container bot-icelli/policy:v1.2 \
     --team v1.2 --task sort_fixed --trials 10 --seed 1000 --out ~/runs/traced --video

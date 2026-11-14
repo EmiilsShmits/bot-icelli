@@ -20,7 +20,7 @@
 
 **Never `--container` without `--policy`:** Aalto's `evaluate.py` checks `--policy` (default `oracle`) first, so `--container IMAGE` alone silently runs the privileged oracle instead of the image. That happened to our first "v1" run (e-010). `compare.sh` passes both since 9b0e59c.
 
-**What failed, and why:** [`analysis/`](analysis/) turns run folders into grasp-by-grasp tables. Results: [`analysis/FINDINGS.md`](analysis/FINDINGS.md). For new runs, use `analysis/traced_eval.py` in place of `aalto.sh eval`: it also records object positions, the container's log and video.
+**What failed, and why:** [`analysis/`](analysis/) turns run folders into grasp-by-grasp tables. Results: [`analysis/FINDINGS.md`](analysis/FINDINGS.md). `analysis/traced_eval.py` can replace `aalto.sh eval` to also record object positions, the container's log and video. It has not been run end-to-end yet: test it on one trial first.
 
 **Docker-path sim (Aalto's image):** start a policy server on :8000 (`make serve`, or `docker run -d --gpus all -p 8000:8000 <image>`), then `make eval TASK=sort_fixed TRIALS=20` (runs `aalto eval` inside the sim container; untested). Exit 0 = gate passed, 2 = failed.
 
