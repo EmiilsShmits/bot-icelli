@@ -25,7 +25,7 @@
 **Docker-path sim (Aalto's image):** start a policy server on :8000 (`make serve`, or `docker run -d --gpus all -p 8000:8000 <image>`), then `make eval TASK=sort_fixed TRIALS=20` (runs `aalto eval` inside the sim container; untested). Exit 0 = gate passed, 2 = failed.
 
 ## Status
-- **Now (Sat 14 Nov ~17:50, Samer + Claude):** on Samer's Verda machine (`samer-v1-sim`, spot RTX PRO 6000, FIN-03): e-008 (baseline nominal), e-010 (the oracle, launched as v1 by mistake) and e-011 (baseline with `AALTO_DR=train`) are done. v1.2 nominal is running (the real image; 12/15 after 4 trials). Videos of v1.1 / v1.2 are being recorded on a 3rd sim. Failure analysis: `analysis/FINDINGS.md`.
+- **Now (Sat 14 Nov ~17:50, Samer + Claude):** on Samer's Verda machine (`samer-v1-sim`, spot RTX PRO 6000, FIN-03): e-008 (baseline nominal), e-010 (the oracle, launched as v1 by mistake) and e-011 (baseline with `AALTO_DR=train`) are done. v1.2 nominal is running (the real image; 12/20 after 5 trials, level with the baseline on the same seeds). Videos of v1.1 / v1.2 are being recorded on a 3rd sim. Failure analysis: `analysis/FINDINGS.md`.
 - **Next:** —
 - **Blockers:** —
 

@@ -10,7 +10,7 @@ _Update at the end of every session. Newest state at the top; keep it short._
   - **Failure analysis (Sat ~17:50, Samer + Claude):** `eval/analysis/FINDINGS.md`, grasp by grasp, on the baseline (nominal and `AALTO_DR=train`), the oracle and the first real v1.2 trials.
     - The cheapest fix found: the baseline (and v1.x) drops every object at one point per bin, and an object resting on another scores 0 (6 of the baseline's 14 lost objects).
     - Next: empty grasps (49 % of the baseline's grasps, 70 % with DR) and repeated identical retries.
-    - First real v1.2: 12/15 vs the baseline's 10/15 on the same 4 seeds.
+    - First real v1.2: 12/20 after 5 of 10 episodes, level with the baseline (12/20 on the same seeds). Seed 1004: 0/5, 8 of 11 grasps empty.
   - **Sim runs in progress** (same seeds as the baseline, tmux on the machine, see `eval/README.md`): v1.2 nominal (the image really runs: container on :8000), then v1.1 nominal, v1.2 sort_language, baseline sort_language, then the venue look. Rows go into `eval/RESULTS.md`; live table: `ssh root@<ip> python3 ~/summarize.py`.
 - **Done:** project context scaffolding (CLAUDE.md, docs/); all 38 challenges saved to `docs/challenges/` with an overview table; sponsor codes moved to `.env.challenges`; hardware + API research in `docs/research/` (Aalto G1 robot/sim, all credits and APIs, Rokoko gloves, Jetson)
 - **Also done:** repo structure for knowledge base + code (see `README.md`, `AGENTS.md`); Aalto starter repo linked as a submodule; placeholder policy server passes Aalto's plumbing test (`make check`)
@@ -87,4 +87,4 @@ _Anything hardcoded or faked, so nobody is surprised at demo time._
 - 2026-11-14 — `eval/analysis/`: grasp-by-grasp trace of the sim runs (`trace.py`, `traced_eval.py`, `numbers.py`, data snapshot `2026-11-14_1745`). `FINDINGS.md`:
   - the second object into a bin lands on the first and scores 0: 6 of the baseline's 14 lost objects;
   - empty grasps 49 % (70 % with DR), and aim doesn't explain them;
-  - first real v1.2 trials 12/15 vs 10/15 on the same seeds.
+  - first real v1.2 trials: 12/20 after 5 episodes, level with the baseline.

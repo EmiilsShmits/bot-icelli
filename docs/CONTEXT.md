@@ -65,7 +65,7 @@ How to hand in: [`runbooks/submit.md`](runbooks/submit.md). Hard rules for code:
 | e-008 | Aalto's classical baseline, camera only (a valid submission) | nominal, sort_fixed, 10 | 26/40 (65 %), gate PASS | **far cross-body objects 2/9**, the rest 24/31 |
 | e-010 | **Aalto's oracle**, launched as "v1" by mistake (`--container` without `--policy` runs the oracle) | nominal, sort_fixed, 10 (same seeds as e-008) | 32/40 (80 %) | **not v1**. Useful as the exact-pose reference on the baseline's seeds |
 | e-011 | Aalto's classical baseline | `AALTO_DR=train`, sort_fixed, 10 | 11/40 (28 %), gate FAIL | 2 safe-stops right after time-limit episodes (blocking `reset()`, fixed in our versions) |
-| running | **v1.2, the real image** | nominal, sort_fixed, same seeds as e-008 | 12/15 after 4 trials (baseline 10/15, oracle 13/15 on the same seeds) | not final ([`../eval/analysis/FINDINGS.md`](../eval/analysis/FINDINGS.md)) |
+| running | **v1.2, the real image** | nominal, sort_fixed, same seeds as e-008 | 12/20 after 5 trials, **level with the baseline** (12/20 on the same seeds; oracle 17/20). Seed 1004: 0/5 | not final ([`../eval/analysis/FINDINGS.md`](../eval/analysis/FINDINGS.md)) |
 | e-001 | Aalto's oracle (exact object poses from the sim: **not a valid submission**) | nominal, sort_fixed, 3 | 11/12 (92 %) | no triangles in those layouts |
 | e-004 | Aalto's oracle | venue look, sort_fixed, 6 | 22/27 (82 %) | triangles 2/5 |
 | e-005 | oracle + Gemini Decision 1 choosing the next move | same seeds as e-004 | 23/27 (85 %) | one object more is noise |

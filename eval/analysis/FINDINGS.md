@@ -8,6 +8,7 @@
 - **The oracle trap.** `aalto.sh eval --container IMAGE` without `--policy` runs **Aalto's privileged oracle**, not the image: Aalto's `evaluate.py` checks `--policy` (default `"oracle"`) before `--container`. Our runs labelled v1 / v1.1 / v1.2 that started before Sat 15:19 UTC were the oracle (e-010; fixed in 9b0e59c). Always pass `--policy ws://localhost:PORT` with `--container`; [`traced_eval.py`](traced_eval.py) adds it by itself.
 - **First real image runs:**
   - **v1.2, nominal sim:** 12/15 sorted on seeds 1000–1003. On the same 4 seeds the baseline sorts 10/15 and the oracle 13/15. Only 4 of its 10 episodes were done at the snapshot; the run is still going.
+  - **Update 17:55, not in the snapshot yet:** v1.2's 5th episode (seed 1004) sorted **0/5**. 8 of its 11 grasps were empty, on three cylinders, a triangle and a cube close to the robot; the baseline sorted 2/5 there. After 5 episodes **v1.2 is level with the baseline: 12/20 each** on seeds 1000–1004 (oracle 17/20). The lead after 4 episodes was noise.
   - **v1.1, one video episode (seed 1001):** 4/5 sorted.
 
 ## The runs (FACT)
@@ -42,7 +43,7 @@ The tables cover 36 episodes, 145 objects and 215 grasps. They also hold 309 eve
   - baseline 34/69 (49 %)
   - baseline DR 38/54 (70 %)
   - oracle 19/56 (34 %)
-  - v1.2 2/21 (10 %). On the same 4 seeds the baseline had 9/24.
+  - v1.2 2/21 (10 %). On the same 4 seeds the baseline had 9/24. Its 5th episode (seed 1004, after the snapshot) had 8 empty of 11, so this is not a stable difference yet.
 - **Unsorted objects never held at all:**
   - baseline 8 of 14
   - baseline DR 10 of 29, plus 15 never attempted
