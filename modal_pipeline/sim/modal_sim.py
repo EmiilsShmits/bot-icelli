@@ -62,7 +62,8 @@ REPO = next((p for p in (HERE.parent / "aaltonomous-humanoid", HERE.parent.paren
              if (p / "aaltonomous").is_dir()), HERE.parent / "aaltonomous-humanoid")
 APP_DIR = "/opt/aalto"
 # Our venue look: sim/venue_look/ at the root of the team repo (this folder is modal_pipeline/sim/).
-VENUE = HERE.parent.parent / "sim" / "venue_look"
+TEAM = HERE.parent.parent                       # the bot-icelli repo root (this folder is modal_pipeline/sim/)
+VENUE = TEAM / "sim" / "venue_look"
 # Run at the start of a session with --look venue: write scene_venue.yaml (the organisers' scene.yaml, as edited by
 # any --variant, plus the geometry of venue.yaml: 7.5 cm bin walls, object spread), then switch the look on for
 # every process the script starts (sim, evaluator, policy server), so they all use the same scene.
@@ -121,6 +122,12 @@ image = (
     # comes from the Modal secret `gemini` instead.
     .add_local_dir(HERE.parent / "adk_agents", "/opt/adk_agents",
                    ignore=["**/__pycache__", "**/*.pyc", "**/*.md", "**/.env", "**/.adk", "**/.DS_Store"])
+    # The team's submission policies (bot-icelli policy/, e.g. v1.5) and the instruction parser they read, at the
+    # same relative places as in the repo (policy/instruction.py finds ../training/instruction_parser).
+    .add_local_dir(TEAM / "policy", "/opt/bot/policy",
+                   ignore=["**/__pycache__", "**/*.pyc", "**/*.md", "weights", "weights/**", "tests", "tests/**"])
+    .add_local_dir(TEAM / "training" / "instruction_parser", "/opt/bot/training/instruction_parser",
+                   ignore=["**/__pycache__", "**/*.pyc", "**/*.md", "**/*.jsonl", "data", "data/**"])
 )
 # Converting recorded episodes to a LeRobot dataset needs no GPU and no sim: a small image of its own.
 convert_image = (
@@ -292,7 +299,7 @@ def main(action: str = "boot", script: str = "", trials: int = 3, dr: str = "", 
          task: str = "Aalto-Sort-G129-Dex3-Joint", ckpt: str = "", eval_task: str = "sort_fixed", video: bool = True,
          name: str = "", shards: int = 1, episodes: int = 2, seed: int = 100000, schema: str = "drop1",
          max_idle: int = 15, mode: str = "segments", background: bool = False, server_env: str = "",
-         gen_args: str = "", variant: str = "", look: str = "venue"):
+         gen_args: str = "", variant: str = "", look: str = "venue", policy: str = "v1.5"):
     # --background (with `modal run --detach`): start the job and return, so it does not depend on this computer
     # staying awake and online. Results land on the volumes as usual.
     if look not in LOOKS:
@@ -354,8 +361,22 @@ def main(action: str = "boot", script: str = "", trials: int = 3, dr: str = "", 
                   + (EVAL_WITH_VIDEO if video else "aalto eval")
                   + f" --policy ws://localhost:8000 --team adk --task {eval_task} --trials {trials} --seed {seed}; rc=$?; "
                   + "grep 'agent\\|robot t=\\|Traceback\\|Error' /tmp/policy.log | cut -c1-400 | tail -80; exit $rc")
+    # eval-policy: one of the team's submission policies (bot-icelli policy/server.py --policy <name>) as the policy
+    # server, in the sim's own environment (it has Pinocchio, OpenCV and the G1 URDF), scored by their evaluator.
+    #   modal run sim/modal_sim.py --action eval-policy --policy v1.5 --eval-task sort_fixed --trials 6 --seed 1000
+    #   --server-env "V15_SIDES=off"        settings for the policy (see its file); --variant "--tip triangles"
+    # v1.5 writes its decision log to runs/ (collected with the run).
+    policy_script = (f"mkdir -p {APP_DIR}/runs && (V15_DLOG={APP_DIR}/runs/decisions_{policy}.jsonl {server_env} POLICY={policy} PORT=8000 "
+                     f"PYTHONPATH={APP_DIR} python /opt/bot/policy/server.py > /tmp/policy.log 2>&1 &); aalto sim && "
+                     f"for i in $(seq 90); do grep -q 'serving policy\\|Traceback' /tmp/policy.log && break; sleep 2; done; "
+                     f"grep 'ready\\|serving policy\\|Traceback\\|Error' /tmp/policy.log | tail -5; "
+                     + (EVAL_WITH_VIDEO if video else "aalto eval")
+                     + f" --policy ws://localhost:8000 --team {policy} --task {eval_task} --trials {trials} --seed {seed}; "
+                     + "rc=$?; grep 'Traceback\\|Error\\|relay\\|grasp check\\|reset task' /tmp/policy.log | cut -c1-300 "
+                     + "| tail -60; exit $rc")
     scripts = {
         "boot": "aalto sim && aalto check; aalto snap",
+        "eval-policy": policy_script,
         "eval-skills": skills,
         "eval-agent": agent_script,
         "eval-adk": adk_script,
@@ -364,7 +385,7 @@ def main(action: str = "boot", script: str = "", trials: int = 3, dr: str = "", 
         "sh": script,
     }
     if action not in scripts or not scripts[action]:
-        raise SystemExit("--action boot | baseline | eval-model --ckpt <run>/checkpoints/<step> | eval-skills | eval-agent | eval-adk | sh --script '...' "
+        raise SystemExit("--action boot | baseline | eval-model --ckpt <run>/checkpoints/<step> | eval-policy --policy v1.5 | eval-skills | eval-agent | eval-adk | sh --script '...' "
                          "| datagen --name <dataset> | convert --name <dataset>")
     tag = tag or f"{action}-{time.strftime('%m%d-%H%M%S')}"
     if action == "eval-adk":       # the key and model come from the agent's own .env, read here and never stored

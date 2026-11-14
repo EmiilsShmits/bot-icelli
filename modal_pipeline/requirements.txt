@@ -1,0 +1,4 @@
+# Laptop side of the Modal pipeline: only the Modal client. Everything else is installed inside the Modal images
+# (sim/modal_sim.py, training/modal_pi05.py). Install, then log in once:
+#   pip install -r modal_pipeline/requirements.txt && modal token new
+modal==1.6.4

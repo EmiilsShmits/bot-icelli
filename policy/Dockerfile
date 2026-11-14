@@ -28,6 +28,9 @@ COPY ${A}/interface/__init__.py ${A}/interface/safety.py ${A}/interface/calibrat
 COPY ${A}/scene/__init__.py ${A}/scene/scene.py ${A}/scene/scene.yaml aaltonomous/scene/
 COPY ${A}/baselines/__init__.py aaltonomous/baselines/
 COPY ${A}/baselines/classical/*.py ${A}/baselines/classical/config.yaml aaltonomous/baselines/classical/
+# v1.5: Aalto's oracle planner (pure numpy + the classical planner; no Isaac) and the home pose it uses.
+COPY ${A}/sim/oracle.py aaltonomous/sim/
+COPY ${A}/sim/aalto_task/__init__.py ${A}/sim/aalto_task/layout.py aaltonomous/sim/aalto_task/
 # Emīls's instruction parser (rule stage; offline, no weights).
 COPY training/instruction_parser/rule_parser.py training/instruction_parser/spec.py training/instruction_parser/
 COPY policy/ policy/

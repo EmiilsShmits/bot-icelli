@@ -48,6 +48,11 @@ def _v14():
     return ClassicalV14()
 
 
+def _v15():
+    from policies.oracle_v15 import OracleV15
+    return OracleV15()
+
+
 # name -> factory. Model-based policies load their weights from policy/weights/ (baked into the image).
 POLICIES = {
     "hold": HoldChunkPolicy,
@@ -56,6 +61,7 @@ POLICIES = {
     "v1.2": _v12,  # v1.1 + head-camera pose re-fitted from depth each episode (policies/classical_v12.py)
     "v1.3": _v13,  # v1.2 + a free drop spot per bin, so objects don't land on each other (policies/classical_v13.py)
     "v1.4": _v14,  # v1.3 + grasp check after the lift, and a retry with another grasp (policies/classical_v14.py)
+    "v1.5": _v15,  # Aalto's oracle motions on the head camera + Emīls's upgrades, same-side arms, lying-triangle grasp
 }
 
 

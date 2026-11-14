@@ -17,8 +17,11 @@ evaluator and the scoring all read the same edited files, so they stay consisten
   --instructions shape sort_language instructions that name shapes, or colour and shape together, as the
                        organisers said the finals may ("colour, shape or both"). These sentences are ours.
 
-What a variant does NOT change: object size, the bins, the counter, the camera. Prisms always stand on a
-triangular face (the sim has no lying prisms).
+  --tip triangles      every triangular prism lies on a rectangular face (ridge up, any yaw) instead of standing on
+                       a triangular one, as a prism looks after it fell over (tests the v1.5 ridge grasp).
+
+What a variant does NOT change: object size, the bins, the counter, the camera. Without --tip, prisms always stand
+on a triangular face (the sim has no lying prisms).
 """
 import argparse
 import re
@@ -101,12 +104,42 @@ def make_instruction(task, rng):
 '''
 
 
+TIP_TRIANGLES = '''
+
+# ---- added by sim/scene_variant.py --tip triangles ----
+_assign_standing = assign
+
+
+def _qmul(a, b):
+    """Hamilton product of two xyzw quaternions."""
+    ax, ay, az, aw = a
+    bx, by, bz, bw = b
+    return np.array([aw * bx + ax * bw + ay * bz - az * by, aw * by - ax * bz + ay * bw + az * bx,
+                     aw * bz + ax * by - ay * bx + az * bw, aw * bw - ax * bx - ay * by - az * bz])
+
+
+def assign(sc, layout):
+    """Every active triangular prism lies on the rectangular face opposite its apex: roll +90 deg about the mesh x axis
+    (apex up, ridge horizontal), then the layout yaw; dropped from 2.4 cm so it settles whatever the mesh origin."""
+    poses, active = _assign_standing(sc, layout)
+    roll = np.array([np.sin(np.pi / 4), 0.0, 0.0, np.cos(np.pi / 4)])
+    for n in active:
+        if parse_name(n)[1] == "triangle":
+            p, q = poses[n]
+            p = np.array(p, float)
+            p[2] += 0.024 - sc.object_height("triangle") / 2
+            poses[n] = (p, _qmul(q, roll))
+    return poses, active
+'''
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--colors", choices=sorted(COLORS), default=None)
     ap.add_argument("--dr", choices=["wide"], default=None)
     ap.add_argument("--placement", choices=["wide"], default=None)
     ap.add_argument("--instructions", choices=["shape"], default=None)
+    ap.add_argument("--tip", choices=["triangles"], default=None)
     a = ap.parse_args()
     pkg = REPO / "aaltonomous"
     scene, tasks = pkg / "scene" / "scene.yaml", pkg / "interface" / "tasks.py"
@@ -129,10 +162,14 @@ def main():
         t += SHAPE_INSTRUCTIONS
     if a.dr == "wide":
         (pkg / "sim" / "dr" / "wide.yaml").write_text(DR_WIDE)
+    if a.tip == "triangles":
+        lay = pkg / "sim" / "aalto_task" / "layout.py"
+        if "--tip triangles" not in lay.read_text():
+            lay.write_text(lay.read_text() + TIP_TRIANGLES)
     scene.write_text(s)
     tasks.write_text(t)
     print(f"scene variant applied in {REPO}: colors={a.colors} dr={a.dr} placement={a.placement} "
-          f"instructions={a.instructions}")
+          f"instructions={a.instructions} tip={a.tip}")
 
 
 if __name__ == "__main__":

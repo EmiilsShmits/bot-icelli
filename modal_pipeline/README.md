@@ -22,8 +22,16 @@ Everything found wrong or unclear in Aalto's material: [`ORGANIZER_ISSUES.md`](O
   - `aalto-sim-out`: evaluator results and head-camera videos.
 
 ## How to run
-From this folder, with the `modal` CLI logged in:
+Laptop side: `pip install -r modal_pipeline/requirements.txt && modal token new` (only the Modal client; everything else is installed in the images).
 
+Our submission policies (bot-icelli `policy/server.py`) run as the policy server next to the sim:
+```bash
+modal run --detach sim/modal_sim.py --action eval-policy --policy v1.5 --eval-task sort_fixed --trials 2 --seed 1000 --background
+#   --server-env "V15_SIDES=off"   policy settings;   --variant "--tip triangles"   prisms lying on their side
+```
+
+
+From this folder, with the `modal` CLI logged in:
 ```bash
 modal run sim/modal_sim.py --action boot                                # start the sim, 9 scene checks, snapshots
 modal run sim/modal_sim.py --action baseline --trials 3                 # Aalto's oracle in the sim
