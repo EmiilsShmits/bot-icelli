@@ -1,6 +1,6 @@
 # Team context: read this first
 
-**Last updated:** Sat 14 Nov 2026, ~20:50 Helsinki time, by Samer + Claude. If you change something this file describes, update it in the same commit.
+**Last updated:** Sat 14 Nov 2026, ~21:30 Helsinki time, by Samer + Claude. If you change something this file describes, update it in the same commit.
 
 **Every statement here is one of three kinds:**
 - **FACT**: measured by us, or said by the organisers. Each one names its source and time. Numbers come from `eval/RESULTS.md` and the linked files; check there before you build on one.
@@ -12,7 +12,7 @@
 ## 1. The situation in five lines
 1. **FACT:** we hand Aalto one Docker image. Finalists are picked from a sim run on a held-out variant; the finals run on the real robot on Sunday. Aalto posts the hand-in form, team IDs and deadlines on Discord "this evening" (erkka, Sat 15:07).
 2. **FACT:** Junction's project page closes Sun 15 Nov 10:00 (official schedule).
-3. **FACT:** our candidates are v1 … v1.4 in `policy/`, all built on Aalto's classical baseline. Their images are built and pass Aalto's replay test. **v1.4 and v1.3 are public on GHCR** (§2). In the nominal sim v1.x sort 26–29/40 like the baseline; **with randomisation v1.3 keeps 26/40 and v1.4 sorts 29/40 while the baseline falls to 11/40**, and in the venue look v1.4 sorts 20/27 (§4.3). **v1.5 is a different base** (Aalto's oracle motions on the head camera + decision_oracle upgrades, `policy/policies/oracle_v15.py`): in the venue look 23/27 with either arm anywhere and 20/27 with same-side arms (e-030, e-029, Modal); image built on sim-3, replay test passed, **not on GHCR**; with randomisation in Aalto's look (sides off) 17/20 after 5 seeds, run going (§4.3).
+3. **FACT:** our candidates are v1 … v1.4 in `policy/`, all built on Aalto's classical baseline. Their images are built and pass Aalto's replay test. **v1.4 and v1.3 are public on GHCR** (§2). In the nominal sim v1.x sort 26–29/40 like the baseline; **with randomisation v1.3 keeps 26/40 and v1.4 sorts 29/40 while the baseline falls to 11/40**, and in the venue look v1.4 sorts 20/27 (§4.3). **v1.5 is a different base** (Aalto's oracle motions on the head camera + decision_oracle upgrades, `policy/policies/oracle_v15.py`): in the venue look 23/27 with either arm anywhere and 20/27 with same-side arms (e-030, e-029, Modal); **with randomisation in Aalto's look 33/40 with sides off (e-037), our best**; strict sides running. Strict v1.5 is on GHCR as the pre-submission backup: `ghcr.io/samer-cyber/bot-icelli-policy:presubmit-v15-1` (`sha256:be601037877f98b07b779394d8455443bc4eb87d420458874a70dca7dd057222`).
 4. **FACT (Samer, Sat ~17:00):** Samer + Claude do the final integration and build the final image from what the team produces.
 5. **OPINION (Samer + Claude):** v2 = Gemini Decision 1 reads the instruction (with offline fallbacks) + the best "hands" we can measure (v1.x vs Emīls's `policy/decision_oracle` in camera mode). Gemini does not drive the robot.
 
@@ -82,7 +82,8 @@ How to hand in: [`runbooks/submit.md`](runbooks/submit.md). Hard rules for code:
 | e-034 | **`look` image, live** (sim C) | venue look, seed 1000 | never moves (0/3 by design), gate PASS | camera fit 9.8°, “v1.4 USES it”; objects right with the fitted camera (tops 4.4 cm); hand check “TILTED CAMERA” from t ≥ 10 s (1.3 vs 4.3 cm): the right answer for this look |
 | e-035 | **v1.4 with randomisation** (sim B) | `AALTO_DR=train`, sort_fixed, seeds 1000–1009 | **29/40 (1 wrong bin), gate PASS** | v1.3 26/40 (e-027), baseline 11/40 + gate FAIL (e-011). Seeds 1000–1004: 15/20 (Marcus's agent 18/20, Aalto's oracle with exact poses 17/20) |
 | e-036 | v1.3 on sort_language (sim A) | nominal, seeds 1000–1009 | 24/37, gate PASS | no wrong bins; seeds 1000–1004 11/18, the same as Marcus's agent |
-| running | **v1.5 strict** with randomisation (sim B); **v1.5 sides off** with randomisation in Aalto's look (sim C: 17/20 after seeds 1000–1004, Marcus 18/20, v1.4 15/20); the baseline on sort_language (sim A) | seeds 1000–1009 | | the test closest to the finalist sim |
+| e-037 | **v1.5 sides off with randomisation** (sim C) | `AALTO_DR=train`, Aalto's look, seeds 1000–1009 | **33/40, gate PASS** | best camera-only result: v1.4 29/40, v1.3 26/40, baseline 11/40, Aalto's oracle with exact poses 32/40 (e-025); seeds 1000–1004 17/20 (Marcus's agent 18/20) |
+| running | v1.5 strict with randomisation (sim B, 17/24 after 6 seeds); **Marcus's agent as a Docker image** in Aalto's nominal scene (sim C, `policy/adk/`, `eval/adk_lane.sh`), waiting for a Gemini key | | | for the real-robot pre-submission (Sat 23:59) |
 | e-001 | Aalto's oracle (exact object poses from the sim: **not a valid submission**) | nominal, sort_fixed, 3 | 11/12 (92 %) | no triangles in those layouts |
 | e-004 | Aalto's oracle | venue look, sort_fixed, 6 | 22/27 (82 %) | triangles 2/5 |
 | e-005 | oracle + Gemini Decision 1 choosing the next move | same seeds as e-004 | 23/27 (85 %) | one object more is noise |
