@@ -13,6 +13,12 @@ first a run in which the robot doesn't move at all, then one supervised episode.
 | Run 2+: our candidate v1.4 | `ghcr.io/samer-cyber/bot-icelli-policy@sha256:cd8311e9f64ea25703d9c70a645b44091dc5a00d8b5f75dc54f29720f6fd7f8d` (tag `v1.4`) |
 | Fallback: v1.3 (no grasp check, no head-fit fix) | `ghcr.io/samer-cyber/bot-icelli-policy@sha256:60ef1b8980de11f9448da5de27234bf3d9f3b3be682f1914a2c0532c2ed504c4` (tag `v1.3`) |
 
+**Candidate may change tonight:** Emīls's v1.5 (Aalto's oracle motions on the head camera, offline) sorted 23/27 in
+the venue look with `V15_SIDES=off` (e-030), 20/27 with same-side arms (e-029); v1.4 sorted 20/27. Its runs in the
+randomised Aalto look are going (Sat ~20:20). If v1.5 wins, it gets pushed to GHCR and replaces v1.4 in Run 2; the
+steps stay the same. Same-side arms (`strict`, its default) is the safer choice on the real robot: the arms never
+cross, and Aalto's planner doesn't check arm against arm.
+
 ## 0. Before: message to Aalto (erkka, Aalto channel / DM)
 erkka offered real-robot deployments (through a Wendy agent) to teams that show readiness, and asked for material.
 A draft (edit freely):
@@ -56,13 +62,16 @@ their footage). Write down what you find; a difference of more than ~2 cm or ~3�
 - Put 3–5 objects on the table first (anywhere, also one close to the robot).
 - Read the policy's log (`docker logs <container>`): every line we need starts with `[look`.
 
-| Line | Good | Stop and tell Claude if |
+Tested live in the venue-look sim (Sat ~20:15, `eval/RESULTS.md` e-034): every line below came out right there.
+The middle column gives that run's values as a reference.
+
+| Line | Good (sim reference) | Stop and tell Claude if |
 |---|---|---|
-| `camera fit: tilt …; camera moved …; v1.4 USES it` | tilt 8–12° (as in Aalto's footage), camera moved a few cm, USES | "does NOT use it", or tilt > 15° |
-| `objects with the fitted camera: …` | exactly the objects on the table, right colours, tops 4–5 cm, positions within ~2 cm of your tape | bins or hands listed as objects; tops at 7–9 cm (camera pose wrong); objects missing |
-| `hand check …` / `verdict: …` | "TILTED CAMERA" | "LEANING ROBOT". This check is not validated yet (Sat ~20:00): trust the phone level (§2 row 1) over it |
-| `depth: … % valid pixels` | > 80 % | < 50 % (real depth holes would hurt grasping) |
-| `finger angles …` | the open hand, near Aalto's `open` posture | — |
+| `camera fit: tilt …; camera moved …; v1.4 USES it` | tilt 8–12° (as in Aalto's footage), camera moved a few cm, USES (sim: tilt 9.8°, moved 2.0 cm, USES) | "does NOT use it", or tilt > 15° |
+| `objects with the fitted camera: …` | exactly the objects on the table, right colours, tops 4–5 cm, positions within ~2 cm of your tape (sim: tops 4.3–4.4 cm; the calibration camera put the same cubes ~20 cm too far with tops 8–9 cm) | bins or hands listed as objects; tops at 7–9 cm (camera pose wrong); objects missing. The sim run also listed ~9 "blue" points on the robot's own grey arms; the real Dex3 hands are black and our colour filter leaves them out, so on the real robot extra points on the arms are worth a stop |
+| `hand check …` / `verdict: …` | "TILTED CAMERA" from look #3 on (t ≥ 10 s); looks #1–#2 may say "inconclusive" while the arms settle (sim: fitted camera 1.3 cm, calibration 4.3–4.8 cm) | "LEANING ROBOT". If the verdict and the phone level (§2 row 1) disagree, trust the phone level |
+| `depth: … % valid pixels` | > 80 % (sim: 99 %) | < 50 % (real depth holes would hurt grasping) |
+| `finger angles …` | the open hand, near Aalto's `open` posture (sim: all within ±0.09 rad) | — |
 
 ## 4. Run 2: one supervised episode with v1.4
 - 3 objects, one of each colour, 30–35 cm in front of the robot, not touching. e-stop held by Aalto.
