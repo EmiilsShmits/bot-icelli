@@ -56,6 +56,20 @@ class ClassicalV1(Policy):
         self.action_horizon = int(self.pol.cfg["motion"]["chunk"])
         self.mapping, self.mapping_source = {}, ""
         self._pending_reset, self._stale_since = None, None
+        self._tools = None
+
+    def get_tools(self, observation):
+        """Return model-callable skill tools bound to this tick's measured state.
+
+        Construction is lazy so the normal 30 Hz policy path pays no extra IK-model
+        startup cost unless a higher-level planner asks for the skills. The returned
+        functions capture joint state internally; a model cannot provide stale state.
+        """
+        if self._tools is None:
+            from tools.triangle_pick import TrianglePickTool
+
+            self._tools = {"pick_triangle": TrianglePickTool(self.pol.planner)}
+        return {name: tool.bind(observation) for name, tool in self._tools.items()}
 
     def reset(self, instruction, task=None, seed=None):
         # Never block here. The runner starts the episode clock right after reset(), and 3 s of sim time without a

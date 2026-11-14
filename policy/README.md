@@ -17,6 +17,7 @@
 | `policies/classical_v12.py` | **v1.2:** v1.1 + the head-camera pose re-fitted from the depth image at the first look of every episode (`headpose.py`), used only within plausible limits |
 | `headpose.py` | Head-camera pose from one depth image (table plane + bin walls). Copied from Emīls's `decision_oracle/camera.py` (that folder stays out of the image); keep the two in sync |
 | `instruction.py` | Instruction → colour → bin, using Emīls's rule parser (`training/instruction_parser/rule_parser.py`) |
+| `tools/triangle_pick.py` | Agent-callable triangle grasp planner: face-aligned pick-and-place from a vision-supplied pelvis-frame pose; returns a safety-checked trajectory, never executes it |
 | `guard.py` | Shadow copy of Aalto's safety filter with slightly lower caps: what we send never gets clipped |
 | `get_urdf.sh` | Downloads the G1 URDF that the IK and safety filter need (to `artifacts/urdf/` and where Aalto's code looks) |
 | `tests/test_v1.py` | Unit tests. Parser, guard and colours run anywhere (Windows too); the v1.1 planner tests need Pinocchio and skip without it (run them on the sim machine in the `isaac` env) |
@@ -44,6 +45,14 @@ make docker-build POLICY=v1 IMAGE=ghcr.io/<owner>/bot-icelli-policy:v1
 make docker-build POLICY=v1.1 IMAGE=bot-icelli/policy:v1.1     # v1.1; the tuning knobs are env vars (see the file's docstring)
 ```
 
+### Triangle tool
+`ClassicalV1.get_tools(obs)["pick_triangle"]` returns a model-callable function with the measured joint state bound
+internally. The higher-level agent supplies a vision-confirmed triangle colour / pelvis-frame top centre / yaw and
+target bin. A successful result contains a safety-checked pick-and-place joint trajectory; pass it through `Guard`
+before execution. The tool is lazy-loaded and does not change `act()` behavior. The current camera detector is
+shape-agnostic, so the caller must supply the triangle pose; the policy executor still needs to dispatch returned
+trajectories.
+
 ## Status
 - **Now (Sat 14 Nov, Samer + Claude):** v1 written; unit tests pass (instruction mapping on 200 training-template instructions + real colour names, guard, colour ranges on sim and real colours).
   - **Image built** on the Linux sim machine: `make docker-build POLICY=v1 IMAGE=bot-icelli/policy:v1`, **1.46 GB**; the build-time load check passes (Pinocchio, URDF, config, parser).
@@ -52,8 +61,9 @@ make docker-build POLICY=v1.1 IMAGE=bot-icelli/policy:v1.1     # v1.1; the tunin
   - **v1.1** (Sat 14 Nov ~16:40): the baseline's first sim trials left 6 of 15 objects on the table; 3 of the 6 were cross-body grasps at the edge of the arm's reach, and one object was retried 4 times. v1.1 hands those objects over instead and caps retries. All 14 tests pass on the sim machine (incl. 3 planner tests); image `bot-icelli/policy:v1.1` built (1.46 GB). Sim comparison with v1 running.
   - **v1.2** (Sat 14 Nov ~17:00): v1.1 + head-camera pose fit (Emīls's). On live frames the fit corrects 0.9° / ~1 cm in Aalto's nominal sim (its renderer ignores the calibration's principal point, ~1°), ~2° / ~2.5 cm with `AALTO_DR=train` (camera jitter, as in the held-out variant), and ~10° in the venue look / on the real robot. 17 tests pass on the sim machine (synthetic tilts of 0/5/10° recovered within 0.3°); image `bot-icelli/policy:v1.2` (1.46 GB) passes the replay test (100 calls, 0 errors, p50 5.7 ms, up in 0.54 s). In the sim comparison next.
   - **Reset fix (all versions, Sat 14 Nov ~17:00):** Aalto's baseline failed the sim gate once under load (`safe_stop` at step 0): its `reset()` waited ~14 s for a planning thread left over from an episode cut off by the time limit, and the runner's watchdog stops the robot after 3 s of sim time without a command. Ours now returns at once and holds the arms in `act()` until that thread is done (`classical_v1.py`). 18 tests pass on the sim machine; images v1.1 `b93cf1bf1b73` and v1.2 `4a817cbfe5be` rebuilt with it (v1.2 replay test: 100 calls, 0 errors).
+- **Triangle skill:** all policy versions expose a lazy `pick_triangle` tool through `ClassicalV1.get_tools(obs)`. It uses face-aligned grasp planning and returns an Aalto-planner-checked trajectory. A caller must provide triangle shape and pelvis-frame top centre/yaw; the normal submission detector is shape-agnostic and the policy executor does not yet dispatch skill trajectories.
 - **Before:** placeholder `hold` policy; `make check` passes (100 calls, 0 errors, p50 latency ~4 ms)
-- **Next:** —
+- **Next:** connect shape/yaw perception and policy-executor dispatch, then run randomized Isaac trials to measure grasp success.
 - **Blockers:** —
 
 ## Gotchas
