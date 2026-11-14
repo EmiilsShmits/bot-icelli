@@ -155,5 +155,61 @@ class TestV11Planner(unittest.TestCase):
         self.assertLess(abs(spots[0][1] - HANDOVER_Y), 0.03, spots[0])
 
 
+def plane_depth(extra_tilt_deg):
+    """Synthetic head depth (mm) of an endless table at counter height, seen by a camera tilted extra_tilt_deg
+    (about its optical x axis) away from calibration.yaml's pose."""
+    from aaltonomous.interface.calibration import Calibration
+    from aaltonomous.scene.scene import Scene
+    cal, scene = Calibration.load(), Scene.load()
+    c, T = cal.cams["head"], cal._T("head")
+    a = np.radians(extra_tilt_deg)
+    R = T[:3, :3] @ np.array([[1, 0, 0], [0, np.cos(a), -np.sin(a)], [0, np.sin(a), np.cos(a)]])
+    v, u = np.mgrid[0:c.height, 0:c.width]
+    ray = np.stack([(u - c.K[0, 2]) / c.K[0, 0], (v - c.K[1, 2]) / c.K[1, 1], np.ones(u.shape)], -1)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        s = (scene.counter_z - T[2, 3]) / (ray @ R[2])     # optical depth (m) where the ray meets the table
+    return np.where((s > 0.15) & (s < 1.5), s * 1000, 0).astype(np.uint16), cal, scene
+
+
+class TestHeadPose(unittest.TestCase):
+    """policy/headpose.py (Emīls's fit): the table-plane part on synthetic depth, and the acceptance limits."""
+
+    def test_tilt_recovered(self):
+        from headpose import fit_head_pose, plausible
+        for tilt in (0.0, 5.0, -10.0):
+            depth, cal, scene = plane_depth(tilt)
+            fit = fit_head_pose(depth, cal, scene)
+            self.assertTrue(fit.ok, fit.why)
+            self.assertAlmostEqual(fit.tilt_deg, abs(tilt), delta=0.3, msg=fit.summary())
+            self.assertTrue(plausible(fit), fit.summary())
+
+    def test_plausible_limits(self):
+        from headpose import PoseFit, plausible
+        T = np.eye(4)
+        self.assertTrue(plausible(PoseFit(T, True, tilt_deg=10.0, dxy=(0.02, -0.01), dyaw_deg=1.0)))
+        self.assertFalse(plausible(PoseFit(T, False)))
+        self.assertFalse(plausible(PoseFit(T, True, tilt_deg=20.0)))
+        self.assertFalse(plausible(PoseFit(T, True, dxy=(0.08, 0.0))))
+        self.assertFalse(plausible(PoseFit(T, True, dyaw_deg=7.0)))
+
+
+@unittest.skipUnless(HAVE_PIN, "needs pinocchio + the G1 URDF (sim machine or Docker build)")
+class TestV12(unittest.TestCase):
+    def test_fit_used_then_reset(self):
+        from policies.classical_v12 import ClassicalV12
+        v = ClassicalV12()
+        v.reset(tasks.FIXED_INSTRUCTION, "sort_fixed")
+        pol = v.pol
+        T0 = pol.cal._T("head").copy()
+        pol.arm_cmd, pol.hand_cmd = pol.home.copy(), pol.post["open"].copy()
+        pol._look({"head_rgb": np.zeros((480, 640, 3), np.uint8), "head_depth": plane_depth(-8.0)[0]})
+        self.assertIsNotNone(pol.head_fit)
+        self.assertAlmostEqual(pol.head_fit.tilt_deg, 8.0, delta=0.3)
+        self.assertFalse(np.allclose(pol.cal._T("head"), T0))          # perception now uses the fitted pose
+        v.reset(tasks.FIXED_INSTRUCTION, "sort_fixed")
+        self.assertTrue(np.allclose(pol.cal._T("head"), T0))           # next episode starts from calibration.yaml
+        self.assertIsNone(pol.head_fit)
+
+
 if __name__ == "__main__":
     unittest.main()
