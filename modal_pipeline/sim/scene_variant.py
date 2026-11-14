@@ -10,6 +10,10 @@ evaluator and the scoring all read the same edited files, so they stay consisten
                        their real sort_fixed mapping yellow -> left, purple -> center, orange -> right.
                        (orange objects in front of orange bins: on purpose, that is the real setup.)
   --colors pastel      washed-out shades of the same three (worn foam, strong light)
+  --colors venue       the three colours as the robot's head camera recorded the real blocks (data drop 2), from
+                       Marcus's repo (1a51d7b). With AALTO_DR=train this is his "venue" scene (colours only: not
+                       our venue look, which also lowers the camera). With "--dr wide" orange and yellow can be
+                       truly indistinguishable.
   --dr wide            writes sim/dr/wide.yaml: the organisers' training randomisation with wider object shades
                        (hue / saturation / brightness), lighting, camera noise and camera pose error. Then start
                        the sim with AALTO_DR=wide (modal_sim.py: --dr wide).
@@ -33,6 +37,9 @@ REPO = next((p for p in (Path("/opt/aalto"), ROOT.parent / "aaltonomous-humanoid
 COLORS = {
     "real": {"yellow": [235, 200, 20], "purple": [125, 70, 175], "orange": [245, 135, 25]},
     "pastel": {"yellow": [240, 220, 110], "purple": [165, 130, 200], "orange": [245, 170, 100]},
+    # As the robot's own head camera sees the real blocks (OpenCV hue / saturation on data drop 2): orange 11-13 /
+    # 150-220, yellow 34-46 / 72-88 (a pale green-yellow), purple ~110 / 140-150 (looks blue). Marcus's values.
+    "venue": {"yellow": [194, 217, 150], "purple": [82, 119, 191], "orange": [230, 129, 62]},
 }
 FIXED = {"yellow": "left", "purple": "center", "orange": "right"}      # Discord, 14 Nov 15:07
 

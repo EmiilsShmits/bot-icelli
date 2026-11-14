@@ -53,6 +53,11 @@ def _v15():
     return OracleV15()
 
 
+def _v16():
+    from policies.oracle_v16 import OracleV16
+    return OracleV16()
+
+
 def _look():
     from policies.look import LookPolicy
     return LookPolicy()
@@ -67,6 +72,7 @@ POLICIES = {
     "v1.3": _v13,  # v1.2 + a free drop spot per bin, so objects don't land on each other (policies/classical_v13.py)
     "v1.4": _v14,  # v1.3 + grasp check after the lift, and a retry with another grasp (policies/classical_v14.py)
     "v1.5": _v15,  # Aalto's oracle motions on the head camera + Emīls's upgrades, same-side arms, lying-triangle grasp
+    "v1.6": _v16,  # v1.5 + Gemini Decision 1 for colour, shape and the instruction (v1.5 = offline fallback); sides off
     "look": _look,  # never moves: logs v1.4's camera fit, objects and a hand check, for a first real-robot run
 }
 

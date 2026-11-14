@@ -223,6 +223,29 @@ Aalto confirmed internet at the finals, so we tested Google's **Gemini Decisions
 - From a laptop in Helsinki: p50 0.44 s, p95 0.84 s, max 3.05 s over 900 calls. A 2 s timeout before falling back to Gemma looks reasonable.
 - 900 calls used 1.05 M input tokens, about **$0.11**.
 
+## Follow-up: Decision 1 with the two prompt fixes, in v1.6 (Sat 14 Nov, evening)
+
+The v1.6 policy (`policy/instruction_d1.py`) calls Decision with the two fixes named above:
+- the task text says orange = red and purple = blue;
+- no yes/no "invalid?" question (finals instructions are valid).
+
+It uses the answer only if all 10 slots come back with confidence ≥ 0.6; otherwise the rule parser's answer stays (the "v1.6 chain").
+
+T2a and T2b had already been looked at, so a fresh hand-written set came first: **T2c**, 40 items in [`data/t2c.jsonl`](data/t2c.jsonl), written before any run. It covers orange/purple names, Aalto's real rung 1, "leave" / "only" / "don't touch" wording, shape rules, paraphrases and one `other` rule. Script: [`compare_v16.py`](compare_v16.py). Full output for T1/T2a/T2b: [`results/compare_v16_t2ab.md`](results/compare_v16_t2ab.md).
+
+| Set | Rule parser | Decision as first tested | Decision, v1.6 prompt | v1.6 chain |
+|---|---|---|---|---|
+| **T2c (fresh, 40)** | 80.0% (1 wrong) | 42.5% (3 wrong) | **100.0% (0 wrong)** | **100.0%** |
+| T1 (Aalto templates, 288) | 100.0% | 100.0% | 100.0% | 100.0% |
+| T2a (339, seen before) | 86.7% (11 wrong) | 91.7% | 99.7% (0 wrong, 1 refused) | 100.0% |
+| T2b (213, seen before) | 60.1% (14 wrong) | 93.9% | 99.5% (1 wrong) | 99.5% |
+
+- **Latency** from a laptop in Helsinki: p50 0.3 to 0.75 s and p95 under 1.1 s per set; one call took 7.25 s (T2b). In v1.6 the call starts at reset() and is waited for at most 2.5 s, at the first look.
+- **The one wrong answer:** T2b-163, "First put all the cubes in the left bin, then put whatever is left in the right…". Decision sends unknown objects (`other`) right too. That is the open "anything remaining" convention (question 4 below), not a parsing error.
+- **Caveats:**
+  - 40 items is small: one miss would be 2.5 points.
+  - T2c was written by the same people (Emīls + Claude) as the earlier sets.
+
 ## Open questions for Aalto
 1. **Distractors:** is a known colour on an unknown shape (a red star) a "red object" or a distractor? We assumed a distractor (`other`).
 2. **Distractor scoring:** how are distractors scored? Is moving one a penalty, and is leaving it on the table required? Do finals instructions ever say what to do with them?

@@ -17,7 +17,7 @@
 !training/instruction_parser/spec.py
 policy/tests/
 policy/decision_oracle/
-# v1.5 needs these decision_oracle modules (no API calls in them on its path; labels.py / Gemini stay out)
+# v1.5 needs these decision_oracle modules (no API calls in them on v1.5's path)
 !policy/decision_oracle/__init__.py
 !policy/decision_oracle/camera.py
 !policy/decision_oracle/chooser.py
@@ -26,5 +26,8 @@ policy/decision_oracle/
 !policy/decision_oracle/policy.py
 !policy/decision_oracle/upgrades.py
 !policy/decision_oracle/upgrades_v15.py
+# v1.6: Decision 1 colour / shape labels + the any-colour camera (labels.py above is their base)
+!policy/decision_oracle/labels_v16.py
+!policy/decision_oracle/upgrades_v16.py
 **/__pycache__
 **/*.pyc

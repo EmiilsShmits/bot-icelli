@@ -52,6 +52,34 @@ SIDE_BAND = 0.03          # m. Either arm may work within this distance of the c
 TIP_MAX_DEV_DEG = 95.0    # ridge grasp: finger direction may be this far from the arm's natural one (Aalto faces: 75)
 RIDGE_MIN_RATIO = 2.0     # top strip length / width below which the ridge direction is not trusted
 SIDES = ("strict", "off")
+
+
+def _ridge_shift(spec):
+    """V15_RIDGE_SHIFT: "SX,SZ" (both hands) or "left:SX,SZ;right:SX,SZ", mm. See RIDGE_SHIFT_MM."""
+    out = {"left": (0.0, 0.0), "right": (0.0, 0.0)}
+    for part in filter(None, (spec or "").replace(" ", "").split(";")):
+        sides, _, val = part.rpartition(":")
+        sx, sz = (float(v) for v in val.split(","))
+        for sd in ([sides] if sides else ("left", "right")):
+            out[sd] = (sx, sz)
+    return out
+
+
+# Ridge grasp: where the hand sits relative to the lying object, in the hand's own frame (mm): SX along the finger
+# direction (+ = hand further along the ridge), SZ along palm +z (the index finger's side; mirror-symmetric for the
+# two hands). (0, 0) = Aalto's grasp point (palm (99, -84, 15) mm), where the closed thumb stops ~15 mm short of the
+# near end face and the fingers must sweep the object back into it (policy/decision_oracle/README.md, ridge grasp).
+RIDGE_SHIFT_MM = _ridge_shift(os.environ.get("V15_RIDGE_SHIFT", ""))
+# Lying object: first look for a ridge plan on either arm, the stock claw only if neither has one (Aalto's plan() keeps
+# the quickest plan over both arms, and a stock plan on one arm counts as a plan, so it could beat the other arm's ridge).
+# Both default off in v1.5 (its behaviour unchanged); v1.6 turns them on (upgrades_v16.V16OraclePolicy).
+RIDGE_FIRST = os.environ.get("V15_RIDGE_FIRST", "off").lower() in ("1", "on", "true", "yes")
+
+
+def palm_z_dir(side, f):
+    """World direction of palm +z for a hand pointing its fingers along horizontal f, palm facing down (left palm
+    +y up, right palm +y down: kinematics.py)."""
+    return np.array([f[1], -f[0], 0.0]) if side == "left" else np.array([-f[1], f[0], 0.0])
 MAX_RELAYS_STRICT = 3     # relay tries per object with same-side arms (Aalto: 1). There a cross-side object has no
                           # other way to its bin, and Aalto's count includes relays whose grasp closed on nothing
 
@@ -84,6 +112,23 @@ class SidedPlanner(O._OraclePlanner):
             return Plan(False, side=side, color=det.color, reason=why)
         return super()._plan_side(det, side, bin_name, arm_q, hand_q, place_xy=place_xy)
 
+    _ridge_only = False
+    ridge_shift = RIDGE_SHIFT_MM      # per planner: v1.6 sets its own
+    ridge_first = RIDGE_FIRST
+
+    def plan(self, det, arm_q, hand_q, bin_name=None, obstacles=(), relocate=True):
+        """A lying object with a ridge direction: Aalto's plan() over both arms with ridge grasps only (no relocation),
+        then, if no arm has one, Aalto's plan() as is (stock claw, relocation). Anything else: Aalto's plan()."""
+        if self.ridge_first and getattr(det, "shape", None) == "tipped" and getattr(det, "yaw", None) is not None:
+            self._ridge_only = True
+            try:
+                p = super().plan(det, arm_q, hand_q, bin_name=bin_name, obstacles=obstacles, relocate=False)
+            finally:
+                self._ridge_only = False
+            if p.ok:
+                return p
+        return super().plan(det, arm_q, hand_q, bin_name=bin_name, obstacles=obstacles, relocate=relocate)
+
     def _plan_side_faces(self, det, side, bin_name, arm_q, hand_q, **kw):
         """A lying object: fingers along its ridge (across the two flat end faces), then the stock hints. Other
         shapes: Aalto's face-aligned grasp."""
@@ -99,10 +144,15 @@ class SidedPlanner(O._OraclePlanner):
                 cands.append((da, a))
         saved = (self.kin.hint, self.kin.w_hint)
         try:
+            sx, sz = self.ridge_shift[side]
             for _, a in sorted(cands):
                 f = np.array([np.cos(a), np.sin(a), 0.0])
+                d2 = det
+                if sx or sz:
+                    d2 = copy.copy(det)
+                    d2.top = det.top + (sx * f + sz * palm_z_dir(side, f)) / 1000.0
                 self.kin.hint, self.kin.w_hint = f, O.FACE_HINT_WEIGHT
-                p = self._plan_side(det, side, bin_name, arm_q, hand_q, **kw)
+                p = self._plan_side(d2, side, bin_name, arm_q, hand_q, **kw)
                 if p.ok:
                     err = self._finger_err(p, side, f)
                     if err <= O.FACE_TOL_DEG:
@@ -110,6 +160,8 @@ class SidedPlanner(O._OraclePlanner):
                         return p
         finally:
             self.kin.hint, self.kin.w_hint = saved
+        if self._ridge_only:
+            return Plan(False, side=side, color=det.color, reason=f"{side}: no ridge plan")
         return Planner._plan_side_hints(self, det, side, bin_name, arm_q, hand_q, **kw)
 
 

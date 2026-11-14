@@ -31,9 +31,17 @@ COPY ${A}/baselines/classical/*.py ${A}/baselines/classical/config.yaml aaltonom
 # v1.5: Aalto's oracle planner (pure numpy + the classical planner; no Isaac) and the home pose it uses.
 COPY ${A}/sim/oracle.py aaltonomous/sim/
 COPY ${A}/sim/aalto_task/__init__.py ${A}/sim/aalto_task/layout.py aaltonomous/sim/aalto_task/
-# Emīls's instruction parser (rule stage; offline, no weights).
+# Emīls's instruction parser (rule stage; offline, no weights). v1.6's Decision stage is policy/instruction_d1.py.
 COPY training/instruction_parser/rule_parser.py training/instruction_parser/spec.py training/instruction_parser/
 COPY policy/ policy/
+
+# v1.6 only: the Gemini key, from a BuildKit secret (never in the repo or the build context). Without it v1.6 runs as
+# v1.5 (offline). The key ends up readable inside the image (team decision for the ADK image, Sat 14 Nov):
+#   make docker-build POLICY=v1.6 GEMINI_KEY_FILE=~/adk_key.env      (a file with GEMINI_API_KEY=... or just the key)
+RUN --mount=type=secret,id=gemini,required=false \
+    if [ -s /run/secrets/gemini ]; then python3 -c "import re; t = open('/run/secrets/gemini').read(); \
+m = re.search(r'GEMINI_API_KEY=[\"\']?([^\s\"\']+)', t); open('/root/.decision_key', 'w').write(m.group(1) if m else t.strip())" \
+    && chmod 600 /root/.decision_key && echo "Gemini key baked in"; fi
 
 ARG POLICY=hold
 ENV POLICY=${POLICY}

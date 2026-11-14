@@ -101,3 +101,55 @@ class TestV15Parts(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(HAVE_PIN, "needs Pinocchio + OpenCV")
+class TestRidgeShift(unittest.TestCase):
+    def test_parse(self):
+        from decision_oracle.upgrades_v15 import _ridge_shift
+        self.assertEqual(_ridge_shift(""), {"left": (0.0, 0.0), "right": (0.0, 0.0)})
+        self.assertEqual(_ridge_shift("18,0"), {"left": (18.0, 0.0), "right": (18.0, 0.0)})
+        self.assertEqual(_ridge_shift("right:18,-6"), {"left": (0.0, 0.0), "right": (18.0, -6.0)})
+
+    def test_palm_z_is_mirrored(self):
+        from decision_oracle.upgrades_v15 import palm_z_dir
+        f = np.array([1.0, 0.0, 0.0])                       # fingers forward: palm +z points to the body's midline
+        self.assertTrue(np.allclose(palm_z_dir("left", f), [0, -1, 0]))
+        self.assertTrue(np.allclose(palm_z_dir("right", f), [0, 1, 0]))
+
+    def test_shift_moves_the_closed_pinch_onto_the_prism(self):
+        """With the hand 18 mm further along the ridge the closed thumb and fingertips straddle the prism's centre
+        (thumb short of the near end face by < 22.5 mm, fingers short of the far one): both arms, mirrored."""
+        try:
+            import copy
+            from aaltonomous.baselines.classical.config import hand_postures
+            from aaltonomous.scene.scene import Scene
+            from decision_oracle import upgrades_v15 as U
+            from decision_oracle.test_offline import FakeClient, setup
+            scene = Scene.load()
+            fc = FakeClient(scene, tasks.sample_layout(np.random.default_rng(0), **scene.layout_kwargs()))
+            pol = U.V15OraclePolicy(fc, sides="off", threaded=False, prefetch=False, log=None)
+        except Exception as e:  # no URDF on laptops
+            self.skipTest(f"planner unavailable: {e!r}")
+        setup(pol)
+        pol._update_drop_offsets()
+        det0 = pol.perception.detect()[0]
+        closed = hand_postures(pol.cfg, pol.spec)["closed"]
+        try:
+            for shift, inside in (((0.0, 0.0), False), ((18.0, 0.0), True)):
+                pol.planner.ridge_shift = {"left": shift, "right": shift}
+                for side, y in (("left", 0.08), ("right", -0.08)):
+                    d = copy.copy(det0)
+                    d.top = np.array([0.26, y, det0.top[2]])
+                    d.shape, d.yaw, d.name = "tipped", 0.1 if side == "left" else -0.1, "t"
+                    p = pol.planner._plan_side_faces(d, side, side, pol.arm_cmd, pol.hand_cmd)
+                    self.assertTrue(p.ok and "ridge" in p.reason, p.reason)
+                    a = np.radians(float(p.reason.split("(")[1].split(" deg")[0]))
+                    e = next(e for n, s, e in p.phases if n == "descend")
+                    pol.kin._fk(p.arm[e - 1], closed)
+                    u = [(t[:2] - d.top[:2]) @ [np.cos(a), np.sin(a)] for t in pol.kin._tips(side)]
+                    thumb_in = -0.0225 < u[2] < 0
+                    self.assertEqual(thumb_in, inside, f"{side} shift {shift}: thumb at {u[2] * 1000:.0f} mm")
+                    self.assertTrue(0 < u[0] < 0.0225 or not inside)
+        finally:
+            del pol.planner.ridge_shift

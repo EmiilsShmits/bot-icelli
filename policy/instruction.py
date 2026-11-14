@@ -36,6 +36,7 @@ import rule_parser  # noqa: E402  (needs spec.py from the same folder)
 from spec import COLORS, SHAPES  # noqa: E402
 
 BINS = ("left", "center", "right")
+ALIASES = {"orange": "red", "purple": "blue"}   # real object colours -> the camera classes (module doc)
 
 
 def fold_to_colours(slots: dict) -> tuple[dict, bool]:
@@ -56,7 +57,11 @@ def mapping_for(instruction: str, task: str | None = None) -> tuple[dict, str]:
     # orange -> right (Aalto, Discord Sat 15:07), not the sim's red -> left, yellow -> center, blue -> right.
     text = (instruction or "").strip()
     if text == FIXED_INSTRUCTION:
-        return dict(FIXED_MAPPING), "fixed"
+        # A sim whose scene was recoloured (modal_pipeline/sim/scene_variant.py --colors real/venue) also rewrites
+        # Aalto's FIXED_MAPPING with the real names; the camera classes are red / yellow / blue, so fold them.
+        fixed = {ALIASES.get(c, c): b for c, b in FIXED_MAPPING.items()}
+        if set(fixed) <= set(COLORS):
+            return fixed, "fixed"
     try:
         slots = rule_parser.parse(text)
     except Exception:  # a parser bug must never stop the robot

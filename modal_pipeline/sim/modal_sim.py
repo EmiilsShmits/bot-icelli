@@ -393,6 +393,13 @@ def main(action: str = "boot", script: str = "", trials: int = 3, dr: str = "", 
         pairs = [line.split("=", 1) for line in env_file.read_text().splitlines()
                  if "=" in line and not line.lstrip().startswith("#")]
         fn = session.with_options(secrets=[modal.Secret.from_dict({k.strip(): v.strip().strip("'\"") for k, v in pairs})])
+    elif action == "eval-policy" and policy == "v1.6":
+        # v1.6 calls Gemini Decision 1: GEMINI_API_KEY from the bot-icelli repo's .env on this computer (read here,
+        # passed as a secret, never stored). --server-env "GEMINI_API_KEY=" runs it without a key (offline fallback).
+        env_file = TEAM / ".env"
+        key = next((line.split("=", 1)[1].strip().strip("'\"") for line in env_file.read_text().splitlines()
+                    if line.startswith("GEMINI_API_KEY=")), "") if env_file.exists() else ""
+        fn = session.with_options(secrets=[modal.Secret.from_dict({"GEMINI_API_KEY": key})]) if key else session
     else:
         fn = session.with_options(secrets=[modal.Secret.from_name("gemini")]) if action == "eval-agent" else session
     if background:

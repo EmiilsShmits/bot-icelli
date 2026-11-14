@@ -16,6 +16,7 @@ IMAGE   ?= bot-icelli/policy:dev
 SIM_CONTAINER ?= aalto
 
 .DEFAULT_GOAL := help
+comma := ,
 .PHONY: help setup serve check mock docker-build docker-check eval update-aalto clean
 
 help: ## list commands
@@ -39,9 +40,10 @@ check: ## plumbing test: Aalto synthetic replay against our server (shapes + >= 
 mock: ## 2 full episodes on Aalto's mock backend (runner + safety filter, no GPU); logs in artifacts/runs/
 	PY=$(PY) PORT=$(PORT) POLICY=$(POLICY) TEAM=$(TEAM) bash policy/check.sh mock
 
-docker-build: ## build the submission image for linux/amd64 (IMAGE=bot-icelli/policy:dev POLICY=hold|v1)
+docker-build: ## build the submission image for linux/amd64 (IMAGE=bot-icelli/policy:dev POLICY=hold|v1.5|v1.6 [GEMINI_KEY_FILE=...])
 	bash policy/get_urdf.sh
-	docker buildx build --platform linux/amd64 -f policy/Dockerfile --build-arg POLICY=$(POLICY) -t $(IMAGE) --load .
+	docker buildx build --platform linux/amd64 -f policy/Dockerfile --build-arg POLICY=$(POLICY) \
+		$(if $(GEMINI_KEY_FILE),--secret id=gemini$(comma)src=$(GEMINI_KEY_FILE)) -t $(IMAGE) --load .
 
 docker-check: ## replay test against the built image; also checks startup < 120 s (GPUS=none on a CPU-only host)
 	$(PY) -m aaltonomous.deploy.replay --synthetic 100 --container $(IMAGE) --gpus $(or $(GPUS),all)
