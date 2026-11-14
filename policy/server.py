@@ -22,9 +22,16 @@ from aaltonomous.deploy.policy_server import serve
 
 from policies.hold import HoldChunkPolicy
 
+def _v1():
+    # Imported lazily: v1 needs Pinocchio, OpenCV and the G1 URDF (policy/get_urdf.sh); `hold` needs none of them.
+    from policies.classical_v1 import ClassicalV1
+    return ClassicalV1()
+
+
 # name -> factory. Model-based policies load their weights from policy/weights/ (baked into the image).
 POLICIES = {
     "hold": HoldChunkPolicy,
+    "v1": _v1,  # Aalto's classical baseline + instruction parsing + real-colour HSV + speed guard
 }
 
 

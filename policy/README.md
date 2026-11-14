@@ -12,6 +12,11 @@
 |---|---|
 | `server.py` | Entrypoint. Picks a policy by name (`--policy` or `POLICY` env) and serves it on :8000 |
 | `policies/hold.py` | Placeholder that holds the start pose. Passes the plumbing checks; scores 0 |
+| `policies/classical_v1.py` | **v1:** Aalto's classical baseline + instruction parsing + colour ranges that see the real orange/yellow/purple objects + speed guard |
+| `instruction.py` | Instruction → colour → bin, using Emīls's rule parser (`training/instruction_parser/rule_parser.py`) |
+| `guard.py` | Shadow copy of Aalto's safety filter with slightly lower caps: what we send never gets clipped |
+| `get_urdf.sh` | Downloads the G1 URDF that the IK and safety filter need (to `artifacts/urdf/` and where Aalto's code looks) |
+| `tests/test_v1.py` | Unit tests for the parts that run without Pinocchio (works on Windows too) |
 | `check.sh` | Runs Aalto's replay / mock tests against our server (`make check`, `make mock`) |
 | `Dockerfile` | Submission image (CUDA 12.8 base). The build context allowlist is in `/.dockerignore` |
 | `requirements.txt` | Image dependencies (keep them small) |
@@ -26,8 +31,17 @@ make docker-build && make docker-check GPUS=none    # build + test the image (Do
 ```
 Hand-in: [`../docs/runbooks/submit.md`](../docs/runbooks/submit.md).
 
+### v1
+```bash
+python -m unittest discover -s policy/tests -v       # parser, guard, colour ranges (no Pinocchio needed)
+bash policy/get_urdf.sh                              # once: the G1 URDF
+make check POLICY=v1                                 # Linux/macOS: needs pin (Pinocchio) from requirements
+make docker-build POLICY=v1 IMAGE=ghcr.io/<owner>/bot-icelli-policy:v1
+```
+
 ## Status
-- **Now:** placeholder `hold` policy; `make check` passes (100 calls, 0 errors, p50 latency ~4 ms)
+- **Now (Sat 14 Nov, Samer + Claude):** v1 written; unit tests pass (instruction mapping on 200 training-template instructions + real colour names, guard, colour ranges on sim and real colours). **Not yet run in the sim** (needs the Verda machine) and the Docker image is not built yet.
+- **Before:** placeholder `hold` policy; `make check` passes (100 calls, 0 errors, p50 latency ~4 ms)
 - **Next:** —
 - **Blockers:** —
 

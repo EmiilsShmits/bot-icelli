@@ -1,7 +1,13 @@
 # What goes INTO the submission image (keep it small: startup must be < 120 s).
-# Add model deps here when a real policy lands, e.g. torch with CUDA 12.8:
+# Versions match Aalto's reference image (aaltonomous/docker/baseline.Dockerfile): the pin 3.3.1 wheel
+# (Pinocchio, for IK and the safety filter's workspace check) needs numpy >= 2.2.
+# Add model deps here when a learned policy lands, e.g. torch with CUDA 12.8:
 #   --extra-index-url https://download.pytorch.org/whl/cu128
 #   torch
-numpy
+numpy==2.2.6
+scipy==1.15.2
+opencv-python-headless==4.10.0.84
+pyyaml
 msgpack
-websockets
+websockets>=12
+pin==3.3.1

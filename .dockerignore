@@ -1,7 +1,17 @@
 # Docker build context = repo root (make docker-build). Allowlist: only what the submission image needs.
 *
 !policy/
+!artifacts/urdf/g1_body29_hand14.urdf
 !third_party/aaltonomous-humanoid/aaltonomous/__init__.py
 !third_party/aaltonomous-humanoid/aaltonomous/deploy/
+!third_party/aaltonomous-humanoid/aaltonomous/interface/
+!third_party/aaltonomous-humanoid/aaltonomous/scene/__init__.py
+!third_party/aaltonomous-humanoid/aaltonomous/scene/scene.py
+!third_party/aaltonomous-humanoid/aaltonomous/scene/scene.yaml
+!third_party/aaltonomous-humanoid/aaltonomous/baselines/__init__.py
+!third_party/aaltonomous-humanoid/aaltonomous/baselines/classical/
+!training/instruction_parser/rule_parser.py
+!training/instruction_parser/spec.py
+policy/tests/
 **/__pycache__
 **/*.pyc
