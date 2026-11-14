@@ -40,12 +40,15 @@ make docker-build POLICY=v1 IMAGE=ghcr.io/<owner>/bot-icelli-policy:v1
 ```
 
 ## Status
-- **Now (Sat 14 Nov, Samer + Claude):** v1 written; unit tests pass (instruction mapping on 200 training-template instructions + real colour names, guard, colour ranges on sim and real colours). **Not yet run in the sim** (needs the Verda machine) and the Docker image is not built yet.
+- **Now (Sat 14 Nov, Samer + Claude):** v1 written; unit tests pass (instruction mapping on 200 training-template instructions + real colour names, guard, colour ranges on sim and real colours).
+  - **Image built** on the Linux sim machine: `make docker-build POLICY=v1 IMAGE=bot-icelli/policy:v1`, **1.46 GB**; the build-time load check passes (Pinocchio, URDF, config, parser).
+  - **Aalto's replay test passes** against the image (`aaltonomous.deploy.replay --synthetic 100 --container bot-icelli/policy:v1`): 100 calls, 0 errors, latency p50 5.5 ms / max 18 ms, server up in 0.55 s.
+  - **Sim eval running** (baseline vs v1, same seeds): see `eval/README.md` and `eval/RESULTS.md`.
 - **Before:** placeholder `hold` policy; `make check` passes (100 calls, 0 errors, p50 latency ~4 ms)
 - **Next:** —
 - **Blockers:** —
 
 ## Gotchas
 - `make mock` needs the G1 URDF from Unitree's `xr_teleoperate`, which Aalto's setup script clones into `third_party/aaltonomous-humanoid/third_party/`. Without it the safety filter can't start. Works on the sim machine; not set up on laptops yet.
-- `make docker-build` is untested so far (Docker wasn't running). It targets linux/amd64; building on the x86 Verda machine is faster.
+- `make docker-build` works on the x86 Verda machine (Docker and buildx come with the `24.04.cuda13.0.docker` image); about 1 min. Not tried on a laptop.
 - **Slow models:** think in a background thread and keep returning hold targets or chunks. Held ticks the runner inserts don't count toward 27 Hz.

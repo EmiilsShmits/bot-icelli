@@ -84,7 +84,15 @@ aalto baseline   # reference policy, prints a score table
 - Domain randomisation: `AALTO_DR=train aalto sim`.
 
 ## 2b. Bare metal (what we actually ran, since the Docker image link is only on Discord)
-Takes ~30–40 min on the RTX 6000 Ada (downloads are fast: ~300 MB/s). Run as root on a fresh Verda machine:
+**One script does all of §2b, fixes included: [`sim/install_bare_metal.sh`](../../sim/install_bare_metal.sh)** (run as root, inside tmux; it ends by starting the sim and running `aalto.sh check`). On a fresh spot RTX PRO 6000 (Sat 14 Nov, 15:49–16:00 Helsinki time) it took **11 min** up to a running sim; the first sim start then compiles shaders for a few more minutes.
+```bash
+scp sim/install_bare_metal.sh root@<ip>:~/
+ssh root@<ip> "tmux new -d -s setup 'bash ~/install_bare_metal.sh; exec bash'"
+ssh root@<ip> tail -f ~/setup.log
+```
+- **No disk backup on spot:** Verda clones a volume only while its instance is shut down (`"Instance should be shutdown or discontinued"`), and shutting down a spot machine risks losing it. With an 11-minute reinstall, rerunning the script is the backup.
+
+The steps by hand, as the script runs them. Took ~30–40 min on the RTX 6000 Ada (downloads are fast: ~300 MB/s). Run as root on a fresh Verda machine:
 ```bash
 apt-get update && apt-get install -y --no-install-recommends git curl unzip cmake build-essential \
   libturbojpeg libglu1-mesa libxt6 libvulkan1 libegl1 libgl1 libxrandr2 libxi6 libsm6 libice6 libxkbcommon0 libglib2.0-0t64
@@ -140,7 +148,7 @@ make eval TASK=sort_fixed TRIALS=10   # runs `aalto eval` inside the container a
 | Symptom | Fix |
 |---|---|
 | Black images | Shader cache is cold. Wait 2–5 min or restart the sim |
-| Black images on an RTX PRO 6000 that never recover; `head depth valid 0 %` in `aalto.sh check`; sim log has `[omni.rtx] make sure you call cmdBegin before calling cmdEnd`; GPU at 0 % | The renderer needs ~6 s to initialise on this GPU and Isaac Sim's start-up stops waiting after 120 frames (~3 s). In `<env>/lib/python3.12/site-packages/isaacsim/exts/isaacsim.simulation_app/isaacsim/simulation_app/simulation_app.py`, function `_wait_for_viewport`, raise `MAX_FRAMES` from 120 to 1500, then restart the sim |
+| Black images on an RTX PRO 6000 that never recover; `head depth valid 0 %` in `aalto.sh check`; sim log has `[omni.rtx] make sure you call cmdBegin before calling cmdEnd`; GPU at 0 % | The renderer needs ~6 s to initialise on this GPU and Isaac Sim's start-up stops waiting after 120 frames (~3 s). In `<env>/lib/python3.12/site-packages/isaacsim/exts/isaacsim.simulation_app/isaacsim/simulation_app/simulation_app.py`, function `_wait_for_viewport`, raise `MAX_FRAMES` from 120 to 1500, then restart the sim. In Isaac Sim 6.2 the line reads `MAX_FRAMES = 240 if os.name == "nt" else 120`: `sed -i -E '/MAX_FRAMES[[:space:]]*=/ s/\b120\b/1500/' <that file>` |
 | Gate fails on rate (< 27 Hz) | The machine is CPU-starved. One sim per machine; don't train on the same machine |
 | "port in use" | Another sim is running: `aalto status`, `aalto stop` |
 | Need to stop | `aalto stop` (never `pkill -f sim_main`) |
