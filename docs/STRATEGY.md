@@ -130,7 +130,7 @@ Claude (through Samer) takes the rule parser, the speed guard, the Docker/GHCR p
 - **Link to the Aalto project:** glove demos of hard cases can tune the triangle grasp (hand posture at grasp time) without training a big model.
 
 ## 10. Questions for Aalto (ask in person today)
-1. **When is the submission for picking finalists due?** Aalto said one deadline (Sun 10:00), but their brief says finalists are picked on Saturday. **Ask again: which image do you evaluate to pick finalists, and at what time?**
+1. **When is the submission for picking finalists due?** Aalto said one deadline (Sun 10:00), but their brief says finalists are picked on Saturday. **Another team asked exactly this in the channel (Sat ~14:10); watch for Aalto's reply.**
 2. Is the winner the real-robot score only (repo), or the 40/25/20/15 criteria on the challenge page?
 3. Will the finals instructions say orange/purple or red/blue? In rung 1, is orange "red" and purple "blue"? What are the black shapes on the table for?
 4. ~~Does the finals PC have internet?~~ **Answered: yes.**
