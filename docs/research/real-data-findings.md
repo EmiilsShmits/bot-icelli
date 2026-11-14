@@ -19,6 +19,7 @@ Checked on Sat 14 Nov ~12:15 from the two Hugging Face datasets. Reproduce with 
 - **The task text uses the real colour names and "box":** "orange", "purple", "box". The sim and Aalto's templates say "red", "blue", "bin".
 - **Every drop-2 episode is one object** ("Put the X into the Y box"). That's the same shape as a planner handing a sub-task to a skill.
 - The pick-cube README calls itself "data drop 1"; that's not the repo's "Drop 1" (venue lighting + depth capture, still expected).
+- **What the head camera sees** (frames checked by hand): a varnished plywood table with strong glare and no printed mat; three orange paper-wrapped boxes with cardboard inside, close to the camera; black Dex3 hands; 4–5 objects on the table even when the task names one. The objects look like foam blocks rather than printed PLA (ask Aalto).
 
 ## 2. Speed: the demos break the safety filter's caps
 
@@ -51,7 +52,7 @@ Checked on Sat 14 Nov ~12:15 from the two Hugging Face datasets. Reproduce with 
 
 | Use | How | Why it matters |
 |---|---|---|
-| **Colour model for the real objects** | Label orange / yellow / purple pixels in `cam_high` frames (by hand, or have a VLM point at the objects), fit thresholds or a small classifier | The baseline's HSV ranges were tuned on the sim's red / blue (see `aalto-discord-notes.md`) |
+| **Colour model for the real objects** | Label orange / yellow / purple pixels in `cam_high` frames (by hand, or have a VLM point at the objects), fit thresholds or a small classifier | In the robot's camera, orange (hue 11–13) falls between the baseline's red and yellow ranges and yellow looks pale green (hue 34–46), so the stock baseline misses both. Measurements and an image: `aalto-discord-notes.md` |
 | **Head-camera calibration check** | Project the palm position (FK from `arm_q` with the URDF + `calibration.yaml`) onto `cam_high` frames and measure the offset to the hand in the image | Aalto's head extrinsics are still provisional (URDF, not checked with the AprilTag). A 1–2 cm error makes 45 mm objects miss |
 | **System ID for the sim** | Compare commanded vs measured arm angles (0.15–0.4 rad apart at teleop speed) and fit the sim's PD gains / delay | Physics fidelity (Aalto's "real2sim" route) |
 | **Human grasps for triangles** | Drop-2 episodes 16–20 are triangular prisms: read the hand posture and wrist angles at grasp time | Triangles are the baseline's main miss |

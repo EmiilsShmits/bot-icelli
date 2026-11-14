@@ -3,6 +3,7 @@
 _Update at the end of every session. Newest state at the top; keep it short._
 
 ## Now
+- **Deadline (Aalto, Sat ~12:50): Sun 10:00 for everything:** the sim evaluation that picks the finalists and the finals image. The finals PC will have internet. No answer yet on a real-robot test run before the finals (assume no).
 - **Done:** project context scaffolding (CLAUDE.md, docs/); all 38 challenges saved to `docs/challenges/` with an overview table; sponsor codes moved to `.env.challenges`; hardware + API research in `docs/research/` (Aalto G1 robot/sim, all credits and APIs, Rokoko gloves, Jetson)
 - **Also done:** repo structure for knowledge base + code (see `README.md`, `AGENTS.md`); Aalto starter repo linked as a submodule; placeholder policy server passes Aalto's plumbing test (`make check`)
 - **Sim runs (Sat 14 Nov):** Aalto sim installed bare-metal on Emīls's Verda RTX 6000 Ada (`bot-icelli-sim`, $1.59/h). 9/9 scene checks pass; oracle baseline scores 92 % on sort_fixed, gate PASS (`eval/RESULTS.md` e-001). Setup + fixes in `docs/runbooks/verda-sim-setup.md`. **Machine hibernated Sat 14 Nov 03:48** (disk with the install kept, ~€0.05/h; resume steps in the runbook).
@@ -23,7 +24,7 @@ _Anything hardcoded or faked, so nobody is surprised at demo time._
 
 ## Gotchas
 - **Aalto's real demos break the speed caps:** arms at 2–4 rad/s (cap 1), fingers up to 25 rad/s (cap 3), in every drop-2 episode. Retime them before training (`data/tools/drop_health.py`, `docs/research/real-data-findings.md`).
-- **The real objects are orange / yellow / purple** (Aalto, Discord Sat 11:41) and the bins are orange. The baseline's HSV ranges were tuned on the sim's red / blue and likely miss orange.
+- **The real objects are orange / yellow / purple** (Aalto, Discord Sat 11:41) and the bins are orange. Measured in the robot's camera, the baseline's HSV ranges miss the orange objects and most of the yellow ones (purple reads as blue and is fine). Image: `docs/research/img/colour-check.jpg`.
 - Challenge pages contain shared API keys and promo codes. They live in `.env.challenges` only; the docs reference them by variable name.
 - Verda credits and API keys are personal (€200 per member). They need a payment card on the account (Verda: not charged, removable). It's unconfirmed whether usage beyond the €200 would be charged, so stop machines when idle.
 - Oxylabs credits require buying a $500/month plan with a 100% first-month discount. If we use it, cancel the subscription after the event.
@@ -31,7 +32,7 @@ _Anything hardcoded or faked, so nobody is surprised at demo time._
 - Aalto sim needs an **RTX-class GPU** (not A100/H100: no RT cores, cameras won't render), on-demand, with a persistent volume. The first start compiles shaders (Aalto: 5-10 min; ours took 11.5 min). Aalto quotes ~0.7x real time; **we measured 0.31x on a 10-vCPU RTX 6000 Ada** (sim process at ~5 cores, GPU at 8 %), so more CPU cores may help. Cause not confirmed.
 - Aalto's bare-metal install has broken package pins (Isaac Sim, Isaac Lab/rerun) and one failing camera-view self-test on their side. Workarounds in `docs/runbooks/verda-sim-setup.md` §2b.
 - `verda.com` showed a "suspended domain" page on Sat 14 Nov; the API worked at `api.datacrunch.io/v1`.
-- Aalto finals PC may have **no network**: any LLM call in the policy needs an offline fallback.
+- Aalto finals PC **will have internet** (Aalto to Samer, Sat ~12:50), but a failed or slow call counts as a failure: any LLM call in the policy needs an offline fallback and must never block `act()`.
 - Hardware desk (Fri 21:15): all Rokoko gloves and the one suit are checked out; no Jetson listed. 3D printers are free.
 - Qualia environment closes 7 days after the event; download anything we want to keep.
 
@@ -46,3 +47,4 @@ _Anything hardcoded or faked, so nobody is surprised at demo time._
 - 2026-11-14 — Built `sim/venue_look/` from a phone photo of the real table; 9/9 scene checks pass with it.
 - 2026-11-14 — Research notes on Nemotron uses, LLM/VLM uses, Gemma prize and credits; Aalto difficulty knobs added; Gemma instruction-parser experiment planned for overnight.
 - 2026-11-14 — Strategy proposal (`docs/STRATEGY.md`), real-data health check (`data/tools/drop_health.py`, `docs/research/real-data-findings.md`), Aalto Discord digest (`docs/research/aalto-discord-notes.md`).
+- 2026-11-14 — Aalto answers: one deadline Sun 10:00, finals PC has internet. Real object colours measured in the robot's head camera (baseline misses orange and most yellow); strategy timeline and Gemini role updated.
