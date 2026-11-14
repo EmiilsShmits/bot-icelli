@@ -52,6 +52,9 @@ A new session starts a new mock episode with the next layout.
 |---|---|
 | `look` | the oracle's look, but from the head camera: any saturated colour + depth (the organisers' detector, extended beyond the sim's red / yellow / blue). `ROBOT_PERCEPTION=sim` uses the oracle's exact simulator poses (not allowed in a submission) |
 | `view_camera` | not from the oracle: head, wrist or depth image at full resolution, optional zoom region, object ids drawn on |
+| `ask_gemini` | not from the oracle: one closed question about a camera image to the Gemini Decisions API (about a second) |
+| `choose_arm` | what each arm can do for an object: distance, reach, grasp plan, full plan. The rule is in `arms.py` |
+| `check_plan` | plans a grasp with every safety check and moves nothing, to find a variation that works after "no safe plan" |
 | `read_proprioception` | not from the oracle: joint angles and speeds, where each hand is, how far it is closed, tracking errors |
 | `pick_and_place` | the whole planned move; with `shape` + `yaw_deg`, the face-aligned grasp for cubes and triangles |
 | `pick`, `place` | the same move cut in two, so the model can check the hand in between |
@@ -73,6 +76,13 @@ pointing at it in the head image (`point`, `[y, x]` 0..1000). A call with no saf
   move stops there, the hand opens, the arm goes back, and the tool returns `missed` with how far the attempt
   pushed the object. Threshold `ROBOT_GRASP_ERR_RAD` (default 0.010); it has not been measured on the real hands.
   `ROBOT_GRASP_CHECK=0` turns it off.
+- **Gemini Decisions API (`decisions.py`, written from Google's documentation).** Used in four places: `look`
+  labels every object's colour and shape in one request; the grasp check asks it to look when the finger sensors
+  are unclear; while an arm carries an object it chooses that arm's next object; and `ask_gemini` puts any
+  closed question to it. A failed or slow call never blocks a move.
+- **Arm waits for its next object.** After a release, an arm with another object on its side stays above the bin
+  instead of going home and out again (about 3 s saved per object; `ROBOT_CHAIN=0` turns it off). In the mock
+  world this cut motion time from 65 to 58 s on five objects. Not yet run in the Isaac sim.
 - **No ground truth.** Object positions come only from the head camera's colour and depth images. The policy
   process cannot import `zmq`, the only way to reach the simulator's scene service, and the Modal environment
   does not install it. What it does take from the organisers' files: the bins' positions and size, the counter
@@ -89,8 +99,28 @@ modal run --detach sim/modal_sim.py --action eval-adk --eval-task sort_language 
     --variant "--colors real --dr wide --placement wide --instructions shape" --tag var-real-shape
 ```
 
+## Iterating fast (do these before spending sim time)
+
+| Loop | Time | What it tests | Command |
+|---|---|---|---|
+| Perception replay | seconds, local | `look` on saved sim frames against the true layout: objects found, position error, shape, rotation, measured colour | `PYTHONPATH=aaltonomous-humanoid:adk_agents:. .venv/bin/python sim/replay_perception.py sim_out/t1-* -v` |
+| Decision replay | ~1 min, local, real model | which bin the agent chooses for each object on saved frames (motions faked): prompt, colour and shape reasoning | `PYTHONPATH=aaltonomous-humanoid:adk_agents:. .venv/bin/python sim/replay_decisions.py sim_out/t2-venue-fixed sim_out/t1-nominal` |
+| Sweep | ~10 min, one Modal app | the whole agent in the Isaac sim, every (scene, task, seed) in its own sim at once, one table | `modal run --detach sim/modal_sim.py --action sweep --tag s1 --sweep "nominal:sort_fixed:1000-1004, venue:sort_fixed:2000-2004"` |
+| Failure analysis | seconds, local | per object: shape, bin wanted, outcome, every attempt | `PYTHONPATH=aaltonomous-humanoid .venv/bin/python sim/analyze_runs.py sim_out/<run>` |
+
+Every sim run saves `agent_trace/` (full tool history as JSON lines, plus the head colour and depth image behind
+every detection); the two replays feed on those frames, so each sim run makes the offline loops better.
+Not built yet: a single-grasp bench in the sim (one object, one pick, no model) for grasp theories.
+
 ## Status
 
 Scores from the Isaac sim are the only ones that count; see `sim_out/adk-*/runs/eval/*/eval.json` once a run has been
 fetched. In the organisers' mock world (no real grasp physics) `gemini-4-hydrogen` sorts every object, with 3-4 s
 per decision at `ROBOT_AGENT_THINKING=low`.
+
+**Sat 14 Nov ~21:30 (Emīls + Claude, bot-icelli):** this folder is synced with Marcus's repo at 1a51d7b plus one
+change: `headpose.camera_move_ok()` decides whether the head-camera fit is used (how far the camera moves, as
+bot-icelli v1.4), so the venue look's correct ~10° fit is no longer rejected (`ROBOT_HEADPOSE_CHECK=shift` = the
+old `plausible()` limit). In our venue look on Modal: sort_fixed 20/27, sort_language 23/28, gate PASS
+(bot-icelli `eval/RESULTS.md` e-038, e-039; v1.5 sides off 23/27 and 24/28 on the same seeds). The old
+`tests/test_robot_sorter.py` predates this sync and was not rerun.

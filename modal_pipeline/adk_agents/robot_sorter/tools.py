@@ -2,12 +2,15 @@
 tools to look through the cameras and read the joint sensors.
 
 Sensing
+    ask_gemini          one closed question about a camera image to the Gemini Decisions API (about a second).
     look                the oracle's "look": which objects are on the counter and where. The oracle reads exact
                         poses from the simulator, which a submission may not; this uses only the head camera: any
                         saturated colour (not only the sim's red / yellow / blue) + depth for the 3D position.
     view_camera         any camera at full resolution, optionally zoomed in or with the object ids drawn on it.
     read_proprioception joint angles and speeds, where each hand is, how far it is closed, tracking errors.
 Acting (each plans with the oracle's planner; see agent/skills)
+    choose_arm          what each arm can do for an object (distance, reach, plans); the rule lives in arms.py
+    check_plan          plan a grasp with all its checks without moving, to find a variation that works
     pick_and_place      the oracle's single move: pregrasp, descend, close, lift, carry, release, retreat, home.
                         With shape + yaw_deg it uses the oracle's face-aligned grasp for cubes and triangles.
     pick / place        the same move cut in two, so the model can check the hand in between.
@@ -33,6 +36,8 @@ from typing import Literal, Optional
 
 import numpy as np
 
+from google.adk.tools.tool_context import ToolContext
+
 from .robot import HZ, get_robot
 
 Bin = Literal["left", "center", "right"]
@@ -45,7 +50,32 @@ SAME_OBJECT_M = 0.04          # a detection this close to a known object is that
 # closed position: in the Isaac sim they stay 0.017-0.07 rad short, and 0.000 when the hand closed on nothing
 # (a first threshold of 0.025 wrongly dropped held objects in run adk-2-lang).
 GRASP_CHECK = os.environ.get("ROBOT_GRASP_CHECK", "1") == "1"
-GRASP_ERR_RAD = float(os.environ.get("ROBOT_GRASP_ERR_RAD", "0.010"))
+GRASP_ERR_RAD = float(os.environ.get("ROBOT_GRASP_ERR_RAD", "0.008"))
+# Measured on 272 grasps in the Isaac sim (runs t2, s1, gb2): an empty hand reads 0.000-0.007 rad, a holding hand
+# 0.010 and up. At or below GRASP_EMPTY_RAD the hand is empty, at or above GRASP_HELD_RAD it holds something;
+# in between the finger sensors are not trusted alone and the Gemini Decisions API is asked to look.
+GRASP_EMPTY_RAD = float(os.environ.get("ROBOT_GRASP_EMPTY_RAD", "0.004"))
+GRASP_HELD_RAD = float(os.environ.get("ROBOT_GRASP_HELD_RAD", "0.012"))
+# (our teammates measured the same on 147 picks: held 0.021-0.100 rad, empty 0.000-0.010; bot-icelli decision_oracle)
+# Triangular prisms: the plain pinch holds them in about 1 pick of 15 (same source) and can tip them over, so they
+# are only ever gripped on their flat faces. The angle between the fingers and the apex direction is tried in this
+# order, moving on after each miss on the same object.
+TRIANGLE_GRIPS_DEG = tuple(float(v) for v in os.environ.get("ROBOT_TRI_GRIPS_DEG", "105,90,75").split(","))
+
+
+def _offset(name):
+    """[dx forward, dy left, dz up] in metres from an environment variable, added to where the hand grasps."""
+    try:
+        v = [float(x) for x in os.environ.get(name, "0,0,0").split(",")]
+        return np.array(v if len(v) == 3 else [0.0, 0.0, 0.0])
+    except ValueError:
+        return np.zeros(3)
+
+
+# Systematic corrections of the grasp point, found with the grasp bench (sim/grasp_bench.py), for every object
+# and for triangular prisms on top of that.
+GRASP_OFFSET_M = _offset("ROBOT_GRASP_OFFSET_M")
+TRIANGLE_OFFSET_M = _offset("ROBOT_TRI_OFFSET_M")
 
 
 # Two arms in one workspace: a planned move is refused if the moving arm would come this close to the other arm
@@ -70,14 +100,15 @@ def _min_arm_distance(ctx, arm, hand):
     return best
 
 
-def _park_plan(robot, ctx, arm_q, hand_q):
-    """Joint-space move of every arm that holds nothing to its parked pose, hands open. None if already there."""
+def _park_plan(robot, ctx, arm_q, hand_q, keep=None):
+    """Joint-space move of every arm that holds nothing to its parked pose, hands open. None if already there.
+    keep: an arm to leave where it is (the one about to move, or one waiting for its next object)."""
     from agent.skills.motion import Trajectory
     if robot.aside is None:
         return None
     to_a, to_h = arm_q.copy(), hand_q.copy()
     for side in ("left", "right"):
-        if side != robot.holding:
+        if side != robot.holding and side != keep:
             sl = ctx.kin.sl(side)
             to_a[sl], to_h[sl] = robot.aside[sl], ctx.post["open"][sl]
     if np.abs(to_a - arm_q).max() < 1e-3 and np.abs(to_h - hand_q).max() < 1e-3:
@@ -89,12 +120,70 @@ def _park_plan(robot, ctx, arm_q, hand_q):
     return Trajectory(True, "park", {}, a, h, [("park", 0, len(a))])
 
 
-async def _park(robot):
+async def _park(robot, keep=None):
     """Arms aside: out of each other's way and out of the head camera's view."""
     start = robot.command_state()
-    traj = await asyncio.to_thread(_park_plan, robot, robot.ctx, *start)
+    traj = await asyncio.to_thread(_park_plan, robot, robot.ctx, *start, keep)
     if traj is not None:
-        await _run(robot, traj, "arms aside", start)
+        await _run(robot, traj, "arms aside" if keep is None else f"{'right' if keep == 'left' else 'left'} arm aside", start)
+    if robot.waiting != keep:
+        robot.waiting = None
+
+
+CHAIN = os.environ.get("ROBOT_CHAIN", "1") == "1"
+
+
+async def _next_for_arm(robot, side, placed_id, bin_name, end_arm, end_hand):
+    """While an arm carries an object to its bin: should it go back home afterwards, or wait above the bin because
+    its next object is right there? Saves the trip home and out again (about 3 s per object).
+
+    Candidates are the other objects on the counter that this arm is the nearer one to. The Gemini Decisions API
+    picks which of them to take next (or none), from the head image and the instruction; then the planner checks
+    that this arm can grasp it from where it will be. Returns the object id, or None = go home."""
+    from . import arms, decisions
+    ctx = robot.ctx
+    cands = [o for o in robot.seen if o["id"] != placed_id and o["id"] in robot.objects
+             and arms.order(ctx, robot.objects[o["id"]].xyz, None, end_arm)[0] == side]
+    if not cands:
+        return None, "no other object on this arm's side"
+    choice, why = cands[0]["id"], "nearest object on this arm's side"
+    if decisions.available() and robot.seen_rgb is not None:
+        try:
+            options = {o["id"]: f"{(o.get('gemini_label') or {}).get('colour', '')} {(o.get('gemini_label') or {}).get('shape', o.get('shape_guess') or '')}"
+                                f" on the robot's {o['side']}".strip() for o in cands}
+            options["none"] = f"None of these should be picked next by the {side} arm: send the arm home."
+            a = await asyncio.to_thread(
+                decisions.ask,
+                "A humanoid robot sorts small coloured blocks from a counter into three bins (left, center, right). "
+                f"The instruction is: \"{robot.instruction}\". Its {side} arm is carrying one block to the {bin_name} "
+                "bin right now (ignore that block).",
+                [decisions.image_block(robot.seen_rgb)],
+                f"Which block should the {side} arm pick up next? Choose a block that the instruction sends to a "
+                f"bin, the easiest to reach first.", "choice", options)
+            if float(a.get("confidence", 0)) >= 0.5:
+                choice, why = a.get("choice"), f"Gemini Decisions ({a.get('confidence'):.2f})"
+        except Exception as e:  # noqa: BLE001
+            robot.log(f"[tool] next-object decision failed: {e!r}"[:200])
+    if choice in (None, "none") or choice not in robot.objects:
+        return None, why
+    nxt = _target(robot, choice, None, None, None)
+    plan = await asyncio.to_thread(_plan_grasp, robot, nxt, side, _pick_call(ctx, nxt, None), {}, end_arm, end_hand,
+                                   None, False)
+    if not plan.ok:
+        return None, f"{choice}: no grasp plan from above the bin"
+    return choice, why
+
+
+async def _show(tool_context, name, robot, request):
+    """Save a camera view as an ADK artifact, so it appears in the `adk web` UI next to the tool call."""
+    if tool_context is None:
+        return
+    try:
+        from google.genai import types
+        from .agent import _render
+        await tool_context.save_artifact(name, types.Part.from_bytes(data=_render(robot, request), mime_type="image/jpeg"))
+    except Exception:  # noqa: BLE001  (no artifact service: nothing to show, nothing lost)
+        pass
 
 
 class ToolError(Exception):
@@ -142,12 +231,26 @@ def _detect(robot):
     """Objects on the counter -> JSON for the model; remembered in robot.objects so tools can take their ids.
     An object keeps its id from one look to the next (same place), so ids stay valid across moves."""
     from agent.skills.perception import detect_camera, xyz_to_point
+    from .shape import classify_top, detect_by_depth, top_face_points
     ctx, obs = robot.ctx, robot.obs
     # The ONLY source of object positions: the head camera's colour and depth images in `obs`. Nothing here (or
     # anywhere in this package) asks the simulator where an object is.
-    found = detect_camera(ctx, obs, shapes=os.environ.get("ROBOT_SHAPES", "1") == "1")
-    found.sort(key=lambda o: -o.extra.get("n_px", 0))                    # one object whose hue straddles two colour
-    found = [o for i, o in enumerate(found)                               # names is seen twice: keep the larger blob
+    robot.fit_head_camera(obs.get("head_depth"))
+    by_depth = os.environ.get("ROBOT_DETECTOR", "depth") == "depth" and obs.get("head_depth") is not None
+    if by_depth:                 # geometry only: no colour thresholds anywhere (shape.detect_by_depth)
+        found = detect_by_depth(ctx, obs)
+    else:                        # the organisers' colour-blob detector, widened to every hue (older path)
+        found = detect_camera(ctx, obs, shapes=False)
+        for o in found:
+            try:
+                shape, yaw, _, _ = classify_top(top_face_points(ctx, obs, o.xyz))
+            except Exception:  # noqa: BLE001
+                shape, yaw = None, None
+            o.extra["shape_seen"] = shape
+            o.shape = shape if shape in ("cube", "cylinder", "triangle") else None
+            o.yaw = yaw if o.shape in ("cube", "triangle") else None
+    found.sort(key=lambda o: -o.extra.get("n_px", 0))                    # one object matched by two masks is seen
+    found = [o for i, o in enumerate(found)                               # twice: keep the larger blob
              if all(np.linalg.norm(o.xyz[:2] - p.xyz[:2]) > 0.03 for p in found[:i])]
     found.sort(key=lambda o: -o.xyz[1])                                   # left to right
     known = dict(robot.objects)
@@ -157,20 +260,62 @@ def _detect(robot):
         if d < SAME_OBJECT_M:
             o.id = i
             known.pop(i)
-        else:
-            robot.id_count[o.color] = robot.id_count.get(o.color, 0) + 1
-            o.id = f"{o.color}_{robot.id_count[o.color]}"
+        else:                    # ids say nothing about colour: a colour name guessed from the hue was wrong often
+            robot.id_count["obj"] = robot.id_count.get("obj", 0) + 1     # enough (orange read as yellow) to put
+            o.id = f"obj_{robot.id_count['obj']}"                         # objects in wrong bins
     robot.objects = {o.id: o for o in found}
-    hw = obs["head_rgb"].shape[:2]
+    rgb = obs["head_rgb"]
+    hw = rgb.shape[:2]
     out = []
     for o in found:
         y, x = xyz_to_point(ctx, o.xyz, hw)
-        out.append({"id": o.id, "color": o.color, "side": "left" if o.xyz[1] > 0 else "right",
+        u, v = (int(round(c)) for c in o.extra.get("uv", (x / 1000 * (hw[1] - 1), y / 1000 * (hw[0] - 1))))
+        # colour of the object, not of the glare on its top face: the most saturated third of a patch that also
+        # covers the front face (the lit top face is washed out and made orange read as yellow)
+        patch = rgb[max(0, v - 10):v + 22, max(0, u - 12):u + 13].reshape(-1, 3).astype(float)
+        if len(patch):
+            sat = (patch.max(1) - patch.min(1)) / np.maximum(patch.max(1), 1.0)
+            patch = patch[sat >= np.percentile(sat, 67)]
+        if o.extra.get("rgb"):
+            patch = np.array([o.extra["rgb"]], float)
+        out.append({"id": o.id, "side": "left" if o.xyz[1] > 0 else "right",
                     "position_m": [round(float(o.xyz[0]), 3), round(float(o.xyz[1]), 3)],
                     "point": [int(round(y)), int(round(x))],
-                    "shape_guess": o.shape,
+                    "rgb": [int(c) for c in np.median(patch, axis=0)] if len(patch) else None,
+                    "shape_guess": "lying on its side" if o.extra.get("shape_seen") == "tipped" else o.shape,
                     "yaw_deg_guess": None if o.yaw is None else round(float(np.degrees(o.yaw)), 1)})
+        if o.id in robot.labels:                       # colour and shape from the Gemini Decisions API (see look)
+            lab = robot.labels[o.id]
+            out[-1]["gemini_label"] = {"colour": lab["colour"], "colour_confidence": lab["colour_confidence"],
+                                       "shape": lab["shape"], "shape_confidence": lab["shape_confidence"]}
+    robot.trace.frame_dump(obs, robot.t, out)
+    robot.seen, robot.seen_rgb = out, rgb
     return out
+
+
+async def _look_result(robot):
+    """Detect, then let the Decisions API label every new object's colour and shape in one request."""
+    from . import decisions
+    objects = await asyncio.to_thread(_detect, robot)
+    new = [o["id"] for o in objects if o["id"] not in robot.labels]
+    if new and decisions.available():
+        try:
+            from .agent import _render
+            import cv2
+            marked = cv2.imdecode(np.frombuffer(_render(robot, {"camera": "head", "region": None, "mark_objects": True}),
+                                                np.uint8), cv2.IMREAD_COLOR)[..., ::-1]
+            seconds = await asyncio.to_thread(decisions.label_objects, marked, [o["id"] for o in objects],
+                                              robot.instruction, robot.labels)
+            robot.trace.write("decision_labels", t=round(robot.t, 2), seconds=seconds,
+                              labels={i: robot.labels.get(i) for i in new})
+            objects = await asyncio.to_thread(_detect, robot)
+        except Exception as e:  # noqa: BLE001  (labels are a help, never a requirement)
+            robot.log(f"[tool] Decisions API labels failed: {e!r}"[:300])
+            robot.trace.write("decision_labels", t=round(robot.t, 2), error=repr(e)[:300])
+    robot.view_requests.append({"camera": "head", "region": None, "mark_objects": True})   # ids drawn on the image
+    ctx = robot.ctx
+    bins = {b: [round(float(v), 3) for v in ctx.planner.bin_xy(b)] for b in ctx.bins()}
+    return _result("ok", objects_on_counter=objects, bins=bins, instruction=robot.instruction)
 
 
 def _expect(robot, object_id, xy):
@@ -198,14 +343,86 @@ def _target(robot, object_id, point, shape, yaw_deg):
     else:
         raise ToolError("say which object: object_id (from look) or point ([y, x] on the head camera image)")
     yaw = np.radians(yaw_deg) if yaw_deg is not None and shape in ("cube", "triangle") else None
+    if yaw is None and object_id and seen.shape in ("cube", "triangle") and seen.yaw is not None \
+            and shape in (None, seen.shape):
+        # The hand has to be turned to the object's flat faces (a must for triangular prisms): use the shape and
+        # rotation measured from the depth image, unless the model says it is something else.
+        shape, yaw = seen.shape, float(seen.yaw)
+    xyz = np.asarray(xyz, float) + GRASP_OFFSET_M + (TRIANGLE_OFFSET_M if shape == "triangle" and yaw is not None else 0.0)
     return WorldObject(object_id or "pointed", color, xyz, shape if yaw is not None else None, yaw, source=source)
 
 
-def _approach(finger_direction_deg=None, xy_offset_m=None, speed=None):
+def _plan_grasp(robot, obj, arm, call, info, arm_q, hand_q, bin_name=None, via_home=True):
+    """A checked plan for a skill that starts with a grasp, or the reasons there is none.
+    call(side, arm_q, hand_q) -> Trajectory plans the skill for one arm from one start state. Tried in this order:
+      1. each arm (arms.order, or only `arm` if the model named one) from where the arms are now;
+         triangular prisms: only grips on their flat faces count, at each grip angle in turn;
+      2. the same again from the planner's own start pose for that arm (hand in front of the robot): the plans were
+         tuned from there, and a start from the parked pose sometimes fails a clearance on the way to the object."""
+    from agent.skills.motion import Trajectory
+    from . import arms
+    import aaltonomous.sim.oracle as oracle
+    ctx = robot.ctx
+    sides = [arm] if arm else arms.order(ctx, obj.xyz, bin_name, arm_q)
+    triangle = obj.shape == "triangle"
+    n = len(TRIANGLE_GRIPS_DEG)
+    grips = [TRIANGLE_GRIPS_DEG[(robot.tries.get(obj.id, 0) + k) % n] for k in range(n)] if triangle else [None]
+    reasons = {}
+
+    def attempt(which, a_q, h_q):
+        for grip in grips:
+            if triangle:
+                oracle.FACE_ALIGN["triangle"] = (np.pi / 2 + np.radians(grip), 3)
+            for side in which:
+                t = call(side, a_q, h_q)
+                faces = t.ok and t.reason.startswith("face-aligned")
+                if t.ok and (faces or not triangle):
+                    info.update(grip="flat faces" if faces else "plain pinch")
+                    if triangle:
+                        info.update(grip="flat faces of the triangle", finger_to_apex_deg=grip)
+                    return t
+                reasons.setdefault(side, t.reason if not t.ok else "only the plain pinch can be planned from "
+                                   "here, and it does not hold a triangular prism")
+        return None
+
+    with ctx.lock:
+        saved = oracle.FACE_ALIGN["triangle"]
+        try:
+            t = attempt(sides, arm_q, hand_q)
+            if t is not None:
+                return t
+            for side in sides if via_home else []:
+                sl = ctx.kin.sl(side)
+                if np.abs(arm_q[sl] - ctx.home[sl]).max() < 0.02:
+                    continue
+                a2, h2 = arm_q.copy(), hand_q.copy()
+                a2[sl], h2[sl] = ctx.home[sl], ctx.post["open"][sl]
+                pa, ph = ctx.planner.go_to(arm_q, hand_q, a2, h2)
+                if not len(pa) or ctx.planner.dry_run_safety(arm_q, hand_q, pa, ph):
+                    continue
+                t = attempt([side], a2, h2)
+                if t is not None:
+                    info["start"] = "from the pose in front of the robot"
+                    k = len(pa)
+                    return Trajectory(True, t.skill, t.args, np.vstack([pa, t.arm]), np.vstack([ph, t.hand]),
+                                      [("to_start", 0, k)] + [(nm, a_ + k, b_ + k) for nm, a_, b_ in t.phases],
+                                      reason=t.reason, side=t.side)
+            return Trajectory(False, "grasp", {}, side=sides[0],
+                              reason="; ".join(f"{side} arm: {why}" for side, why in reasons.items()))
+        finally:
+            oracle.FACE_ALIGN["triangle"] = saved
+
+
+def _approach(finger_direction_deg=None, xy_offset_m=None, speed=None, max_tilt_deg=None, pregrasp_offset_m=None,
+              grasp_height_frac=None):
     from agent.skills import Approach
-    if xy_offset_m is not None and len(xy_offset_m) != 2:
-        raise ToolError("xy_offset_m must be [dx, dy] in metres")
+    for name, v in (("xy_offset_m", xy_offset_m), ("pregrasp_offset_m", pregrasp_offset_m)):
+        if v is not None and len(v) != 2:
+            raise ToolError(f"{name} must be [dx, dy] in metres")
     return Approach(finger_direction_deg=finger_direction_deg, speed=speed,
+                    max_tilt_deg=None if max_tilt_deg is None else float(np.clip(max_tilt_deg, 10, 60)),
+                    grasp_height_frac=None if grasp_height_frac is None else float(np.clip(grasp_height_frac, 0.2, 0.9)),
+                    pregrasp_offset=None if pregrasp_offset_m is None else tuple(float(v) for v in pregrasp_offset_m),
                     xy_offset=None if xy_offset_m is None else tuple(float(v) for v in xy_offset_m))
 
 
@@ -272,6 +489,13 @@ async def _move(label, plan, on_done=None, look_after=False, **echo):
     if robot.time_left() is not None and seconds > robot.time_left():
         return _result("failed", reason=f"not enough time left for a {seconds:.0f} s move", **echo)
     close = await _too_close(robot, traj)
+    if close and robot.waiting and robot.waiting != traj.side:
+        await _park(robot, keep=traj.side)            # the other arm was waiting in the way: move it aside, plan again
+        start = robot.command_state()
+        traj = await asyncio.to_thread(plan, robot.ctx, *start)
+        if not traj.ok:
+            return _result("failed", reason=f"no safe plan: {traj.reason}"[:400], **echo)
+        close = await _too_close(robot, traj)
     if close:
         return _result("failed", reason=close, **echo)
     outcome = await _run(robot, traj, label, start, settle=not look_after)
@@ -291,11 +515,36 @@ async def _move(label, plan, on_done=None, look_after=False, **echo):
     return out
 
 
-def _grasp_check(robot, side):
+async def _grasp_check(robot, side):
+    """After the lift: is something in the hand? Finger sensors first; when they are in the unclear band, the Gemini
+    Decisions API looks at the head camera image and decides."""
+    from . import decisions
     sl = robot.ctx.kin.sl(side)
     err = float(np.abs(np.asarray(robot.obs["hand_q"], float)[sl] - robot.hand_cmd[sl]).max())
-    return {"object_in_hand": bool(err >= GRASP_ERR_RAD), "finger_tracking_error_rad": round(err, 3),
-            "threshold_rad": GRASP_ERR_RAD}
+    out = {"finger_tracking_error_rad": round(err, 3)}
+    robot.trace.snapshot("grasp", robot.obs, robot.t)
+    if err >= GRASP_HELD_RAD:
+        out.update(object_in_hand=True, decided_by="finger sensors")
+    elif err <= GRASP_EMPTY_RAD:
+        out.update(object_in_hand=False, decided_by="finger sensors")
+    else:
+        seen = None
+        if decisions.available():
+            try:
+                a = await asyncio.to_thread(
+                    decisions.ask, "The head camera of a humanoid robot looks down at its own hands and a counter.",
+                    [decisions.image_block(robot.obs["head_rgb"])],
+                    f"The robot's {side} hand has just closed and lifted. Is that hand holding a small coloured "
+                    f"block between its fingers?", "noul")
+                seen = float(a.get("noul", 0.5))
+                out["gemini_probability_object_in_hand"] = round(seen, 2)
+            except Exception as e:  # noqa: BLE001
+                robot.log(f"[tool] visual grasp check failed: {e!r}"[:200])
+        held = (seen >= 0.5) if seen is not None else (err >= GRASP_ERR_RAD)
+        out.update(object_in_hand=bool(held), decided_by="Gemini Decisions (finger sensors unclear)" if seen is not None
+                   else "finger sensors (unclear)")
+    robot.trace.write("grasp_check", t=round(robot.t, 2), arm=side, **out)
+    return out
 
 
 async def _run(robot, traj, label, start, settle=True):
@@ -318,22 +567,29 @@ async def _grasp_move(label, plan, on_done, obj, look_after, **echo):
     seconds = traj.ticks / HZ
     if robot.time_left() is not None and seconds > robot.time_left():
         return _result("failed", reason=f"not enough time left for a {seconds:.0f} s move", **echo)
-    # (the mock world has no finger contact, so the check only makes sense on the simulator or the robot)
     close = await _too_close(robot, traj)
+    if close and any(np.abs(start[0][robot.ctx.kin.sl(o)] - robot.aside[robot.ctx.kin.sl(o)]).max() > 1e-3
+                     for o in ("left", "right") if o != traj.side and robot.aside is not None):
+        await _park(robot, keep=traj.side)            # the other arm was waiting in the way: move it aside, plan again
+        start = robot.command_state()
+        traj = await asyncio.to_thread(plan, robot.ctx, *start)
+        if not traj.ok:
+            return _result("failed", reason=f"no safe plan: {traj.reason}"[:400], **echo)
+        close = await _too_close(robot, traj)
     if close:
         return _result("failed", reason=close, **echo)
+    # (the mock world has no finger contact, so the grasp check only makes sense on the simulator or the robot)
     lift_end = next((e for n, s, e in traj.phases if n == "lift"), None) if GRASP_CHECK and robot.world is None else None
-    if lift_end is None:
-        parts = [traj]
-    else:
-        parts = [Trajectory(True, traj.skill, traj.args, traj.arm[:lift_end], traj.hand[:lift_end], side=traj.side)]
-        if lift_end < traj.ticks:
-            parts.append(Trajectory(True, traj.skill, traj.args, traj.arm[lift_end:], traj.hand[lift_end:], side=traj.side))
+    home_start = next((s for n, s, e in traj.phases if n == "home"), None) if CHAIN and bin_name_of(echo) else None
+    cut = lambda i, j: Trajectory(True, traj.skill, traj.args, traj.arm[i:j], traj.hand[i:j], side=traj.side)  # noqa: E731
     was = np.asarray(obj.xyz, float).copy()
-    outcome = await _run(robot, parts[0], label if len(parts) == 1 else f"{label}: grasp and lift", start)
+    robot.waiting = None
+    first_end = lift_end if lift_end is not None else (home_start if home_start is not None else traj.ticks)
+    outcome = await _run(robot, cut(0, first_end), label if first_end == traj.ticks else f"{label}: grasp and lift"
+                         if lift_end is not None else f"{label}: to the bin", start, settle=first_end == lift_end)
     check = None
     if outcome == "completed" and lift_end is not None:
-        check = _grasp_check(robot, traj.side)
+        check = await _grasp_check(robot, traj.side)
         if not check["object_in_hand"]:
             def recover(ctx, arm_q, hand_q):
                 from agent.skills import go_home, hold, set_hand
@@ -344,9 +600,10 @@ async def _grasp_move(label, plan, on_done, obj, look_after, **echo):
             back = robot.command_state()
             await _run(robot, await asyncio.to_thread(recover, robot.ctx, *back), f"{label}: missed, back home", back, settle=False)
             robot.holding = robot.held_id = None
+            robot.tries[obj.id] = robot.tries.get(obj.id, 0) + 1      # the next attempt on it uses another grip
             await _park(robot)
-            out = _result("missed", reason="the hand closed on nothing (finger sensors): the object is still on the "
-                          "counter. The arm is back home.", grasp_check=check, arm=traj.side, **echo)
+            out = _result("missed", reason=f"the hand closed on nothing ({check['decided_by']}): the object is still "
+                          "on the counter. The arm is back home.", grasp_check=check, arm=traj.side, **echo)
             try:
                 out["objects_on_counter"] = await asyncio.to_thread(_detect, robot)
                 now = robot.objects.get(obj.id) or min(robot.objects.values(), default=None,
@@ -357,8 +614,22 @@ async def _grasp_move(label, plan, on_done, obj, look_after, **echo):
             except Exception as e:  # noqa: BLE001
                 out["objects_on_counter"] = f"look failed: {e!r}"[:200]
             return out
-        if len(parts) > 1:
-            outcome = await _run(robot, parts[1], f"{label}: carry and release", robot.command_state(), settle=False)
+    stay, why = None, ""
+    if outcome == "completed" and first_end < traj.ticks:
+        mid = home_start if home_start is not None else traj.ticks
+        decide = None
+        if home_start is not None:        # decided while the arm carries the object: no time is lost on it
+            decide = asyncio.create_task(_next_for_arm(robot, traj.side, obj.id, bin_name_of(echo),
+                                                       traj.arm[home_start - 1].copy(), traj.hand[home_start - 1].copy()))
+        if mid > first_end:
+            outcome = await _run(robot, cut(first_end, mid), f"{label}: carry and release", robot.command_state(), settle=False)
+        if decide is not None:
+            try:
+                stay, why = await decide
+            except Exception as e:  # noqa: BLE001
+                stay, why = None, f"decision failed: {e!r}"[:120]
+        if outcome == "completed" and mid < traj.ticks and stay is None:
+            outcome = await _run(robot, cut(mid, traj.ticks), f"{label}: back home", robot.command_state(), settle=False)
     if outcome != "completed":
         robot.holding = robot.held_id = None
         return _result("aborted", reason=outcome, **echo)
@@ -366,6 +637,20 @@ async def _grasp_move(label, plan, on_done, obj, look_after, **echo):
     out = _result("completed", arm=traj.side, seconds=round(seconds, 1), **echo)
     if check is not None:
         out["grasp_check"] = check
+    if stay is not None:
+        # The arm waits above the bin for its next object instead of going home and out again. No new look (the
+        # arm is in the camera's view): the list is the last one, without the object just placed.
+        robot.waiting = traj.side
+        robot.objects.pop(obj.id, None)
+        robot.seen = [o for o in robot.seen if o["id"] != obj.id]
+        out["arm_waiting"] = {"arm": traj.side, "next_object": stay, "chosen_by": why,
+                              "note": f"the {traj.side} arm is waiting above the bin: pick_and_place {stay} next "
+                                      "saves about 3 s. Any other call works too."}
+        out["objects_on_counter"] = robot.seen
+        robot.trace.write("arm_waiting", t=round(robot.t, 2), arm=traj.side, next_object=stay, chosen_by=why)
+        return out
+    if home_start is not None:
+        robot.trace.write("arm_home", t=round(robot.t, 2), arm=traj.side, why=why)
     await _park(robot)
     if look_after and not robot.holding:
         try:
@@ -375,19 +660,35 @@ async def _grasp_move(label, plan, on_done, obj, look_after, **echo):
     return out
 
 
+def bin_name_of(echo):
+    return echo.get("bin")
+
+
+def _pick_and_place_call(ctx, obj, bin_name, approach, drop):
+    from agent.skills import pick_and_place as skill
+    return lambda side, a, h: skill(ctx, obj, bin_name, a, h, arm=side, approach=approach, drop_offset=drop)
+
+
+def _pick_call(ctx, obj, approach, for_bin=None):
+    from agent.skills import pick as skill
+    return lambda side, a, h: skill(ctx, obj, a, h, arm=side, approach=approach, for_bin=for_bin)
+
+
 async def _do_pick_and_place(robot, obj, bin_name, arm=None, approach=None, drop=None, **echo):
     drop = _drop_point(robot, bin_name, drop)
 
+    info = {}
+
     def plan(ctx, arm_q, hand_q):
-        from agent.skills import pick_and_place as skill
-        return skill(ctx, obj, bin_name, arm_q, hand_q, arm=arm, approach=approach, drop_offset=drop)
+        return _plan_grasp(robot, obj, arm, _pick_and_place_call(ctx, obj, bin_name, approach, drop), info,
+                           arm_q, hand_q, bin_name)
 
     def placed(traj):
         robot.holding = robot.held_id = None
         robot.placed[bin_name] = robot.placed.get(bin_name, 0) + 1
 
     return await _grasp_move(f"pick_and_place {obj.id} -> {bin_name}", plan, placed, obj, True, object=obj.id,
-                             bin=bin_name, grasp_at_m=[round(float(v), 3) for v in obj.xyz], **echo)
+                             bin=bin_name, grasp_at_m=[round(float(v), 3) for v in obj.xyz], grasp=info, **echo)
 
 
 async def _do_hand_over(robot, obj, bin_name):
@@ -407,7 +708,7 @@ async def _do_hand_over(robot, obj, bin_name):
 
 # ---------------------------------------------------------------------------------------------- sensing tools
 @_tool
-async def look() -> dict:
+async def look(tool_context: ToolContext = None) -> dict:
     """Detect the objects that are on the counter now, with the head camera.
 
     Call this at the start and whenever you are unsure what is where. It gives each object an id you can pass to
@@ -416,25 +717,25 @@ async def look() -> dict:
     colour that stands on the counter at object height; if it misses an object you can see, use point instead.
 
     Returns:
-      objects_on_counter: one entry per object: id, color (a rough name from its hue, which can be wrong under
-        coloured light: your next live view shows the head image with every id drawn on its object, so check the
-        real colour and shape there), side of the robot it lies on, position_m [x forward, y left] in metres from the robot's
+      objects_on_counter: one entry per object: id (says nothing about colour or shape), gemini_label (colour
+        and shape as judged by a fast Gemini vision model that compared all the objects in the image, each with
+        a confidence 0-1), rgb (the raw colour the camera measured, 0-255), side of the robot it lies on, position_m [x forward, y left] in metres from the robot's
         pelvis, point [y, x] in the head image (0..1000), and a rough guess of shape and rotation (often wrong:
-        trust the image over it).
+        trust the image over it). Your next live view shows the head image with every id drawn on its object:
+        decide each object's colour and shape from that image.
       bins: where the three bins are, as position_m.
     """
     robot = get_robot()
     await _ready(robot)
     await _park(robot)                      # arms out of the camera's view (an arm that holds something stays)
-    objects = await asyncio.to_thread(_detect, robot)
-    robot.view_requests.append({"camera": "head", "region": None, "mark_objects": True})   # ids drawn on the image
-    ctx = robot.ctx
-    bins = {b: [round(float(v), 3) for v in ctx.planner.bin_xy(b)] for b in ctx.bins()}
-    return _result("ok", objects_on_counter=objects, bins=bins, instruction=robot.instruction)
+    out = await _look_result(robot)
+    await _show(tool_context, "look.jpg", robot, {"camera": "head", "region": None, "mark_objects": True})
+    return out
 
 
 @_tool
-async def view_camera(camera: Camera = "head", region: Optional[list[float]] = None, mark_objects: bool = False) -> dict:
+async def view_camera(camera: Camera = "head", region: Optional[list[float]] = None, mark_objects: bool = False,
+                      tool_context: ToolContext = None) -> dict:
     """Look through one of the robot's cameras at full resolution. The picture arrives with your next live view.
 
     The live view you get on every turn is the head camera, scaled down (plus the wrist camera of a hand that
@@ -459,8 +760,69 @@ async def view_camera(camera: Camera = "head", region: Optional[list[float]] = N
             raise ToolError("region must be [ymin, xmin, ymax, xmax] with ymin < ymax and xmin < xmax, each 0..1000")
         region = [float(np.clip(v, 0, 1000)) for v in region]
     robot.view_requests.append({"camera": camera, "region": region, "mark_objects": bool(mark_objects)})
+    await _show(tool_context, f"view_{camera}.jpg", robot, robot.view_requests[-1])
     h, w = robot.obs[key].shape[:2]
     return _result("ok", camera=camera, image="attached to your next live view", full_resolution=[int(h), int(w)])
+
+
+@_tool
+async def ask_gemini(
+    question: str,
+    kind: Literal["yes_no", "choice", "score"] = "yes_no",
+    options: Optional[list[str]] = None,
+    camera: Camera = "head",
+    region: Optional[list[float]] = None,
+    mark_objects: bool = False,
+) -> dict:
+    """Ask a fast Gemini vision model one closed question about what a camera sees now (about a second).
+
+    Use it to settle something visual without spending a full turn of your own: "Is there a block inside the
+    left bin?", "Is the right hand holding a block?" (camera right_wrist), "Which of these colours is the block
+    labelled obj_3?" (mark_objects true), "How far is obj_2 from the bin rim?" (score).
+
+    Args:
+      question: The question. Refer to objects by their ids only if mark_objects is true.
+      kind: yes_no, choice (give options) or score (give options as levels, lowest first).
+      options: The answers to choose from, for choice and score. Add a catch-all such as "none of these".
+      camera: head, left_wrist or right_wrist (head_depth is not useful here).
+      region: [ymin, xmin, ymax, xmax], each 0..1000, to ask about part of the image only.
+      mark_objects: Draw the object ids from the latest look on the image (head camera only).
+
+    Returns:
+      yes_no: answer (true/false) and probability_yes. choice: answer and probabilities. score: score (the
+      expected level index) and probabilities. Always a confidence 0-1: below about 0.7, do not rely on it.
+    """
+    from . import decisions
+    from .agent import _render
+    import cv2
+    robot = get_robot()
+    await _ready(robot)
+    if not decisions.available():
+        raise ToolError("the Decisions API is not available (no key, or ROBOT_DECISIONS=0)")
+    if kind != "yes_no" and not options:
+        raise ToolError("give options for kind choice or score")
+    key = {"head": "head_rgb", "left_wrist": "left_wrist_rgb", "right_wrist": "right_wrist_rgb"}.get(camera)
+    if key is None or robot.obs.get(key) is None:
+        raise ToolError(f"the {camera} camera cannot be used here")
+    shown = cv2.imdecode(np.frombuffer(_render(robot, {"camera": camera, "region": region, "mark_objects": mark_objects}),
+                                       np.uint8), cv2.IMREAD_COLOR)[..., ::-1]
+    text = (f"This is the {camera.replace('_', ' ')} camera of a humanoid robot standing at a counter with small "
+            "coloured blocks and three orange bins (left, center, right from the robot's point of view)."
+            + (" Blocks on the counter have a white circle and an id (obj_1, ...) drawn on them." if mark_objects else ""))
+    try:
+        a = await asyncio.to_thread(decisions.ask, text, [decisions.image_block(shown)], question,
+                                    {"yes_no": "noul", "choice": "choice", "score": "score"}[kind], options)
+    except Exception as e:  # noqa: BLE001
+        raise ToolError(f"Decisions API call failed: {e!r}"[:300]) from None
+    out = {"confidence": round(float(a.get("confidence", 0)), 2), "latency_s": a.get("latency_s")}
+    if kind == "yes_no":
+        out.update(answer=bool(float(a.get("noul", 0.5)) >= 0.5), probability_yes=round(float(a.get("noul", 0.5)), 2))
+    elif kind == "choice":
+        out.update(answer=a.get("choice"), probabilities={k: round(float(v), 2) for k, v in (a.get("probabilities") or {}).items()})
+    else:
+        out.update(score=a.get("score"), probabilities=a.get("probabilities"))
+    robot.trace.write("decision_ask", t=round(robot.t, 2), question=question, kind=kind, options=options, answer=out)
+    return _result("ok", question=question, **out)
 
 
 @_tool
@@ -510,6 +872,9 @@ async def pick_and_place(
     finger_direction_deg: Optional[float] = None,
     xy_offset_m: Optional[list[float]] = None,
     drop_offset_m: Optional[list[float]] = None,
+    max_tilt_deg: Optional[float] = None,
+    pregrasp_offset_m: Optional[list[float]] = None,
+    grasp_height_frac: Optional[float] = None,
 ) -> dict:
     """Pick one object from the counter with a top-down pinch, drop it in a bin and bring the arm home (about 10 s).
 
@@ -521,13 +886,19 @@ async def pick_and_place(
       point: [y, x] of the object in the HEAD camera image, each 0..1000; point at the middle of its top face.
       arm: Which arm to use. Leave out to let the planner choose. The left bin can only be reached by the left
         arm and the right bin only by the right arm.
-      shape: The object's shape, if you can see it. With yaw_deg, cubes and triangles are gripped on flat faces.
+      shape: Leave out normally: the tool measures shape and rotation from the depth image and turns the hand to
+        the flat faces of cubes and triangular prisms by itself. Pass it only to overrule a wrong shape_guess.
       yaw_deg: Rotation of the object about the vertical axis in degrees (0 = an edge pointing away from the
         robot). Only used with shape cube or triangle.
       finger_direction_deg: Where the fingers point: 0 = away from the robot, +90 = to its left.
       xy_offset_m: [dx, dy] metres added to the grasp position ([x forward, y left]). After a miss that pushed
         the object, shift the grasp the way the object moved (object_moved_m), by about 0.015.
       drop_offset_m: [dx, dy] metres from the bin's centre. Leave out: the drop points are spread automatically.
+      max_tilt_deg: How far the palm may tilt from facing straight down, 10 to 60 (default 35). More tilt lets the
+        hand reach an object next to a bin wall or near the robot's body.
+      pregrasp_offset_m: [dx, dy] metres: start the descent off to one side and come down at a slant, e.g.
+        [-0.03, 0] to come from the robot's side when a bin rim is in the way behind the object.
+      grasp_height_frac: Where on the object the fingers close, 0.2 (low) to 0.9 (near the top); default 0.5.
 
     Returns:
       status: "completed" (the finger sensors felt an object after the lift and it was carried to the bin and
@@ -541,8 +912,123 @@ async def pick_and_place(
     if robot.holding:
         raise ToolError(f"the {robot.holding} hand is holding an object: place it first")
     obj = _target(robot, object_id, point, shape, yaw_deg)
-    return await _do_pick_and_place(robot, obj, bin, arm, _approach(finger_direction_deg, xy_offset_m),
-                                    _pair(drop_offset_m, "drop_offset_m"))
+    approach = _approach(finger_direction_deg, xy_offset_m, None, max_tilt_deg, pregrasp_offset_m, grasp_height_frac)
+    return await _do_pick_and_place(robot, obj, bin, arm, approach, _pair(drop_offset_m, "drop_offset_m"))
+
+
+@_tool
+async def choose_arm(bin: Optional[Bin] = None, object_id: Optional[str] = None, point: Optional[list[float]] = None) -> dict:
+    """Which arm should take this object? Measures and plans, moves nothing (1 to 4 s).
+
+    For each arm: how far its shoulder is from the object, whether it can reach the bin, whether a grasp can be
+    planned, and whether the whole pick-and-place can. pick_and_place uses the same rule by itself when you name
+    no arm; call this when a move failed and you want to know what each arm can do before trying again.
+
+    Args:
+      bin: The bin the object is meant for, if you know it.
+      object_id: Id of the object from the latest look or objects_on_counter list.
+      point: [y, x] of the object in the HEAD camera image, each 0..1000.
+
+    Returns:
+      nearest_arm, and for left and right: distance_to_object_m, reaches_bin, can_grasp, can_pick_and_place and
+      the planner's reason when it cannot. recommendation says what to call next.
+    """
+    from . import arms
+    robot = get_robot()
+    await _ready(robot)
+    obj = _target(robot, object_id, point, None, None)
+
+    def work(ctx, arm_q, hand_q):
+        d = arms.distances(ctx, obj.xyz, arm_q)
+        out = {}
+        for side in arms.SIDES:
+            e = {"distance_to_object_m": round(d[side], 3)}
+            g = _plan_grasp(robot, obj, side, _pick_call(ctx, obj, None, bin), {}, arm_q, hand_q, bin, via_home=False)
+            e["can_grasp"] = bool(g.ok)
+            if not g.ok:
+                e["grasp_problem"] = g.reason[:220]
+            if bin:
+                e["reaches_bin"] = arms.reaches(ctx, side, bin)
+                t = _plan_grasp(robot, obj, side, _pick_and_place_call(ctx, obj, bin, None, _drop_point(robot, bin, None)),
+                                {}, arm_q, hand_q, bin) if g.ok and e["reaches_bin"] else None
+                ok = bool(t is not None and t.ok)
+                if ok and ARM_CLEARANCE_M > 0 and _min_arm_distance(ctx, t.arm, t.hand) < ARM_CLEARANCE_M:
+                    ok, e["pick_and_place_problem"] = False, "it would pass too close to the other arm"
+                elif t is not None and not t.ok:
+                    e["pick_and_place_problem"] = t.reason[:220]
+                e["can_pick_and_place"] = ok
+            out[side] = e
+        return out
+
+    info = await asyncio.to_thread(work, robot.ctx, *robot.command_state())
+    nearest = min(arms.SIDES, key=lambda s_: info[s_]["distance_to_object_m"])
+    full = [s_ for s_ in arms.SIDES if info[s_].get("can_pick_and_place")]
+    graspers = [s_ for s_ in arms.SIDES if info[s_]["can_grasp"]]
+    if full:
+        best = nearest if nearest in full else full[0]
+        advice = f"pick_and_place with arm='{best}'"
+    elif bin and graspers:
+        best = nearest if nearest in graspers else graspers[0]
+        advice = (f"the {best} arm can grasp it but not finish: hand_over (it is set down near the middle for the "
+                  f"other arm), then pick_and_place")
+    elif graspers:
+        advice = f"pick with arm='{nearest if nearest in graspers else graspers[0]}'"
+    else:
+        advice = ("no arm has a plan with the default grasp: try check_plan with max_tilt_deg 50, a pregrasp_offset_m "
+                  "away from whatever is in the way, or another finger_direction_deg")
+    return _result("ok", object=obj.id, bin=bin, nearest_arm=nearest, left=info["left"], right=info["right"],
+                   recommendation=advice)
+
+
+@_tool
+async def check_plan(
+    bin: Optional[Bin] = None,
+    object_id: Optional[str] = None,
+    point: Optional[list[float]] = None,
+    arm: Optional[Arm] = None,
+    finger_direction_deg: Optional[float] = None,
+    xy_offset_m: Optional[list[float]] = None,
+    max_tilt_deg: Optional[float] = None,
+    pregrasp_offset_m: Optional[list[float]] = None,
+    grasp_height_frac: Optional[float] = None,
+) -> dict:
+    """Would this grasp be possible? Plans it with every safety check, moves nothing (about a second).
+
+    Use it after "no safe plan" to find a variation that works before spending a move: call it several times in
+    one turn with different arguments (they are checked one after the other) and then run the one that is ok with
+    pick_and_place, using the same arguments. The reason of a failed plan says what was in the way: a bin rim, the
+    counter, the other arm, or the arm's reach.
+
+    Args:
+      bin: The bin to drop it in. Leave out to check the grasp alone.
+      object_id: Id of the object from the latest look or objects_on_counter list.
+      point: [y, x] of the object in the HEAD camera image, each 0..1000.
+      arm: Which arm. Leave out to let the planner choose.
+      finger_direction_deg: Where the fingers point: 0 = away from the robot, +90 = to its left.
+      xy_offset_m: [dx, dy] metres added to the grasp position.
+      max_tilt_deg: How far the palm may tilt from straight down, 10 to 60 (default 35).
+      pregrasp_offset_m: [dx, dy] metres: come down at a slant from that side.
+      grasp_height_frac: Where on the object the fingers close, 0.2 to 0.9 (default 0.5).
+    """
+    robot = get_robot()
+    await _ready(robot)
+    obj = _target(robot, object_id, point, None, None)
+    approach = _approach(finger_direction_deg, xy_offset_m, None, max_tilt_deg, pregrasp_offset_m, grasp_height_frac)
+    info = {}
+
+    def plan(ctx, arm_q, hand_q):
+        call = (_pick_and_place_call(ctx, obj, bin, approach, _drop_point(robot, bin, None)) if bin
+                else _pick_call(ctx, obj, approach))
+        return _plan_grasp(robot, obj, arm, call, info, arm_q, hand_q, bin)
+
+    traj = await asyncio.to_thread(plan, robot.ctx, *robot.command_state())
+    if not traj.ok:
+        return _result("failed", reason=f"no safe plan: {traj.reason}"[:400], object=obj.id, bin=bin)
+    close = await _too_close(robot, traj)
+    if close:
+        return _result("failed", reason=close, object=obj.id, bin=bin)
+    return _result("ok", object=obj.id, bin=bin, arm=traj.side, seconds=round(traj.ticks / HZ, 1), grasp=info,
+                   note="nothing moved: run it with pick_and_place and the same arguments")
 
 
 @_tool
@@ -579,15 +1065,16 @@ async def pick(
     obj = _target(robot, object_id, point, shape, yaw_deg)
     approach = _approach(finger_direction_deg, xy_offset_m)
 
+    info = {}
+
     def plan(ctx, arm_q, hand_q):
-        from agent.skills import pick as skill
-        return skill(ctx, obj, arm_q, hand_q, arm=arm, approach=approach, for_bin=for_bin)
+        return _plan_grasp(robot, obj, arm, _pick_call(ctx, obj, approach, for_bin), info, arm_q, hand_q, for_bin)
 
     def picked(traj):
         robot.holding, robot.held_id = traj.side, object_id
 
     return await _grasp_move(f"pick {obj.id}", plan, picked, obj, False, object=obj.id,
-                             grasp_at_m=[round(float(v), 3) for v in obj.xyz])
+                             grasp_at_m=[round(float(v), 3) for v in obj.xyz], grasp=info)
 
 
 @_tool
@@ -726,5 +1213,5 @@ async def done(summary: str = "") -> dict:
     return out
 
 
-TOOLS = [look, view_camera, read_proprioception, pick_and_place, pick, place, place_on_counter, hand_over,
+TOOLS = [look, view_camera, ask_gemini, read_proprioception, choose_arm, check_plan, pick_and_place, pick, place, place_on_counter, hand_over,
          go_home, wait, done]

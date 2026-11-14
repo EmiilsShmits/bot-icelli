@@ -36,6 +36,7 @@ class Robot:
         self.warmup_ticks = 15                 # the sim's first frames after a reset still show the previous scene
         self.default_time_limit = float(os.environ.get("AALTO_TIME_LIMIT", 120.0))
         self.log = lambda msg: print(msg, flush=True)
+        self.trace = Trace()
         self.motion = None
         self.reset()
 
@@ -54,8 +55,39 @@ class Robot:
                         "orange": [[[9, 70, 70], [17, 255, 255]]], "green": [[[36, 70, 60], [85, 255, 255]]],
                         "cyan": [[[86, 70, 60], [99, 255, 255]]], "purple": [[[131, 60, 50], [155, 255, 255]]],
                         "pink": [[[156, 70, 70], [169, 255, 255]]]})
+                    self._ctx.camera = _any_colour_camera(self._ctx)
                 self.aside = self._aside_pose(self._ctx)
+                self.head_T0 = np.array(self._ctx.cal._T(self._ctx.camera.cam), float)     # the calibration file's pose
             return self._ctx
+
+    def fit_head_camera(self, depth):
+        """Once per episode, at the first look: re-fit the head camera's pose from the depth image itself (table
+        plane + bin walls, bot-icelli's headpose.py) and use it if the correction is plausible. The calibration
+        file's pose is a URDF default; the sim's randomisation moves the camera by ~1 cm / 1 deg and the real
+        camera is reported to point about 10 deg further down. Without this the bins' walls leak out of their
+        masked footprint as false objects and positions are off by 1-2 cm."""
+        if self.pose_fit is not None or depth is None or os.environ.get("ROBOT_HEADPOSE", "1") != "1":
+            return
+        from .headpose import camera_move_ok, fit_head_pose, plausible
+        ctx = self.ctx
+        cam = ctx.cal.cams[ctx.camera.cam]
+        try:
+            cam.T_pelvis_optical = self.head_T0.copy()
+            fit = fit_head_pose(depth, ctx.cal, ctx.scene)
+            # ROBOT_HEADPOSE_CHECK=move (default): limit how far the camera moves (accepts the venue look's
+            # ~10 deg fit); =shift: the older limit on the fit's raw shift, which rejects it.
+            if os.environ.get("ROBOT_HEADPOSE_CHECK", "move") == "shift":
+                used = bool(plausible(fit))
+            else:
+                used = bool(camera_move_ok(fit, self.head_T0))
+            if used:
+                cam.T_pelvis_optical = np.asarray(fit.T, float)
+            self.pose_fit = {"used": used, "summary": fit.summary()}
+        except Exception as e:  # noqa: BLE001
+            cam.T_pelvis_optical = self.head_T0.copy()
+            self.pose_fit = {"used": False, "summary": f"fit failed: {e!r}"}
+        self.log(f"[robot t={self.t:6.2f}] head camera pose fit: {'used' if self.pose_fit['used'] else 'NOT used'}; {self.pose_fit['summary']}")
+        self.trace.write("head_pose_fit", t=round(self.t, 2), **self.pose_fit)
 
     @staticmethod
     def _aside_pose(ctx):
@@ -92,9 +124,14 @@ class Robot:
             self.holding = None                # "left" | "right" | None
             self.held_id = None                # id of the object in that hand, if it came from a look
             self.objects = {}                  # id -> WorldObject, from the last look
-            self.id_count = {}                 # colour -> ids handed out, so an id is never reused in an episode
+            self.id_count = {}                 # ids handed out, so an id is never reused in an episode
+            self.tries = {}                    # object id -> grasps that missed (the next one uses another grip)
+            self.labels = {}                   # object id -> colour / shape label from the Gemini Decisions API
+            self.seen, self.seen_rgb = [], None  # the last look: objects as reported to the model, and its image
+            self.waiting = None                # an arm waiting above a bin for its next object ("left" | "right")
             self.placed = {}                   # bin -> objects we dropped in it (spreads the drop points)
             self.view_requests = []            # camera views the agent asked for; shown with the next model call
+            self.pose_fit = None               # head camera pose fit of this episode (see fit_head_camera)
             self.finished = False              # the agent called done
             self.moves = []                    # what was executed, for logs
 
@@ -158,6 +195,7 @@ class Robot:
     def _finish(self, outcome):
         m, self.motion = self.motion, None
         self.moves.append({"t": round(m["t"], 2), "move": m["label"], "arm": m["arm"], "outcome": outcome})
+        self.trace.write("motion", t=round(m["t"], 2), t_end=round(self.t, 2), move=m["label"], arm=m["arm"], outcome=outcome)
         self.log(f"[robot t={self.t:6.2f}] {m['label']}: {outcome}")
         if not m["future"].done():
             m["future"].set_result(outcome)
@@ -225,6 +263,98 @@ class MockWorld:
                     self.robot.log(f"[mock] episode ended: {info['end_reason']}; starting another")
                     break
             self.seed += 1
+
+
+def _any_colour_camera(ctx):
+    """The organisers' detector with one more mask: every pixel that none of the hue ranges claims. The detector
+    itself keeps only pixels whose depth puts them at object height above the counter and outside the bins, so
+    this adds objects of ANY colour, including washed-out, white, grey or black ones, found by their geometry."""
+    import cv2
+    from aaltonomous.baselines.classical.perception import Perception
+
+    class AnyColour(Perception):
+        def masks(self, rgb):
+            out = super().masks(rgb)
+            claimed = np.zeros(np.asarray(rgb).shape[:2], np.uint8)
+            for m in out.values():
+                claimed |= m
+            out["other"] = cv2.bitwise_not(claimed)
+            return out
+
+    return AnyColour(ctx.cfg, ctx.scene, ctx.cal)
+
+
+class Trace:
+    """Everything the agent did, untruncated, for working out afterwards what failed and why.
+    <dir>/episode_NNN.jsonl: one JSON object per line (reset, tool call with full arguments, full tool result,
+    what the model said, model errors, each robot motion). <dir>/frames/: the head colour image (jpg) and depth
+    image (16-bit png, mm) behind every detection, with the detections next to them (json)."""
+
+    def __init__(self):
+        self.dir = os.environ.get("ROBOT_TRACE_DIR", "")
+        self.episode, self.frame, self._lock = -1, 0, threading.Lock()
+
+    def reset(self, **info):
+        self.episode += 1
+        self.frame = 0
+        self.write("reset", **info)
+
+    def write(self, kind, **data):
+        if not self.dir or self.episode < 0:
+            return
+        import json
+        import time
+        try:
+            os.makedirs(self.dir, exist_ok=True)
+            with self._lock, open(os.path.join(self.dir, f"episode_{self.episode:03d}.jsonl"), "a") as f:
+                f.write(json.dumps({"wall": round(time.time(), 2), "kind": kind, **data}, default=str) + "\n")
+        except Exception:  # noqa: BLE001  (tracing must never break a run)
+            pass
+
+    def snapshot(self, tag, obs, t):
+        """The camera images at a moment worth looking at afterwards (e.g. the grasp check after a lift)."""
+        if not self.dir or self.episode < 0:
+            return
+        import cv2
+        try:
+            d = os.path.join(self.dir, "frames")
+            os.makedirs(d, exist_ok=True)
+            for key in ("head_rgb", "left_wrist_rgb", "right_wrist_rgb"):
+                if obs.get(key) is not None:
+                    cv2.imwrite(os.path.join(d, f"ep{self.episode:03d}_{tag}_t{t:06.2f}_{key[:-4]}.jpg"),
+                                np.ascontiguousarray(obs[key][..., ::-1]), [cv2.IMWRITE_JPEG_QUALITY, 88])
+        except Exception:  # noqa: BLE001
+            pass
+
+    def frame_dump(self, obs, t, detections):
+        if not self.dir or self.episode < 0:
+            return
+        import json
+        import cv2
+        try:
+            d = os.path.join(self.dir, "frames")
+            os.makedirs(d, exist_ok=True)
+            stem = os.path.join(d, f"ep{self.episode:03d}_{self.frame:02d}_t{t:06.2f}")
+            self.frame += 1
+            cv2.imwrite(stem + ".jpg", np.ascontiguousarray(obs["head_rgb"][..., ::-1]), [cv2.IMWRITE_JPEG_QUALITY, 92])
+            if obs.get("head_depth") is not None:
+                d = np.ascontiguousarray(obs["head_depth"]).astype(np.uint16)
+                cv2.imwrite(stem + "_depth.png", d)              # the data: 16-bit millimetres (looks black in a viewer)
+                cv2.imwrite(stem + "_depth_view.jpg", depth_view(d))     # the same for human eyes
+            with open(stem + ".json", "w") as f:
+                json.dump({"t": t, "detections": detections}, f)
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def depth_view(depth_mm):
+    """A depth image (uint16, millimetres) as a picture: red is near (0.3 m), blue is far (1.2 m), black = no reading."""
+    import cv2
+    m = np.asarray(depth_mm, np.float32) * 0.001
+    near = np.clip(1.0 - (m - 0.3) / 0.9, 0.0, 1.0)
+    img = cv2.applyColorMap((255 * near).astype(np.uint8), cv2.COLORMAP_JET)
+    img[m <= 0] = 0
+    return img
 
 
 _robot = None

@@ -1,6 +1,6 @@
 # v1.5 (decision oracle as a policy server) vs Marcus's ADK agent
 
-Written Sat 14 Nov ~20:30 by Emīls + Claude. Sources: our `eval/RESULTS.md` (e-004, e-028…e-033), Marcus's repo
+Written Sat 14 Nov ~20:30 by Emīls + Claude; venue-look side-by-side added ~21:30. Sources: our `eval/RESULTS.md` (e-004, e-028…e-040), Marcus's repo
 github.com/marcusoberg/junction2026 at 1a51d7b (Sat 19:39: `adk_agents/`, `sim/modal_sim.py`, `sim_out/*/eval.json`),
 and the same-seed numbers Samer collected in `docs/CONTEXT.md`. Scores marked "own scene" were measured in different
 scenes and cannot be compared directly.
@@ -37,6 +37,59 @@ Both pass the gate in every run (0 clipped steps, ~30 Hz).
 | v1.4 | | 15/20 (seeds 1000–1009: 29/40, e-035) |
 | **v1.5** | not run | sides off **17/20** (Sat ~20:45; seeds 1005–1009 and strict sides running on `samer-v1-sim`, `eval/v15_lane.sh`) |
 
+**Same seeds, same scene (our venue look, nominal, Modal, Sat ~21:30)**: the first run of both side by side.
+The agent is Marcus's 1a51d7b with one fix (item 3 below: the head-camera fit is accepted by how far the camera
+moves), so it uses the venue look's 9.8° fit in every episode.
+
+| Policy | sort_fixed 1000–1005 | sort_language 2000–2005 | Both |
+|---|---|---|---|
+| Marcus's agent + camera fix (e-038, e-039) | 20/27 (triangles 1/5) | 23/28 (1 in a wrong bin) | 43/55 |
+| **v1.5, sides off** (e-030, e-040) | **23/27** | **24/28** | **47/55** |
+| v1.5, strict (e-029, e-031) | 20/27 | 22/28 | 42/55 |
+
+Sim time per episode is about the same (agent 37–117 s, v1.5 42–117 s): the agent is quicker on easy seeds and
+20–40 s slower on seeds with many retries, 3 of which ended 5–6 s before the 120 s limit. Its 127 Gemini calls took
+2.3 s median, up to 18 s (wall clock), which in this sim (RTF 0.32) is only about 10 % of an episode's sim time. On
+the real robot, at real time, each wait costs its full length.
+
+### Where each loses objects (venue look, the 12 episodes above)
+
+From v1.5's decision logs (`runs/decisions_v1.5.jsonl`) and the agent's `policy.log` (every tool call and result).
+v1.5 sides off lost 8 of 55, the agent 12 of 55. Small sample (9 triangles in all); the seed 1003 wrong bin is
+inferred from the logs, not checked on video.
+
+**Both: triangles.** v1.5 sorted 2 of 9, the agent 3 of 9 (7 of v1.5's 8 losses, 6 of the agent's 12). The hand
+closes on nothing: v1.5's grasp check found it empty on 8 of 10 face grasps on standing triangles and 4 of 4 stock
+claws. The failing triangles lie close to the robot (x 0.20–0.24 m), where only the plain pinch can be planned. A
+miss often tips the triangle over; lying blocks then failed 6 of 7 times with the stock claw (seed 2002: three in a
+row).
+
+**v1.5 only:**
+- Empty stock-claw grasps on cylinders: 12 of 32. Seed 2005 spent five on cylinders and reached 117 s with a
+  cylinder and a triangle left.
+- Knocked neighbours. Seed 1002: reaching for a red cylinder, the left arm pushed a blue triangle 6 cm away toward
+  the robot and out of the head camera's view; the episode ended with it on the table. Seed 1003: a blue triangle
+  ended in the red bin, apparently carried by the left arm's move.
+- A lying cylinder read as a cube (seed 1003; sorted anyway): the shared `classify_top` problem below.
+
+**ADK agent only:**
+- Repeats failed picks: 31 of 82 pick tries missed (38 %); 17 times it tried the same object again straight after
+  a miss, 6 of those with identical arguments (seed 1003: the same right-arm pick on one triangle three times).
+  v1.5's failure memory moves to another arm / grasp after a miss (item 2 below).
+- Leaves triangles with no plannable grasp: 3 times the tool returned "only the plain pinch can be planned from
+  here, and it does not hold a triangular prism", and the model moved on.
+- Stops early: seed 1003 ended at 93 s with 26 s left and 3 objects on the table, after `hand_over` failed ("no
+  hand-over spot is free").
+- Mixed up two touching objects (the wrong bin, seed 2002): a red triangle and a blue cube touched, the id `obj_3`
+  moved to the cube between looks, and the "red" label from the first look stayed with the id, so the cube went to
+  the red bin.
+- Retries push episodes to the limit: 3 ended 3–6 s before 120 s. On the real robot each Gemini wait adds its full
+  length.
+
+**Largest gains:** for both, a grasp that holds triangles near the robot (or sliding them out to where face grasps
+plan). For the agent, not repeating a failed (arm, grasp) pair and the ridge grasp for lying triangles (items 1–2
+below). For v1.5, a clearance check against close neighbours on the approach.
+
 **Own scenes** (not comparable with each other):
 
 | Policy | Scene | Task | Sorted |
@@ -56,8 +109,9 @@ the real object colours plus Aalto's `train` randomisation. It is not our venue 
 
 - **Facts:** both drive the same oracle motions from the head camera. In Aalto's look with randomisation Marcus's
   agent sorts 18/20, one more than Aalto's oracle with exact poses. In our venue look v1.5 sorts 23/27, one more than
-  Aalto's oracle there. The two have not yet been run in the same scene; Samer's v1.5 lane on `samer-v1-sim` is
-  the first such comparison.
+  Aalto's oracle there. Side by side in the venue look on the same 12 episodes (e-038…e-040): v1.5 sides off
+  47/55, the agent with the camera fix 43/55. Within run-to-run spread, so about level; the agent's weakest shape
+  there is triangles (1/5 on sort_fixed).
 - **Opinion (Emīls + Claude, not a team decision):** v1.5 is the safer submission. It needs no network and no key in
   the image, the image is built, and it scores at the oracle's level. The ADK agent is the stronger pitch story
   (Gemini looks at the scene and calls skills, any instruction wording), but at the finals a failed or slow call
@@ -88,7 +142,10 @@ Checked against his repo at 1a51d7b. Only what his agent does not already have; 
    shifts over 6 cm. In our venue look the fit reports about −8 cm while the camera moved about 2 cm, so the right
    fit is thrown away there, and probably on the real robot (camera about 10° lower). v1.5 uses the fit whenever it
    succeeds (part of its 23/27 there). To port: relax the shift limit, or use Samer's `camera_move_ok`
-   (`policy/policies/classical_v14.py`).
+   (`policy/policies/classical_v14.py`). **Done in our copy** (`modal_pipeline/adk_agents/robot_sorter/headpose.py`
+   `camera_move_ok`, used by `robot.py`; `ROBOT_HEADPOSE_CHECK=shift` restores the old limit) and used in e-038 and
+   e-039; not yet in Marcus's repo. Samer's pre-submission image applies the same limit to Marcus's code at build
+   time (`policy/adk/patch_headpose.py`), so e-038 and e-039 measure the logic that image runs.
 4. **Evidence: do not let Decision 1 overrule "tipped".** His `decisions.py` lets Decision 1 call a block "other:
    lying on its side". On 59 crops the geometry called lying (`test_tipcheck.py`), Decision 1 caught 2 of 11 wrong
    "lying" labels and turned 3 really lying blocks into upright (Hydrogen: 5 of 11, flipped 4, 3.2 s). The
@@ -103,6 +160,6 @@ which both use; a fix there helps both.
 ## Open
 
 - v1.5 on Aalto's look with randomisation (running, Samer) and with real colours (not run).
-- Marcus's agent in our venue look with its current version (only the older `t2-venue-*`, which also used
-  randomisation).
+- ~~Marcus's agent in our venue look with its current version~~: done, e-038 and e-039 (with the camera fix).
+  Not run: the agent in the venue look without the fix, or with randomisation.
 - Whether the finals sim uses Aalto's look, our venue-like look, or something else (Aalto: held-out variant).

@@ -39,7 +39,10 @@ class AdkPolicy(Policy):
     """The organisers' Policy interface: reset(instruction) starts an agent episode, act(obs) hands out ticks."""
 
     def __init__(self, agent=None, log_fn=None):
-        from .agent import root_agent
+        from .agent import build_agent, root_agent
+        if agent is None and os.environ.get("ROBOT_AGENT_MODEL") == "bench":      # scripted rules, no model calls
+            from .bench import BenchModel
+            agent = build_agent(BenchModel())
         self.agent = agent or root_agent
         self.name = f"adk/{getattr(self.agent.model, 'model', self.agent.model)}"
         self.robot = get_robot()
@@ -60,6 +63,7 @@ class AdkPolicy(Policy):
             self.robot.log(f"[agent] episode end: {len(self.robot.moves)} moves {self.robot.moves}; stats {self.stats}")
         self.robot.log(f"[agent] reset task={task} seed={seed}: {instruction}")
         self.robot.reset(instruction)
+        self.robot.trace.reset(task=task, seed=seed, instruction=instruction, model=self.name)
         self.episode = asyncio.run_coroutine_threadsafe(self._episode(instruction), self.loop)
 
     def act(self, obs):
@@ -88,17 +92,21 @@ class AdkPolicy(Policy):
                     for call in event.get_function_calls() or []:
                         called = True
                         robot.log(f"[agent t={robot.t:6.2f}] {call.name}({dict(call.args or {})})")
+                        robot.trace.write("call", t=round(robot.t, 2), tool=call.name, args=dict(call.args or {}))
                     for resp in event.get_function_responses() or []:
-                        robot.log(f"[agent t={robot.t:6.2f}] {resp.name} -> {str(resp.response)[:300]}")
+                        robot.log(f"[agent t={robot.t:6.2f}] {resp.name} -> {str(resp.response)[:1500]}")
+                        robot.trace.write("result", t=round(robot.t, 2), tool=resp.name, result=resp.response)
                     if event.is_final_response() and event.content and event.content.parts:
                         said = " ".join(p.text for p in event.content.parts if p.text)
                         if said:
                             robot.log(f"[agent t={robot.t:6.2f}] says: {said[:300]}")
+                            robot.trace.write("says", t=round(robot.t, 2), text=said)
             except asyncio.CancelledError:
                 raise
             except Exception as e:  # noqa: BLE001  (a failed model call: hold still, ask again)
                 self.stats["model_errors"] += 1
                 robot.log(f"[agent t={robot.t:6.2f}] model call failed: {e!r}"[:400])
+                robot.trace.write("model_error", t=round(robot.t, 2), error=repr(e))
             if called:
                 idle = 0
             else:                                         # failed, or answered in words only: do not hammer the model
