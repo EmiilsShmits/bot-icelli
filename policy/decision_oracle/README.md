@@ -32,6 +32,8 @@ Two perception modes:
 | `run_eval.py` | `aaltonomous.sim.evaluate` with our policy swapped in (`--chooser aalto|default|decision|random|prefer_face`, `--perception privileged|camera`, `--labels off|log|fuse`) |
 | `analyze.py` | Tables per shape / arm / grasp / route / drop spot, latency, fallbacks, planner rejections |
 | `upgrades.py` | **All oracle upgrades in one separate file**, as subclasses of the files above (which stay as first pushed): `MemoryChooser`, `MemoryEnumerator`, `TrackingCamera`, `UpgradedOraclePolicy`, plus its own runner, self-test and analysis. Delete this file and nothing else changes |
+| `monitor_rules.py` | No sim, no API: joins the decision logs with the finger angles in `episode_*.npz`. Grasp check from `hand_q`, what retries repeated, rules that flag a pick before it runs; `--table` prints a pick table + prompt for a large model |
+| `monitor_probe.py` | No sim: asks Decision 1, Robotics-ER 2 and Hydrogen monitoring questions on saved head frames with true poses (block in the hand? gone from the table? another block moved? tipped? counts) and scores them. Results: [`docs/research/model-monitor-oracle.md`](../../docs/research/model-monitor-oracle.md) |
 | `test_offline.py` | No sim: fake scene service from random layouts; default chooser = Aalto's choice, every option passes the checks |
 
 ## The parameters (what Aalto's oracle hard-codes)
@@ -91,6 +93,7 @@ Don't pass `--no-cameras`: the Decision chooser needs the head image.
   - Placement check: Decision 1 "is it in the bin?" on the head camera.
   - Real-robot gaps for camera mode: real depth noise and holes, bins not exactly at `scene.yaml` positions, the real hand sitting 4–6 cm closer than the sim hand (`sim/venue_look/README.md`). None of these is tested.
   - Turn it into a policy server (it runs in-process inside Aalto's evaluator today).
+- **Models as monitors (Sat 14 Nov, measured without the sim):** [`docs/research/model-monitor-oracle.md`](../../docs/research/model-monitor-oracle.md). The finger-angle rule tells held from empty on 146 of 147 logged picks; Decision 1 matches it only with a before/after image pair; no model predicts a failed pick better than "triangle + stock claw, or another block within 7 cm". Scripts: `monitor_rules.py`, `monitor_probe.py`.
 - **Blockers:** none.
 
 ## Results (venue look, 3–6 scattered objects; sort_fixed uses seeds 1000–1005, sort_language 2000–2005)

@@ -24,6 +24,11 @@ _Update at the end of every session. Newest state at the top; keep it short._
   - **Main failure found:** triangles get the stock claw grasp when the face grasp is rejected by the planner; it held in 1 of 15 picks. A chooser that prefers face grasps is queued.
   - **sort_language baseline:** Aalto's oracle sorts 20/28 (71 %) on seeds 2000–2005 (e-007), triangles 1/4.
   - Still running on the sim machine: sort_language with Decision, camera mode on 6 seeds, random chooser, camera + Decision, camera + prefer_face. Three more sim disks are cloned on Verda (`bot-icelli-os-2/3/4`), but no RTX machine was free on Sat 16:20, so they are not attached to anything yet.
+- **Models as monitors of the oracle (Sat 14 Nov ~17:30, Emīls + Claude):** [`research/model-monitor-oracle.md`](research/model-monitor-oracle.md), measured on saved sim logs and frames (no sim run).
+  - **Grasp check:** the finger-angle rule is right on 146 of 147 logged picks; no model beats it.
+  - **Decision 1** is a good outcome check only with a before/after image pair ("is the block gone from the table?" 31/31; one image 19/32). Proposed as a second opinion at each look; not built.
+  - **Predicting a failed pick:** rules beat models. New from the logs: a block with a neighbour closer than 7 cm was sorted 6 of 25 times, against 46 of 77 with 10 cm or more of space.
+  - **Offline:** Gemini 4 Hydrogen read the pick table and returned 6 correct findings in 2 minutes.
 - **In progress:** working on the Aalto humanoid, mostly in sim. Team split: fine-tuning (Emīls, Tiya), simulation (Marcus, Samer)
 - **Next:** agree on the open items at the top of `docs/DECISIONS.md` (brief, approach, handoffs, storage, workflow, owners)
 - **Blockers:** open team decisions (see `docs/DECISIONS.md`). Open questions for mentors are listed at the end of `docs/research/aalto-humanoid.md` (real-G1 teleop access, Coil Pro/suit for wrist tracking)
@@ -69,3 +74,4 @@ _Anything hardcoded or faked, so nobody is surprised at demo time._
 - 2026-11-14 — `policy/decision_oracle/`: Aalto's oracle as parameterised motion functions with Decision 1 / random / rule choosers, plus a camera-only perception mode (head pose self-fit, shape and yaw from depth). Sim: Decision chooser 23/27 vs oracle 22/27; camera mode matches exact poses on 2 seeds; triangle stock grasp 1/15.
 - 2026-11-14 — Samer's Verda sim machine (`samer-v1-sim`, spot RTX PRO 6000) set up by `sim/install_bare_metal.sh` in 11 min; eval scripts in `eval/` (baseline vs our image on the same seeds, queue, 2nd sim). Aalto's classical baseline: 65 % in the nominal sim (e-008); far cross-body objects 2/9. Built v1.1 (hand-over, retry cap), v1.2 (+ Emīls's head-pose fit) and a non-blocking reset() after the baseline failed the gate once under load. Sim comparison running.
 - 2026-11-14 — `docs/CONTEXT.md`: one briefing for people and AI agents, with facts (sourced), Samer + Claude's opinions and open questions kept apart; `AGENTS.md` sends every agent there first. Repo guards against AI co-author lines (c239100).
+- 2026-11-14 — `docs/research/model-monitor-oracle.md`: which monitoring roles a model can take next to the oracle planner (Decision 1, Robotics-ER 2, Hydrogen against rules), measured on 147 logged picks and 113 saved frames. Scripts `policy/decision_oracle/monitor_rules.py` and `monitor_probe.py`.
