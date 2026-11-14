@@ -23,7 +23,7 @@ Details live in `docs/` and in each folder's `README.md`.
 | `docs/PROGRESS.md` | Team-level status + log |
 | `docs/DECISIONS.md` | Open decisions + append-only log of choices made |
 | `docs/TEAM.md` | Who's who, skills, hardware |
-| `docs/runbooks/` | Step-by-step how-tos (Verda + sim setup, submitting), condensed from Aalto's docs |
+| `docs/runbooks/` | Step-by-step how-tos (Verda + sim setup, recreating the venue-look sim, submitting) |
 | `docs/research/` | Research notes (robot, APIs/credits, Rokoko, Jetson) |
 | `sim/` | Simulation work (Marcus, Samer) |
 | `modal_pipeline/` | Marcus's Modal pipeline: sim, oracle data recording, π0.5 training, sim evaluation, policy server. Start with its `TEAM_HANDOVER.md` |

@@ -1,0 +1,7 @@
+# sim/venue_look/tools, run on a laptop (not needed on the sim machine or in the submission image)
+numpy
+opencv-python
+pyarrow
+pyyaml
+# fit_wrist_camera.py only (already in the sim machine's `isaac` environment):
+# pin

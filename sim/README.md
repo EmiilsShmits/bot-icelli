@@ -14,13 +14,13 @@
   - `aalto check`: expect 9 PASS (Aalto's quickstart says 8)
   - `aalto baseline`
   - `AALTO_DR=train aalto sim`: domain randomisation
-- **Venue look** (sim that resembles the real table): [`venue_look/README.md`](venue_look/README.md).
+- **Venue look** (sim that resembles the real table): [`venue_look/README.md`](venue_look/README.md). Recreate it from scratch: [`docs/runbooks/venue-sim.md`](../docs/runbooks/venue-sim.md).
 - **Aalto's references:**
   - `third_party/aaltonomous-humanoid/aaltonomous/sim/README.md`
   - `…/cloud/QUICKSTART.md`
 
 ## Status
-- **Now:** Aalto sim runs bare-metal on Verda (`bot-icelli-sim`, Emīls's account). Set up on an RTX 6000 Ada, hibernated, and **resumed Sat 14 Nov at noon from the kept disk (volume `bot-icelli-os`) on a spot RTX PRO 6000** (30 vCPU, €1.28/h); a backup copy of the disk exists (`bot-icelli-os-backup`). It bills until hibernated again, and Verda can take a spot machine away at any time. 9/9 scene checks; oracle baseline 92 % with Aalto's scene, 88 % with the venue look and 71 % with the venue look plus scattered layouts (gate PASS in all three). How: `docs/runbooks/verda-sim-setup.md`. The switchable venue look in `venue_look/` is fitted to Aalto's real head-camera video (camera angle, bins, lighting). The sim's wrist cameras do not match the real ones yet (`venue_look/README.md`).
+- **Now:** Aalto sim runs bare-metal on Verda (`bot-icelli-sim`, Emīls's account). Set up on an RTX 6000 Ada, hibernated, and **resumed Sat 14 Nov at noon from the kept disk (volume `bot-icelli-os`) on a spot RTX PRO 6000** (30 vCPU, €1.28/h); a backup copy of the disk exists (`bot-icelli-os-backup`). It bills until hibernated again, and Verda can take a spot machine away at any time. 9/9 scene checks; oracle baseline 92 % with Aalto's scene, 88 % with the venue look and 71 % with the venue look plus scattered layouts (gate PASS in all three). How: `docs/runbooks/verda-sim-setup.md`. The switchable venue look in `venue_look/` is fitted to Aalto's real head-camera video (camera angle, bins, lighting). The wrist cameras are an estimate of the real mount (direction fitted to real frames, position and lens guessed); details and remaining differences in `venue_look/README.md`.
 - **Next:** —
 - **Blockers:** sim speed is 0.52× real time on the RTX PRO 6000 machine and 0.31× on the RTX 6000 Ada one (Aalto quotes ~0.7×).
 

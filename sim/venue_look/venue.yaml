@@ -17,6 +17,23 @@ camera:
     roll_deg: 1.0
     yaw_deg: -0.5             # principal point only
     shift_m: [0.0, 0.025, 0.0]   # pelvis frame (x forward, y left, z up)
+  # Wrist cameras. Aalto's sim uses Unitree's placeholder mount and a fisheye lens from another robot. On the real
+  # robot each is a small bare camera board at the base of the hand (seen in the real head-camera video), looking
+  # along the fingers. Pose in the <side>_wrist_yaw_link frame: x along the hand, +z = index-finger side,
+  # left thumb at -y (y mirrored for the right hand).
+  # Direction fitted to 60 real frames per hand: the bins, projected through the robot model at the recorded joint
+  # angles, should cover the orange paper in the image. Both hands gave about 35 deg down and 25 deg towards the
+  # thumb. Position and lens width are NOT pinned down by that fit: position is read off the head-camera video,
+  # the lens is a guess between Aalto's default (77 deg) and what the fit preferred (75-100 deg).
+  # Expect errors of 15-20 deg and a few cm. Aalto has not published the real mount.
+  wrist:
+    link: wrist_yaw
+    pos: [0.03, -0.02, 0.055]
+    pitch_down_deg: 35.0        # from the hand's long axis towards the middle finger (-z)
+    yaw_to_thumb_deg: 25.0
+    roll_deg: -10.0
+    hfov_deg: 75.0
+    near_m: 0.01
 
 objects:
   # Sim colour NAME -> real colour. The real objects are orange, purple and yellow (confirmed by Aalto);
@@ -69,15 +86,24 @@ lid:
 floor:
   rgb: [14, 14, 18]           # dark floor
 backdrop:
-  rgb: [10, 12, 18]           # black curtains (photo: 9,12,19)
-  distance: 2.2               # m from the pelvis: behind the bins and on both sides
-  height: 3.0
+  # Flat walls around the table (visual only). None now: the generated hall (lights.dome_textures) is the background
+  # in every direction. The phone photo shows a black curtain behind the table and some real wrist frames show a
+  # black banner, but a plain black wall filled much of the wrist cameras' view and looked nothing like the footage.
+  rgb: [10, 12, 18]
+  distance: 2.2               # m from the pelvis
+  walls: []                   # any of far / left / right
+  top_above_floor: 1.2        # m (the table top is at 0.8)
 
 lights:
   # One lamp in front of the robot on its right, plus weak cool room light. Lamp position worked out from the glare
   # patch on the table in both real datasets (assuming the lamp hangs about 2 m above the table).
-  dome_intensity: 250.0       # Aalto nominal 800
-  dome_color: [0.8, 0.88, 1.0]
+  dome_intensity: 1200.0      # Aalto nominal 800 with a plain white room. Higher here because the pictures are dark
+  dome_color: [1.0, 1.0, 1.0]
+  # What the cameras see around the table: made-up event halls (make_assets.py), not photos. The real wrist cameras
+  # see a bright hall with people and coloured lights; black walls all round looked nothing like it.
+  dome_textures: [venue_bg_0.jpg, venue_bg_1.jpg, venue_bg_2.jpg, venue_bg_3.jpg, venue_bg_4.jpg, venue_bg_5.jpg]
+  dome_texture_pick: random   # a different one each time the sim starts; an index (0-5) fixes it.
+                              # The AALTO_LOOK_BG env variable overrides this
   key_intensity: 60000.0      # = Aalto nominal
   key_color: [0.86, 0.92, 1.0]   # the real camera's white balance is cool: the table reads grey-pink, not tan
   key_pos: [1.4, -0.95, 2.8]  # SIM WORLD frame (x forward, y left, z up from the floor) = pelvis frame + 0.79 m up
@@ -99,7 +125,16 @@ robot:
     wrist_rgb: [200, 204, 210]        # bare aluminium wrist housings (Aalto's model: grey)
     wrist_metallic: 0.85
     wrist_roughness: 0.3
-    camera_mount_rgb: [214, 214, 208] # white 3-D printed wrist-camera mount
+    # The hands are black plastic, but on the real cameras they are not black: they reflect the lamp and the hall.
+    # Real wrist cameras: grey with a teal tint, about 30,50,65 in shade to 90,120,120 where lit (washed out by the
+    # exposure). Real head camera: darker, navy, about 0,25,55 to 45,55,75. Aalto's model renders about 5,5,10 in both.
+    # One material can't match both cameras; this sits in between (sim: about 30,40,65 on the wrists, 45,60,90 from the head).
+    hand_rgb: [88, 100, 106]
+    hand_roughness: 0.35
+    camera_mount_rgb: [214, 214, 208]   # only used when hide_camera_mount is false
+    hide_camera_mount: true     # Unitree's big white bracket is not on the real robot
+    # the real robot's small bare camera board: a thin plate just behind the wrist camera (size x, y, z in m)
+    camera_board: {size: [0.004, 0.038, 0.028], rgb: [185, 180, 165], offset: [-0.006, 0.0, 0.0]}
     cable:                    # black camera cable looping from the mount back along the forearm
       link: wrist_roll        # points are in this link's frame: x towards the hand, y to the robot's left, z up (arm forward)
       width: 0.006

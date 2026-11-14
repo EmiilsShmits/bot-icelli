@@ -73,10 +73,54 @@ def _look_rgb(key, default):
     """Look colour (sRGB 0-255 -> linear), or Aalto's default: the 0-1 tuple the nominal scene already uses."""
     v = _look(key)
     return _lin(v) if v is not None else tuple(default)
+
+
+def _dome_texture():
+    """Look: a picture for the surroundings (lights.dome_textures: equirectangular images next to the look file).
+    One is used per sim start: lights.dome_texture_pick (or the AALTO_LOOK_BG env variable) = an index, else random."""
+    tex = _look("lights.dome_textures")
+    if not tex:
+        return {{}}
+    if "_bg" not in LOOK:                           # choose once per process
+        pick = str(os.environ.get("AALTO_LOOK_BG") or _look("lights.dome_texture_pick", "random"))
+        LOOK["_bg"] = int(pick) % len(tex) if pick.isdigit() else int.from_bytes(os.urandom(2), "big") % len(tex)
+    i = LOOK["_bg"]
+    path = Path(LOOK["_dir"]) / tex[i]
+    if not path.exists():
+        print(f"[aalto] look: surroundings {{path}} not found (run make_assets.py); plain room light")
+        return {{}}
+    print(f"[aalto] look: surroundings {{tex[i]}}")
+    return {{"texture_file": str(path), "texture_format": "latlong"}}
 '''
 
 
-STAGE_HELPERS = '''def table_mark_cfgs():
+STAGE_HELPERS = '''def wrist_camera_cfg(side, preset):
+    """Look: wrist camera mount and lens (camera.wrist). Without it, the upstream preset.
+    Pose in the <side>_<link>_link frame (x along the hand, +z on the index-finger side, the left thumb at -y);
+    y is mirrored for the right hand. The camera looks along +x, turned down (towards -z) and towards the thumb."""
+    w = _look("camera.wrist")
+    if not w:
+        return preset
+    w = {**w, **(w.get(side) or {})}
+    m = np.array([1.0, 1.0 if side == "left" else -1.0, 1.0])
+    p, y = np.radians(float(w.get("pitch_down_deg", 0))), np.radians(float(w.get("yaw_to_thumb_deg", 0)))
+    fwd = np.array([np.cos(p) * np.cos(y), -np.cos(p) * np.sin(y), -np.sin(p)]) * m
+    right = np.cross(fwd, np.array([0.0, 0.0, 1.0]))
+    right /= np.linalg.norm(right)
+    R = np.stack([right, np.cross(fwd, right), fwd], axis=1)      # optical frame: x right, y down, z forward
+    r = np.radians(float(w.get("roll_deg", 0))) * m[1]
+    R = R @ np.array([[np.cos(r), -np.sin(r), 0.0], [np.sin(r), np.cos(r), 0.0], [0.0, 0.0, 1.0]])
+    ap = 20.955
+    return preset.replace(
+        prim_path=f"{ENV}/Robot/{side}_{w.get('link', 'wrist_yaw')}_link/{side}_wrist_camera", height=480, width=640,
+        spawn=sim_utils.PinholeCameraCfg(focal_length=ap / (2 * np.tan(np.radians(float(w.get("hfov_deg", 77))) / 2)),
+                                         horizontal_aperture=ap, focus_distance=400.0,
+                                         clipping_range=(float(w.get("near_m", 0.01)), 1.0e5)),
+        offset=CameraCfg.OffsetCfg(pos=tuple(float(v) for v in np.asarray(w["pos"], float) * m),
+                                   rot=rotmat_to_quat_xyzw(R), convention="ros"))
+
+
+def table_mark_cfgs():
     """Look: flat tape marks on the table top (visual only). Mat coordinates, metres."""
     out = {}
     for i, m in enumerate(_look("table.tape_marks") or []):
@@ -129,10 +173,35 @@ def apply_look_stage():
             for side in sides:
                 for link in arm.get("wrist_links", ["wrist_roll", "wrist_pitch", "wrist_yaw"]):
                     n += bind(f"{robot}/{side}_{link}_link/visuals", m)
-        if arm.get("camera_mount_rgb"):
+        if arm.get("hand_rgb"):   # the Dex3 hands: black plastic that reads grey on camera
+            m = material("hand", arm["hand_rgb"], arm.get("hand_roughness", 0.4), 0.0)
+            for side in sides:
+                for link in arm.get("hand_links", ["hand_palm", "hand_thumb_0", "hand_thumb_1", "hand_thumb_2",
+                                                   "hand_index_0", "hand_index_1", "hand_middle_0", "hand_middle_1"]):
+                    n += bind(f"{robot}/{side}_{link}_link/visuals", m)
+        if arm.get("camera_mount_rgb") and not arm.get("hide_camera_mount"):
             m = material("camera_mount", arm["camera_mount_rgb"], 0.6, 0.0)
             for side in sides:
                 n += bind(f"{robot}/{side}_hand_camera_base_link/visuals", m)
+        if arm.get("hide_camera_mount"):   # Unitree's bracket; the real robot has a small bare camera board instead
+            for side in sides:
+                prim = stage.GetPrimAtPath(f"{robot}/{side}_hand_camera_base_link/visuals")
+                if prim.IsValid():
+                    UsdGeom.Imageable(prim).MakeInvisible()
+                    n += 1
+        board, wc = arm.get("camera_board"), _look("camera.wrist") or {}
+        if board and wc.get("pos"):   # a thin plate just behind the wrist camera, in the camera's link frame
+            m = material("camera_board", board.get("rgb", [185, 180, 165]), 0.6, 0.0)
+            for side in sides:
+                mir = np.array([1.0, 1.0 if side == "left" else -1.0, 1.0])
+                p = (np.asarray(wc["pos"], float) + np.asarray(board.get("offset", (-0.006, 0.0, 0.0)), float)) * mir
+                cube = UsdGeom.Cube.Define(stage, f"{robot}/{side}_{wc.get('link', 'wrist_yaw')}_link/look_camera_board")
+                cube.CreateSizeAttr(1.0)
+                xf = UsdGeom.Xformable(cube.GetPrim())
+                xf.AddTranslateOp().Set(Gf.Vec3d(*[float(v) for v in p]))
+                xf.AddScaleOp().Set(Gf.Vec3f(*[float(v) for v in board.get("size", (0.004, 0.038, 0.028))]))
+                UsdShade.MaterialBindingAPI.Apply(cube.GetPrim()).Bind(m)
+                n += 1
         cable = arm.get("cable")
         if cable:   # a tube along a smooth curve, in the link's frame (x towards the hand); y is mirrored for the right arm
             m = material("cable", cable.get("rgb", [15, 15, 15]), 0.5, 0.0)
@@ -311,7 +380,8 @@ def patch_scene_cfg(p):
             "                                          diffuse_color=_look_rgb(\"floor.rgb\", (0.35, 0.35, 0.38))))),")
     s = sub(s, "spawn=sim_utils.DomeLightCfg(color=(0.9, 0.9, 0.9), intensity=800.0)),",
             "spawn=sim_utils.DomeLightCfg(color=tuple(_look(\"lights.dome_color\", (0.9, 0.9, 0.9))),\n"
-            "                                                                intensity=float(_look(\"lights.dome_intensity\", 800.0)))),")
+            "                                                                intensity=float(_look(\"lights.dome_intensity\", 800.0)),\n"
+            "                                                                **_dome_texture())),")
     s = sub(s, "                                  init_state=AssetBaseCfg.InitialStateCfg(pos=(0.5, 0.0, 2.2)),\n"
                "                                  spawn=sim_utils.SphereLightCfg(color=(1.0, 0.97, 0.92), intensity=60000.0,\n"
                "                                                                 radius=0.15)),\n",
@@ -328,13 +398,21 @@ def patch_scene_cfg(p):
             "    \"\"\"Look: visual-only walls behind the bins and on both sides (pelvis frame), e.g. black curtains.\"\"\"\n"
             "    if not _look(\"backdrop.rgb\"):\n"
             "        return {}\n"
-            "    d, hgt, rgb = float(_look(\"backdrop.distance\", 1.5)), float(_look(\"backdrop.height\", 3.0)), _lin(_look(\"backdrop.rgb\"))\n"
-            "    walls = {\"far\": ((d, 0.0, 0.5), (0.02, 2 * d, hgt)), \"left\": ((0.0, d, 0.5), (2 * d, 0.02, hgt)),\n"
-            "             \"right\": ((0.0, -d, 0.5), (2 * d, 0.02, hgt))}\n"
-            "    return {f\"backdrop_{k}\": _static_box(f\"Backdrop_{k}\", c, sz, rgb, 0.95, collide=False) for k, (c, sz) in walls.items()}\n"
+            "    d, rgb = float(_look(\"backdrop.distance\", 1.5)), _lin(_look(\"backdrop.rgb\"))\n"
+            "    bot = -0.79                                   # the floor, in the pelvis frame\n"
+            "    top = float(_look(\"backdrop.top_above_floor\", 2.8)) + bot\n"
+            "    cz, hgt = (top + bot) / 2, top - bot\n"
+            "    walls = {\"far\": ((d, 0.0, cz), (0.02, 2 * d, hgt)), \"left\": ((0.0, d, cz), (2 * d, 0.02, hgt)),\n"
+            "             \"right\": ((0.0, -d, cz), (2 * d, 0.02, hgt))}\n"
+            "    keep = _look(\"backdrop.walls\", list(walls))\n"
+            "    return {f\"backdrop_{k}\": _static_box(f\"Backdrop_{k}\", c, sz, rgb, 0.95, collide=False)\n"
+            "            for k, (c, sz) in walls.items() if k in keep}\n"
             "\n\n"
             + STAGE_HELPERS +
             "def make_scene_cfg_class(name=\"AaltoSceneCfg\", lid=False):")
+    for side in ("left", "right"):
+        s = sub(s, f'        "{side}_wrist_camera": CameraPresets.{side}_dex3_wrist_camera(),\n',
+                f'        "{side}_wrist_camera": wrist_camera_cfg("{side}", CameraPresets.{side}_dex3_wrist_camera()),\n')
     s = sub(s, "    attrs = {**_fixed_cfgs(), **bin_cfgs(), **object_cfgs()}\n",
             "    attrs = {**_fixed_cfgs(), **bin_cfgs(), **object_cfgs(), **backdrop_cfgs(), **table_mark_cfgs()}\n")
     p.write_text(s)
