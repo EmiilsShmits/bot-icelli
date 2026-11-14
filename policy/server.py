@@ -38,12 +38,18 @@ def _v12():
     return ClassicalV12()
 
 
+def _v13():
+    from policies.classical_v13 import ClassicalV13
+    return ClassicalV13()
+
+
 # name -> factory. Model-based policies load their weights from policy/weights/ (baked into the image).
 POLICIES = {
     "hold": HoldChunkPolicy,
     "v1": _v1,  # Aalto's classical baseline + instruction parsing + real-colour HSV + speed guard
     "v1.1": _v11,  # v1 + hand-over for far cross-body objects + a working retry budget (policies/classical_v11.py)
     "v1.2": _v12,  # v1.1 + head-camera pose re-fitted from depth each episode (policies/classical_v12.py)
+    "v1.3": _v13,  # v1.2 + a free drop spot per bin, so objects don't land on each other (policies/classical_v13.py)
 }
 
 

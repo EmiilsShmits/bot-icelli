@@ -236,5 +236,61 @@ class TestV12(unittest.TestCase):
         self.assertIsNone(pol.head_fit)
 
 
+@unittest.skipUnless(HAVE_PIN, "needs pinocchio + the G1 URDF (sim machine or Docker build)")
+class TestV13DropSpots(unittest.TestCase):
+    """v1.3: the n-th drop into a bin goes to a different spot, inside the walls, so objects don't stack."""
+
+    @classmethod
+    def setUpClass(cls):
+        from policies.classical_v13 import ClassicalV13
+        cls.v = ClassicalV13()
+        cls.v.reset(tasks.FIXED_INSTRUCTION, "sort_fixed")   # red -> left, yellow -> center, blue -> right
+
+    def det(self, color, y):
+        from aaltonomous.baselines.classical.perception import Detection
+        pol = self.v.pol
+        return Detection(color, np.array([0.29, y, pol.scene.counter_z + pol.planner.height]), 400, 400, "depth")
+
+    def test_spots_inside_the_walls_and_apart(self):
+        from policies.classical_v13 import MIN_WALL
+        pl = self.v.pol.planner
+        for name in ("left", "center", "right"):
+            for side in ("left", "right"):
+                spots = pl.drop_spots(name, side)
+                self.assertEqual(len(spots), 3, (name, side))
+                lo, hi = pl._inner_box(name)
+                for p in spots:
+                    self.assertTrue(np.all(p >= lo + MIN_WALL - 1e-6) and np.all(p <= hi - MIN_WALL + 1e-6), (name, p))
+                for i in range(3):
+                    for j in range(i):
+                        self.assertGreaterEqual(np.linalg.norm(spots[i] - spots[j]), 0.045, (name, side))
+
+    def test_next_drop_goes_elsewhere(self):
+        pol, seen = self.v.pol, {}
+        for color, y, b in (("red", 0.15, "left"), ("yellow", -0.10, "center"), ("blue", -0.15, "right")):
+            got = []
+            for n in range(3):
+                pol.planner.drop_count = {b: n}
+                p = pol.planner.plan(self.det(color, y), pol.home, pol.post["open"])
+                self.assertTrue(p.ok, p.reason)
+                got.append(tuple(np.round(p.waypoints["drop"][:2], 3)))
+            seen[b] = got
+            self.assertEqual(len(set(got)), 3, f"{b}: drop points for counts 0, 1, 2 = {got}")
+        print("\n  v1.3 drop points (counts 0, 1, 2):", seen)
+        pol.planner.drop_count = {}
+
+    def test_count_per_episode(self):
+        pol = self.v.pol
+        p = pol.planner.plan(self.det("red", 0.15), pol.home, pol.post["open"])
+        pol._start(p, 0.0)
+        self.assertEqual(pol.planner.drop_count, {"left": 1})
+        h = pol.planner.plan(self.det("red", -0.155), pol.home, pol.post["open"])   # far cross-body: hand-over
+        self.assertEqual(h.target_bin, "counter", h.reason)
+        pol._start(h, 0.0)
+        self.assertEqual(pol.planner.drop_count, {"left": 1})                        # a hand-over isn't a drop
+        self.v.reset(tasks.FIXED_INSTRUCTION, "sort_fixed")
+        self.assertEqual(pol.planner.drop_count, {})
+
+
 if __name__ == "__main__":
     unittest.main()
