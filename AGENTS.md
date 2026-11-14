@@ -48,7 +48,7 @@ Read it before working there, and update its Status when you change something.
 - **Command rate:** ≥ **27 commands/s** from the policy. Slow models must think in a background thread and keep returning hold targets or action chunks.
 - **Inputs:** the submission sees only `obs`. No privileged sim state (object poses), and no hard-coded layouts.
 - **Image:** linux/amd64, CUDA ≥ 12.8, server on port 8000 within 120 s, weights inside the image, ≤ 32 GB VRAM, ≤ 40 GB image.
-- **Deadline:** one deadline for the sim evaluation that picks finalists and the finals image: **Sun 15 Nov 10:00**.
+- **Deadline:** Aalto told Samer (Sat ~12:50) there's one deadline, **Sun 15 Nov 10:00**, for the sim evaluation and the finals image. **But Aalto's brief says the finalists are picked on Saturday.** Until that's confirmed, submit a working image as early as possible on Saturday.
 - **Network:** Aalto says the finals PC will have internet (Sat 14 Nov), but a failed or slow call counts as a failure with no rerun. Any API call needs an offline fallback and must never block `act()`.
 - **Aalto's real demos:** LeRobot v3.0, 30 Hz, `observation.state` and `action` = 28 values each (14 arm + 14 hand joints, absolute radians), plus a GR00T-format copy.
   - The drops so far (HF `zupermiez/g1_pick_cube`, `zupermiez/g1_junction_drop_2`) differ from Aalto's data card: camera keys `cam_high` / `cam_*_wrist`, no head depth, no success labels.

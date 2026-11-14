@@ -3,7 +3,7 @@
 _Update at the end of every session. Newest state at the top; keep it short._
 
 ## Now
-- **Deadline (Aalto, Sat ~12:50): Sun 10:00 for everything:** the sim evaluation that picks the finalists and the finals image. The finals PC will have internet. No answer yet on a real-robot test run before the finals (assume no).
+- **Deadline (Aalto, Sat ~12:50): Sun 10:00 for everything:** the sim evaluation that picks the finalists and the finals image. The finals PC will have internet. No answer yet on a real-robot test run before the finals (assume no). **Conflict:** Aalto's brief (timeline table) says the organisers pick the finalists on Saturday. Ask which image they evaluate and when; until then, submit v1 as early as possible today.
 - **Done:** project context scaffolding (CLAUDE.md, docs/); all 38 challenges saved to `docs/challenges/` with an overview table; sponsor codes moved to `.env.challenges`; hardware + API research in `docs/research/` (Aalto G1 robot/sim, all credits and APIs, Rokoko gloves, Jetson)
 - **Also done:** repo structure for knowledge base + code (see `README.md`, `AGENTS.md`); Aalto starter repo linked as a submodule; placeholder policy server passes Aalto's plumbing test (`make check`)
 - **Sim runs (Sat 14 Nov):** Aalto sim installed bare-metal on Emīls's Verda RTX 6000 Ada (`bot-icelli-sim`, $1.59/h). 9/9 scene checks pass; oracle baseline scores 92 % on sort_fixed, gate PASS (`eval/RESULTS.md` e-001). Setup + fixes in `docs/runbooks/verda-sim-setup.md`. Hibernated Sat 14 Nov 03:48, **resumed at noon from the kept disk on a spot RTX PRO 6000** (30 vCPU, €1.28/h, sim at 0.52× real time vs 0.31×); a backup copy of the disk exists (`bot-icelli-os-backup`). Bills until hibernated again (runbook).

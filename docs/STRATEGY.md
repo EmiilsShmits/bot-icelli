@@ -1,7 +1,7 @@
 # Strategy proposal: how we win the Aalto challenge
 
 **Status: proposal, not agreed.** Written Sat 14 Nov ~12:30 by Samer with Claude, from Aalto's repo (`36daf5b`, unchanged since Fri 21:54), the Aalto Discord channel and the two real-data drops. Discuss it, then move what we agree into [`DECISIONS.md`](DECISIONS.md) and [`BRIEF.md`](BRIEF.md).
-**Updated ~13:00** with Aalto's answers: **one deadline for everything, Sun 10:00**, and **the finals PC has internet**. Colours re-measured in the robot's own camera.
+**Updated ~13:00** with Aalto's answers: **one deadline for everything, Sun 10:00**, and **the finals PC has internet**. Colours re-measured in the robot's own camera. **But Aalto's brief says the finalists are picked on Saturday:** until Aalto confirms, treat v1 as due today.
 Evidence: [`research/real-data-findings.md`](research/real-data-findings.md) (what's in the drops) and [`research/aalto-discord-notes.md`](research/aalto-discord-notes.md) (organiser answers).
 
 ## TL;DR
@@ -23,7 +23,7 @@ Evidence: [`research/real-data-findings.md`](research/real-data-findings.md) (wh
 - **Attempt anything we can classify:** an attempt pays off whenever P(right bin) > 1/3. Leave unknown objects (distractors) alone.
 - **Judging is unclear.** The challenge page weights real-world result 40 %, generality 25 %, originality 20 %, presentation 15 %; the repo says ranking = real-robot score. Ask (§10). Either way it's reliability first, then generality and originality.
 - **Finalists come from the held-out sim variant** (other textures, lighting, poses, camera jitter). Tune with `AALTO_DR=train` on, not only on the nominal scene and not only on the venue look.
-- **Deadline:** Sun 10:00 for both the sim evaluation that picks finalists and the finals image (Aalto, Sat ~12:50). The last image submitted before then is the one that runs.
+- **Deadline:** Sun 10:00 for both the sim evaluation that picks finalists and the finals image (Aalto, Sat ~12:50). The last image submitted before then is the one that runs. **Aalto's brief says finalists are picked on Saturday,** so confirm which image they use and when; submit v1 as early as possible today.
 - **Gate:** 0 clipped steps, ≥ 27 Hz measured on *our own* wall-clock latency, no crash or watchdog.
 
 ## 2. What the data and Discord tell us (others may miss some of this)
@@ -130,7 +130,7 @@ Claude (through Samer) takes the rule parser, the speed guard, the Docker/GHCR p
 - **Link to the Aalto project:** glove demos of hard cases can tune the triangle grasp (hand posture at grasp time) without training a big model.
 
 ## 10. Questions for Aalto (ask in person today)
-1. ~~When is the submission for picking finalists due?~~ **Answered: one deadline for everything, Sun 10:00.**
+1. **When is the submission for picking finalists due?** Aalto said one deadline (Sun 10:00), but their brief says finalists are picked on Saturday. **Ask again: which image do you evaluate to pick finalists, and at what time?**
 2. Is the winner the real-robot score only (repo), or the 40/25/20/15 criteria on the challenge page?
 3. Will the finals instructions say orange/purple or red/blue? In rung 1, is orange "red" and purple "blue"? What are the black shapes on the table for?
 4. ~~Does the finals PC have internet?~~ **Answered: yes.**
