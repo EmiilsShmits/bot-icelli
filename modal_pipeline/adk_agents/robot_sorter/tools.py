@@ -515,7 +515,7 @@ async def _move(label, plan, on_done=None, look_after=False, **echo):
     return out
 
 
-async def _grasp_check(robot, side):
+async def _grasp_check(robot, side, shape=None):
     """After the lift: is something in the hand? Finger sensors first; when they are in the unclear band, the Gemini
     Decisions API looks at the head camera image and decides."""
     from . import decisions
@@ -523,6 +523,28 @@ async def _grasp_check(robot, side):
     err = float(np.abs(np.asarray(robot.obs["hand_q"], float)[sl] - robot.hand_cmd[sl]).max())
     out = {"finger_tracking_error_rad": round(err, 3)}
     robot.trace.snapshot("grasp", robot.obs, robot.t)
+    if shape == "triangle":
+        # Triangle faces can wedge between the fingers without changing their joint reading.
+        seen = None
+        camera = robot.obs.get(f"{side}_wrist_rgb")
+        if camera is not None and decisions.available():
+            try:
+                a = await asyncio.to_thread(
+                    decisions.ask, "A humanoid robot's wrist camera looks at its own gripper after lifting an object.",
+                    [decisions.image_block(camera)],
+                    "Is a small coloured triangular prism visibly held between the fingers, clear of the counter?",
+                    "noul")
+                seen = float(a.get("noul", 0.5))
+                out["gemini_probability_object_in_hand"] = round(seen, 2)
+            except Exception as e:  # noqa: BLE001
+                robot.log(f"[tool] wrist-camera triangle grasp check failed: {e!r}"[:200])
+        if seen is not None and (seen >= 0.75 or seen <= 0.25):
+            out.update(object_in_hand=seen >= 0.75, decided_by="Gemini Decisions (wrist camera)")
+        else:
+            out.update(object_in_hand=None, inconclusive=True,
+                       decided_by="wrist camera unavailable or unclear; finger sensors are inconclusive for triangles")
+        robot.trace.write("grasp_check", t=round(robot.t, 2), arm=side, **out)
+        return out
     if err >= GRASP_HELD_RAD:
         out.update(object_in_hand=True, decided_by="finger sensors")
     elif err <= GRASP_EMPTY_RAD:
@@ -589,8 +611,8 @@ async def _grasp_move(label, plan, on_done, obj, look_after, **echo):
                          if lift_end is not None else f"{label}: to the bin", start, settle=first_end == lift_end)
     check = None
     if outcome == "completed" and lift_end is not None:
-        check = await _grasp_check(robot, traj.side)
-        if not check["object_in_hand"]:
+        check = await _grasp_check(robot, traj.side, obj.shape)
+        if check["object_in_hand"] is False:
             def recover(ctx, arm_q, hand_q):
                 from agent.skills import go_home, hold, set_hand
                 rel = set_hand(ctx, arm_q, hand_q, traj.side, "release", hold_s=0.2)
@@ -731,6 +753,32 @@ async def look(tool_context: ToolContext = None) -> dict:
     out = await _look_result(robot)
     await _show(tool_context, "look.jpg", robot, {"camera": "head", "region": None, "mark_objects": True})
     return out
+
+
+@_tool
+async def check_triangle_orientation(object_id: str) -> dict:
+    """Recheck one triangle's pose from head depth before choosing a grasp.
+
+    Returns orientation (upright, lying_on_side, or uncertain) and the measured top-face yaw when upright.
+    Call this immediately before pick_triangle_face; do not estimate yaw from the rendered image.
+    """
+    robot = get_robot()
+    await _ready(robot)
+    await _park(robot)
+    await asyncio.to_thread(_detect, robot)
+    obj = robot.objects.get(object_id)
+    if obj is None:
+        return _result("not_found", object=object_id, reason="call look and use a current object id")
+    shape_seen = obj.extra.get("shape_seen", obj.shape)
+    if shape_seen == "tipped":
+        return _result("ok", object=object_id, orientation="lying_on_side", yaw_deg=None,
+                       reason="top view shows a ridge, not the triangular top face; the face-grasp tool will refuse")
+    if obj.shape == "triangle" and obj.yaw is not None:
+        return _result("ok", object=object_id, orientation="upright", yaw_deg=round(float(np.degrees(obj.yaw)), 1),
+                       face_grips_deg=list(TRIANGLE_GRIPS_DEG),
+                       note="the face-grasp tool plans and rotates the wrist through these checked face angles")
+    return _result("uncertain", object=object_id, orientation="uncertain", yaw_deg=None,
+                   shape_seen=shape_seen, reason="depth geometry did not confirm an upright triangle")
 
 
 @_tool
@@ -914,6 +962,25 @@ async def pick_and_place(
     obj = _target(robot, object_id, point, shape, yaw_deg)
     approach = _approach(finger_direction_deg, xy_offset_m, None, max_tilt_deg, pregrasp_offset_m, grasp_height_frac)
     return await _do_pick_and_place(robot, obj, bin, arm, approach, _pair(drop_offset_m, "drop_offset_m"))
+
+
+@_tool
+async def pick_triangle_face(object_id: str, bin: Bin, arm: Optional[Arm] = None) -> dict:
+    """Pick an upright triangle using a checked, face-aligned wrist orientation and place it in a bin.
+
+    First call check_triangle_orientation(object_id). This tool uses the fresh depth-derived yaw and only accepts
+    safe plans that align the fingers with a flat face; it never falls back to an edge/plain pinch.
+    """
+    robot = get_robot()
+    await _ready(robot)
+    if robot.holding:
+        raise ToolError(f"the {robot.holding} hand is holding an object: place it first")
+    seen = robot.objects.get(object_id)
+    if seen is None or seen.shape != "triangle" or seen.yaw is None:
+        raise ToolError("no fresh upright-triangle orientation; call look, then check_triangle_orientation")
+    obj = _target(robot, object_id, None, "triangle", None)
+    approach = _approach()
+    return await _do_pick_and_place(robot, obj, bin, arm, approach)
 
 
 @_tool
@@ -1213,5 +1280,5 @@ async def done(summary: str = "") -> dict:
     return out
 
 
-TOOLS = [look, view_camera, ask_gemini, read_proprioception, choose_arm, check_plan, pick_and_place, pick, place, place_on_counter, hand_over,
-         go_home, wait, done]
+TOOLS = [look, check_triangle_orientation, view_camera, ask_gemini, read_proprioception, choose_arm, check_plan,
+         pick_triangle_face, pick_and_place, pick, place, place_on_counter, hand_over, go_home, wait, done]

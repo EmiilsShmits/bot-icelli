@@ -51,8 +51,8 @@ class MemoryChooser:
         time is spent on a hard one;
       - never repeat an (arm, grasp) that already failed on this object while another checked option exists;
       - for cubes and triangles prefer a face grasp, then the alternative triangle angles, then the stock claw;
-      - the stock claw on a triangle is a last resort (it held in 1 of 15 sim picks and tips the triangle over):
-        such an object goes after all others, gets one try, and is given up once the claw has failed on it;
+      - the stock claw on a triangle is a last resort (it held in 1 of 15 sim picks); a failed claw grasp on a
+        lying object is not retried because it can tip the object over;
       - an object with a neighbour for ANOTHER bin within 8 cm goes after the others: the hand can close on the
         neighbour instead and carry it to the wrong bin (seen in sim: -1 point). A last-resort grasp is not tried
         at all next to such a neighbour.
@@ -106,7 +106,7 @@ class MemoryChooser:
         skip, wait = [], []
         for n, (o, _) in picks.items():
             claw_failed = any(_grasp_kind(f["grasp"]) == "stock" for f in hist.get(n, []))
-            if o.shape == "triangle" and claw_failed:
+            if o.shape == "tipped" and claw_failed:
                 skip.append(n)                    # the claw has most likely tipped it over: no grasp works then
             elif self._last_resort(o) and n in crowded:
                 wait.append(n)                    # ~7 % to hold it, and the hand may take the neighbour instead:
@@ -377,9 +377,11 @@ class UpgradedOraclePolicy(DecisionOraclePolicy):
         sl = slice(0, 7) if gc["side"] == "left" else slice(7, 14)
         err = float(np.abs(np.asarray(obs["hand_q"], float)[sl] - self.hand_cmd[sl]).max())
         empty = err < GRASP_EMPTY_ERR
-        abort = empty and self.grasp_check == "on"
+        # Triangle prisms can fit inside the closed hand without moving a finger joint, even when held.
+        abort = empty and o.shape not in ("triangle", "tipped") and self.grasp_check == "on"
         self._w({"type": "grasp_check", "decision": getattr(plan, "decision_id", None), "t": round(self._t, 2),
-                 "obj": o.obj, "arm": o.arm, "grasp": o.grasp, "err": round(err, 4), "empty": empty, "abort": abort})
+                 "obj": o.obj, "arm": o.arm, "grasp": o.grasp, "err": round(err, 4), "empty": empty,
+                 "inconclusive": empty and o.shape in ("triangle", "tipped"), "abort": abort})
         if not abort:
             self._enqueue(gc["rest_a"], gc["rest_h"])
             return self._pop()

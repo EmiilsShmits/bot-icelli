@@ -51,12 +51,14 @@ A new session starts a new mock episode with the next layout.
 | Tool | Oracle part |
 |---|---|
 | `look` | the oracle's look, but from the head camera: any saturated colour + depth (the organisers' detector, extended beyond the sim's red / yellow / blue). `ROBOT_PERCEPTION=sim` uses the oracle's exact simulator poses (not allowed in a submission) |
+| `check_triangle_orientation` | rechecks a triangle's orientation and yaw from head-camera depth before a face grasp |
 | `view_camera` | not from the oracle: head, wrist or depth image at full resolution, optional zoom region, object ids drawn on |
 | `ask_gemini` | not from the oracle: one closed question about a camera image to the Gemini Decisions API (about a second) |
 | `choose_arm` | what each arm can do for an object: distance, reach, grasp plan, full plan. The rule is in `arms.py` |
 | `check_plan` | plans a grasp with every safety check and moves nothing, to find a variation that works after "no safe plan" |
 | `read_proprioception` | not from the oracle: joint angles and speeds, where each hand is, how far it is closed, tracking errors |
 | `pick_and_place` | the whole planned move; with `shape` + `yaw_deg`, the face-aligned grasp for cubes and triangles |
+| `pick_triangle_face` | uses a fresh measured yaw to align the fingers to a triangle's flat face; no edge-grasp fallback |
 | `pick`, `place` | the same move cut in two, so the model can check the hand in between |
 | `place_on_counter` | the relay put-down |
 | `hand_over` | the relay for an object whose bin is on the far side of the body |
@@ -71,11 +73,11 @@ pointing at it in the head image (`point`, `[y, x]` 0..1000). A call with no saf
 - **Arms aside.** Between moves both arms are parked out to the sides: clear of each other (at the task's home pose
   the hands hover 13 cm apart and one arm's wrist camera hit the other hand's thumb) and outside the head camera's
   view. A planned move that would bring the arms within 12 cm of each other is refused (`ROBOT_ARM_CLEARANCE_M`).
-- **Grasp check.** After the lift, the finger sensors say whether something is in the hand (fingers that hold an
-  object stay 0.017-0.07 rad short of their command in the Isaac sim; an empty hand closes fully). On a miss the
-  move stops there, the hand opens, the arm goes back, and the tool returns `missed` with how far the attempt
-  pushed the object. Threshold `ROBOT_GRASP_ERR_RAD` (default 0.010); it has not been measured on the real hands.
-  `ROBOT_GRASP_CHECK=0` turns it off.
+- **Grasp check.** After the lift, non-triangles use finger tracking error (held hands stay 0.017-0.07 rad short
+  in Isaac sim; empty hands close fully). Triangles use the corresponding wrist-camera image because a triangle
+  can be held without moving the finger joints. Clear visual yes/no answers decide; an unclear or unavailable view
+  is inconclusive and does not abort the carry. A clear miss opens the hand and returns it home. The wrist-camera
+  check uses the Gemini Decisions API; `ROBOT_GRASP_CHECK=0` turns grasp checks off.
 - **Gemini Decisions API (`decisions.py`, written from Google's documentation).** Used in four places: `look`
   labels every object's colour and shape in one request; the grasp check asks it to look when the finger sensors
   are unclear; while an arm carries an object it chooses that arm's next object; and `ask_gemini` puts any
@@ -117,6 +119,11 @@ Not built yet: a single-grasp bench in the sim (one object, one pick, no model) 
 Scores from the Isaac sim are the only ones that count; see `sim_out/adk-*/runs/eval/*/eval.json` once a run has been
 fetched. In the organisers' mock world (no real grasp physics) `gemini-4-hydrogen` sorts every object, with 3-4 s
 per decision at `ROBOT_AGENT_THINKING=low`.
+
+**Sun 15 Nov:** the triangle wrist-camera check ran in Isaac sim on seed 2002. It returned 0.22 (not held) with
+zero finger tracking error; simulator ground truth showed the triangle had been knocked onto its side and remained
+on the counter. On latest `main` (`1d25526`), a one-trial compatibility run scored 5/6 with zero safety clips; that
+episode left the triangle tipped before the wrist check was needed. Neither run tested the positive visual-hold case.
 
 **Sat 14 Nov ~21:30 (Emīls + Claude, bot-icelli):** this folder is synced with Marcus's repo at 1a51d7b plus one
 change: `headpose.camera_move_ok()` decides whether the head-camera fit is used (how far the camera moves, as
