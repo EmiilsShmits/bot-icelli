@@ -29,32 +29,23 @@ From simulation to a real humanoid in 48 hours: a G1 that looks, understands the
 
 ## Description (≤ 5000 characters)
 <!-- description -->
-**The problem.** Robot hardware is finally affordable: a humanoid costs around €50,000. Teaching it what to do can cost far more. End-to-end Vision-Language-Action models need large amounts of expensive teleoperation data, need retraining whenever the task or the room changes, and when something fails you are left debugging a black box.
+**The problem.** A humanoid now costs around €50,000, but teaching it a task can cost far more. End-to-end Vision-Language-Action models need expensive teleoperation data, retraining whenever the task or room changes, and when they fail you are debugging a black box.
 
-**Our thesis.** Factories need robots that adapt to new tasks, changing environments and unexpected failures, without retraining a whole model each time. We believe robotics should work more like software: modular, inspectable and continuously improvable. Language and vision models decide *what* to do; small, readable skills decide *how* to move; every step leaves a log you can read.
+**Our thesis.** Robotics should work like software: modular, inspectable and continuously improvable. Models decide *what* to do; small, readable skills decide *how* to move; every step leaves a log you can read.
 
-**What we built.** Bot-icelli is the brain for Aalto's Unitree G1 humanoid with three-finger Dex3 hands. It looks at a table through its head camera, reads a free-text instruction ("put the purple blocks in the left box…") and sorts the blocks into three boxes, on its own.
-- **Gemini understands.** Gemini reads the instruction, names each object's colour and shape from the camera image, and turns it into a target box per object. In our agent version (built with Google's ADK), Gemini looks at the scene and chooses every action by calling our skills as tools; Gemini Robotics-ER helps find the objects and the bins.
-- **Python skills act, at 30 Hz.** Editable skills do the precise work: depth-based object and box detection, inverse kinematics, grasps aligned to the block's faces, hand-overs between arms, smooth motion inside the speed limits, and gravity compensation so the arm lands where it is told.
-- **Every step is checkable.** A grasp check reads the finger joints to tell a held block from an empty hand and retries. The robot calibrates its camera every episode by finding its own arms in the depth image, so we can see a camera misalignment instead of guessing.
-- **Safe by design.** The model never sends joint angles: it picks from moves the planner has already verified. If the network drops, a small Gemma model inside the image, then rules, take over, and the 30 Hz loop never waits.
+**What we built.** Bot-icelli is the brain for Aalto's Unitree G1 humanoid. From its head camera and a free-text instruction ("put the purple blocks in the left box…"), it sorts blocks into three boxes on its own.
+- **Gemini understands.** It reads the instruction, names each object's colour and shape, and assigns each one a box. In our agent version (Google ADK), Gemini chooses every action by calling our skills as tools, with Gemini Robotics-ER locating objects and bins.
+- **Python skills act at 30 Hz.** Object and box detection from depth, inverse kinematics, face-aligned grasps, hand-overs between arms, smooth motion and gravity compensation.
+- **Every step is checkable.** A grasp check reads the fingers and retries a miss; the robot calibrates its camera every episode from its own arms.
+- **Safe by design.** The model only picks moves the planner has already verified, and a small on-board Gemma model takes over if the network drops.
 
-**Why modular paid off.** Every problem we met on the real robot was found in its logs and fixed in a single module, with no retraining:
-- arms sagging under gravity (gravity torque added);
-- a stuck finger joint (the grasp check reads only the pinch joints);
-- a few centimetres of aim error per arm (per-arm correction);
-- boxes standing 11 cm from their expected place (boxes now measured from depth);
-- an elbow pushing into the robot's own body, which no simulator showed (such plans are now refused).
+**Why modular paid off.** Each real-robot problem was found in the logs and fixed in one module, with no retraining: arm sag, a stuck finger joint, centimetres of aim error, boxes 11 cm off their expected place, and an elbow pushing into the robot's own body that no simulator showed. On the real G1, it picked up a block and placed it in a box fully autonomously.
 
-On the real G1, our system picked up a block and placed it in a box fully autonomously. Each robot run made the next image better.
+**Modal.** Our robot lab: from our laptops we ran Aalto's Isaac simulator and official evaluator on cloud GPUs, many evaluations in parallel, in a scene re-rendered to look like the real venue. We also fine-tuned a π0.5 VLA and a Gemma 3 1B instruction parser on H100s. Result: over 90 % of objects sorted in venue-style simulation, with zero safety violations.
 
-**Modal.** Modal was our robot lab. From our laptops we ran Aalto's Isaac simulator and official evaluator on cloud GPUs, many evaluations in parallel, in a version of the scene re-rendered to look like the real venue. We also recorded demonstrations, fine-tuned a π0.5 VLA and a Gemma 3 1B instruction parser on H100s, and kept every result and video in Modal Volumes. Our system sorts over 90 % of objects in the venue-style simulation, with zero safety violations.
+**Our vision.** Describe a task to Gemini, execute it safely with inspectable skills, learn from failures in the cloud, and redeploy improved skills in minutes.
 
-**Our vision.** Describe a task to Gemini, execute it safely with inspectable skills, learn from failures in the cloud, and redeploy improved skills in minutes, not weeks of data collection.
-
-**Built with:** Gemini API, Gemini Robotics-ER, Google ADK, Gemma 3, Modal, Aalto's Isaac Sim, Unitree G1 + Dex3, π0.5 (LeRobot), Pinocchio, OpenCV.
-
-**Team:** Samer Haddadin, Marcus Öberg, Tiya Kumar, Emīls Šmits.
+**Built with:** Gemini API, Gemini Robotics-ER, Google ADK, Gemma 3, Modal, Isaac Sim, Unitree G1, π0.5, Pinocchio, OpenCV.
 <!-- /description -->
 
 ## Best use of Modal (tech challenge)
