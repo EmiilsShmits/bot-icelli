@@ -52,6 +52,7 @@ class PoseFit:
     bins: dict = None             # locate_bins result: bins found where they really stand (pelvis xy)
     base: np.ndarray = None       # 4x4 table frame <- arm frame for IK (V16_CALIB=lean); None = same frame
     arm_pose: dict = None         # handeye.HandEye.fit_pose result (the camera relative to the arms)
+    arm_T: np.ndarray = None      # 4x4 arm (pelvis) frame <- optical of a trusted arm fit: kept for later episodes
 
 
 def _points(cal, depth, step=1):
@@ -98,13 +99,31 @@ LEAN_MAX_MOVE_M = float(os.environ.get("V16_LEAN_MAX_MOVE", "0.35") or 0.35)
 LEAN_MAX_DEG = float(os.environ.get("V16_LEAN_MAX_DEG", "35") or 35.0)
 
 
-def fit_head_pose(depth, cal, scene, T0=None, rng=None, max_range_mm=1600, hands=None, lean=None):
+def _lean_base(T_table, T_arm, scene):
+    """(A = table frame <- arm frame, how far it moves the work area in m, its turn in deg, its lean in deg)."""
+    A = np.asarray(T_table, float) @ np.linalg.inv(T_arm)
+    zc = scene.counter_z
+    W = np.array([[x, y, zc + 0.03] for x in (0.25, 0.5) for y in (-0.2, 0.2)])
+    move = float(np.linalg.norm(W @ A[:3, :3].T + A[:3, 3] - W, axis=1).max())
+    rot = float(np.degrees(np.arccos(np.clip((np.trace(A[:3, :3]) - 1) / 2, -1, 1))))
+    lean_deg = float(np.degrees(np.arctan2(np.hypot(A[0, 2], A[1, 2]), A[2, 2])))
+    return A, move, rot, lean_deg
+
+
+def fit_head_pose(depth, cal, scene, T0=None, rng=None, max_range_mm=1600, hands=None, lean=None, last_arm_T=None):
     """fit_head_pose_levelled, plus (lean = (HandEye, arm_q, hand_q)) the base transform for IK.
 
     The levelled fit puts the camera where the table is flat at counter height and the bins (or the arms) line up;
     perception works in that table frame. If the torso leans or stands off from where scene.yaml assumes, the arms
     are not in that frame. The arms then give the camera's pose relative to them (HandEye.fit_pose), and
-    base = T_table @ inv(T_arm) moves the IK model into the table frame (handeye.set_kin_base)."""
+    base = T_table @ inv(T_arm) moves the IK model into the table frame (handeye.set_kin_base).
+
+    last_arm_T (v1.7, CameraPerception.lean_fallback): the camera's pose relative to the arms from the last believed
+    arm fit (PoseFit.arm_T of an earlier look or episode). The camera does not move against the arms, so when this
+    look's arm fit fails or is past the limits, that pose is used with this look's table fit, and the base stays
+    arm-based instead of going to lean.py's mapping (V16_LEAN_FALLBACK) or the uncorrected frame. Without it: as
+    v1.6. Why: on Aalto's real frames (drop 3) the base lifts a grasp 4-9 cm and the fit runs once per episode
+    (eval/analysis/real_depth/README.md). fit.arm_pose["source"] says which pose was used."""
     fit = fit_head_pose_levelled(depth, cal, scene, T0=T0, rng=rng, max_range_mm=max_range_mm, hands=hands)
     if lean is None or not fit.ok:
         return fit
@@ -122,23 +141,31 @@ def fit_head_pose(depth, cal, scene, T0=None, rng=None, max_range_mm=1600, hands
     except Exception as e:                          # never let calibration break perception
         r = {"ok": False, "why": f"arm pose error: {e!r}"}
     fit.arm_pose = {k: v for k, v in r.items() if k != "T"}
-    if not r["ok"]:
-        fit.arm_pose["base"] = "same frame (arm fit failed)"
-        return fit
-    A = fit.T @ np.linalg.inv(r["T"])
-    zc = scene.counter_z
-    W = np.array([[x, y, zc + 0.03] for x in (0.25, 0.5) for y in (-0.2, 0.2)])
-    move = float(np.linalg.norm(W @ A[:3, :3].T + A[:3, 3] - W, axis=1).max())
-    rot = float(np.degrees(np.arccos(np.clip((np.trace(A[:3, :3]) - 1) / 2, -1, 1))))
-    lean_deg = float(np.degrees(np.arctan2(np.hypot(A[0, 2], A[1, 2]), A[2, 2])))
-    fit.arm_pose.update(move_mm=round(move * 1000, 1), turn_deg=round(rot, 2), lean_deg=round(lean_deg, 2))
-    if move < LEAN_DEADBAND_M and rot < LEAN_DEADBAND_DEG:
-        fit.arm_pose["base"] = "same frame (within the deadband)"
-    elif move > LEAN_MAX_MOVE_M or rot > LEAN_MAX_DEG:
-        fit.arm_pose["base"] = "same frame (implausible)"
-    else:
-        fit.base = A
-        fit.arm_pose["base"] = "moved"
+    if r["ok"]:
+        A, move, rot, lean_deg = _lean_base(fit.T, r["T"], scene)
+        fit.arm_pose.update(move_mm=round(move * 1000, 1), turn_deg=round(rot, 2), lean_deg=round(lean_deg, 2))
+        if move <= LEAN_MAX_MOVE_M and rot <= LEAN_MAX_DEG:         # believed: use it, and keep it for later episodes
+            fit.arm_T = np.asarray(r["T"], float)
+            fit.arm_pose["source"] = "this look"
+            if move < LEAN_DEADBAND_M and rot < LEAN_DEADBAND_DEG:
+                fit.arm_pose["base"] = "same frame (within the deadband)"
+            else:
+                fit.base = A
+                fit.arm_pose["base"] = "moved"
+            return fit
+    why = "implausible" if r["ok"] else "arm fit failed"
+    if last_arm_T is not None:                                      # v1.7: the last believed arm fit + this look's table
+        A2, move2, rot2, lean2 = _lean_base(fit.T, last_arm_T, scene)
+        if move2 <= LEAN_MAX_MOVE_M and rot2 <= LEAN_MAX_DEG:
+            fit.arm_pose.update(source=f"last arm fit (this look: {why})", used_move_mm=round(move2 * 1000, 1),
+                                used_lean_deg=round(lean2, 2))
+            if move2 < LEAN_DEADBAND_M and rot2 < LEAN_DEADBAND_DEG:
+                fit.arm_pose["base"] = "same frame (within the deadband)"
+            else:
+                fit.base = A2
+                fit.arm_pose["base"] = "moved"
+            return fit
+    fit.arm_pose["base"] = f"same frame ({why})"
     return fit
 
 
@@ -417,6 +444,8 @@ class CameraPerception:
         self.kins = lambda: ()    # the planners' ArmKinematics, to move with fit.base
         self._bins0 = copy.deepcopy(scene.cfg["bins"]["centers"])
         self._joints = None
+        self.lean_fallback = False   # v1.7: a failed / implausible arm fit uses the last believed one (fit_head_pose)
+        self._arm_T = None        # camera relative to the arms, last believed arm fit: survives reset()
         self.reset()
 
     def reset(self):
@@ -442,9 +471,12 @@ class CameraPerception:
             return self.fit
         hands = (self.handeye, *self._joints) if self.handeye is not None and self._joints is not None else None
         lean = (self.lean, *self._joints) if self.lean is not None and self._joints is not None else None
-        fit = fit_head_pose(depth, self.cal0, self.scene, hands=hands, lean=lean)
+        fit = fit_head_pose(depth, self.cal0, self.scene, hands=hands, lean=lean,
+                            last_arm_T=self._arm_T if self.lean_fallback else None)
         if fit.ok or self.fit is None:
             self.fit = fit
+            if fit.arm_T is not None:
+                self._arm_T = fit.arm_T
             self.cal.cams[CAM].T_pelvis_optical = fit.T
             self.log(f"[camera] head pose: tilt {fit.tilt_deg:.1f} deg, shift ({fit.dxy[0] * 100:+.1f}, "
                      f"{fit.dxy[1] * 100:+.1f}) cm, yaw {fit.dyaw_deg:+.1f} deg, walls {fit.wall_score:.2f} {fit.why}")

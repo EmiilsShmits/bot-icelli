@@ -29,14 +29,15 @@ log = logging.getLogger("bot-icelli.v1.6")
 class OracleV16(OracleV15):
     name = "bot-icelli-v1.6"
 
-    def __init__(self):
+    def __init__(self, inner_kw=None):
+        """inner_kw: extra arguments for the inner policy (v1.7 passes planner `overrides`); None = v1.6 as it was."""
         from decision_oracle.upgrades_v16 import V16OraclePolicy
         self.pol = V16OraclePolicy(None, sides=os.environ.get("V15_SIDES", "off"), perception="camera",
                                    grasp_check="on", dlog=os.environ.get("V15_DLOG") or None, threaded=True,
                                    labels=os.environ.get("V16_LABELS", "fuse"),
                                    instruction=os.environ.get("V16_INSTRUCTION", "d1"),
                                    time_limit=float(os.environ.get("AALTO_TIME_LIMIT", 120.0)),
-                                   log=lambda m: log.info(m))
+                                   log=lambda m: log.info(m), **(inner_kw or {}))
         self.guard = Guard(float(os.environ.get("GUARD_ARM_VEL", 0.98)), float(os.environ.get("GUARD_HAND_VEL", 2.7)))
         self.action_horizon = int(self.pol.cfg["motion"]["chunk"])
         self.mapping, self.mapping_source = {}, ""

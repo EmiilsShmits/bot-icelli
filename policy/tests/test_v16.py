@@ -506,5 +506,98 @@ class TestLeanBase(unittest.TestCase):
         np.testing.assert_allclose(kin.grasp_pose("left", q)[0], p0, atol=1e-12)
 
 
+class TestLeanFallback(unittest.TestCase):
+    """v1.7, V16_CALIB=lean when this look's arm fit fails or is past the limits (camera.fit_head_pose): the last
+    believed arm fit is used with this look's table fit. v1.6 (CameraPerception.lean_fallback False) keeps its
+    behaviour: the same frame, then lean.py's mapping (tests/test_lean_fallback.py)."""
+    FAR = 40.0                                   # deg: past camera.LEAN_MAX_DEG (35)
+
+    def setUp(self):
+        from aaltonomous.interface.calibration import Calibration
+        from aaltonomous.scene.scene import Scene
+        from decision_oracle import camera as C
+        from decision_oracle.handeye import _rodrigues
+        self.C, self.cal, self.scene = C, Calibration.load(), Scene.load()
+        self.assertLess(C.LEAN_MAX_DEG, self.FAR)
+        self.T = np.asarray(self.cal._T(C.CAM), float)
+        self.depth = np.zeros((480, 640), np.uint16)
+        self._levelled = C.fit_head_pose_levelled
+        C.fit_head_pose_levelled = lambda *a, **k: C.PoseFit(self.T.copy(), True)
+        self.addCleanup(lambda: setattr(C, "fit_head_pose_levelled", self._levelled))
+
+        def arm_T(lean_deg):                    # the arm fit that makes the base a lean of `lean_deg` about pelvis y
+            A = np.eye(4)
+            A[:3, :3] = _rodrigues(np.radians([0.0, lean_deg, 0.0]))
+            return np.linalg.inv(A) @ self.T
+        self.arm_T = arm_T
+
+    def he(self, lean_deg=None):
+        r = ({"ok": False, "T": np.eye(4), "why": "arms not in view"} if lean_deg is None
+             else {"ok": True, "T": self.arm_T(lean_deg), "why": ""})
+        return types.SimpleNamespace(fit_pose=lambda *a, **k: dict(r))
+
+    def fit(self, lean_deg, last=None):
+        z = np.zeros(14)
+        return self.C.fit_head_pose(self.depth, self.cal, self.scene, lean=(self.he(lean_deg), z, z), last_arm_T=last)
+
+    def test_believed_fit_is_used_and_kept(self):
+        for deg in (8.0, 21.0):                              # 21 deg: the real robot on Sun 15 Nov
+            f = self.fit(deg)
+            self.assertEqual(f.arm_pose["base"], "moved")
+            self.assertEqual(f.arm_pose["source"], "this look")
+            self.assertIsNotNone(f.base)
+            np.testing.assert_allclose(f.arm_T, self.arm_T(deg))
+
+    def test_implausible_fit_uses_the_last_one(self):
+        good = self.fit(8.0)
+        f = self.fit(self.FAR, last=good.arm_T)
+        self.assertEqual(f.arm_pose["base"], "moved")
+        self.assertTrue(f.arm_pose["source"].startswith("last arm fit"))
+        np.testing.assert_allclose(f.base, good.base, atol=1e-9)
+        self.assertIsNone(f.arm_T)                          # it never replaces the kept one
+
+    def test_failed_fit_uses_the_last_one(self):
+        good = self.fit(8.0)
+        f = self.fit(None, last=good.arm_T)
+        np.testing.assert_allclose(f.base, good.base, atol=1e-9)
+        self.assertIn("arm fit failed", f.arm_pose["source"])
+
+    def test_no_earlier_fit_is_as_v16(self):
+        f = self.fit(self.FAR)
+        self.assertIsNone(f.base)
+        self.assertEqual(f.arm_pose["base"], "same frame (implausible)")
+        f = self.fit(None)
+        self.assertIsNone(f.base)
+        self.assertEqual(f.arm_pose["base"], "same frame (arm fit failed)")
+
+    def test_upright_robot_is_left_alone(self):
+        f = self.fit(0.0)
+        self.assertIsNone(f.base)
+        self.assertEqual(f.arm_pose["base"], "same frame (within the deadband)")
+        f = self.fit(None, last=f.arm_T)                    # fallback on an upright robot: still no base
+        self.assertIsNone(f.base)
+
+    def episodes(self, fallback):
+        cam = self.C.CameraPerception(self.scene, self.cal)
+        cam.lean_fallback = fallback
+        z = np.zeros(14)
+        cam._joints = (z, z)
+        cam.lean = self.he(8.0)
+        base = cam.ensure_pose(self.depth).base.copy()
+        cam.reset()                                          # next episode: the arms are not seen
+        cam.lean = self.he(None)
+        return base, cam.ensure_pose(self.depth)
+
+    def test_camera_keeps_the_arm_fit_across_episodes(self):
+        base, f = self.episodes(True)                        # v1.7
+        np.testing.assert_allclose(f.base, base, atol=1e-9)
+
+    def test_v16_is_unchanged(self):
+        self.assertFalse(self.C.CameraPerception(self.scene, self.cal).lean_fallback)
+        _, f = self.episodes(False)
+        self.assertIsNone(f.base)
+        self.assertEqual(f.arm_pose["base"], "same frame (arm fit failed)")
+
+
 if __name__ == "__main__":
     unittest.main()

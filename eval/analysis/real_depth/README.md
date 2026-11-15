@@ -14,6 +14,8 @@
 python eval/analysis/real_depth/extract.py artifacts/datasets/g1_junction_drop_3 artifacts/real_frames/drop3
 # 2. bin-wall fit, V16_CALIB=hands and V16_CALIB=lean on all 15 frames (.venv)
 PYTHONPATH=third_party/aaltonomous-humanoid:policy .venv/bin/python eval/analysis/real_depth/calib_modes.py artifacts/real_frames/drop3
+# 2b. the lean fallback over 15 episodes in one process (.venv)
+PYTHONPATH=third_party/aaltonomous-humanoid:policy .venv/bin/python eval/analysis/real_depth/lean_fallback.py artifacts/real_frames/drop3
 # 3. top-down height map of the real table, 5 cm grid (scratch env or .venv)
 python eval/analysis/real_depth/table_map.py artifacts/real_frames/drop3 artifacts/real_frames/drop3 3 7 13
 # 4. rung 3: which lid holes a held object reaches when the boxes stand d cm closer (.venv, Aalto's IK)
@@ -64,6 +66,11 @@ PYTHONPATH=third_party/aaltonomous-humanoid:policy .venv/bin/python eval/analysi
 | Bin-wall fit (default, v1.2–v1.6) | 15/15 | shift −9.2…−9.4 cm with a search of ±10 cm; wall score 0.37–0.46 (needs 0.35); camera ends 3.5–4.1 cm from the calibration (v1.4 and the ADK image accept ≤ 6 cm) |
 | `V16_CALIB=hands` | 3/15 | 8 frames: "arm fit too far from the calibration" (6.4–6.9 cm, limit 6); the rest: too few points on the arm model |
 | `V16_CALIB=lean` | 2/15 | arm fit 23–28 % of points within 5 mm on the 13 failures (needs ~30 %); where it works: lean 15.1° and 15.6°, base moved 119 and 130 mm (limit 150) |
+
+**v1.7's lean fallback** (`lean_fallback.py`, Sun ~06:30; `--v16` runs it without the fallback; same frames, through `CameraPerception` as the policy runs it, 15 episodes in one process):
+- The base lifts a grasp 35 cm in front of the pelvis by 3.7–7.5 cm (14 frames 3.7–6.0, ep14 7.5) and one 45 cm out by 5.9–9.1 cm. Without it the hand aims that far below where it should.
+- With the limits of 07f533c (35 cm / 35°) all 15 arm fits are used as they are, v1.6 and v1.7 alike. With the old 15 cm / 20° limits ep14 (20.9°, 148 mm) was dropped and that episode ran uncorrected.
+- An arm fit that fails outright after a good episode (simulated): v1.7 keeps the earlier arm fit with the new table fit (lift 4.8 cm); v1.6 goes to `lean.py`'s mapping. In the first episode of a process both do.
 
 **If the boxes are glued ~7 cm closer to the robot** (Aalto, told to the team Sun ~02:00; assumed: along the table, from the drop-3 layout):
 - the bin-wall fit's shift goes from −9.3 cm to about −2.3 cm: inside the search range;

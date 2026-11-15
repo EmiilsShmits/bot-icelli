@@ -64,6 +64,11 @@ def _v16g():
     return OracleV16G()
 
 
+def _v17():
+    from policies.oracle_v17 import OracleV17
+    return OracleV17()
+
+
 def _look():
     from policies.look import LookPolicy
     return LookPolicy()
@@ -80,6 +85,7 @@ POLICIES = {
     "v1.5": _v15,  # Aalto's oracle motions on the head camera + Emīls's upgrades, same-side arms, lying-triangle grasp
     "v1.6": _v16,  # v1.5 + Gemini Decision 1 for colour, shape and the instruction (v1.5 = offline fallback); sides off
     "v1.6g": _v16g,  # v1.6 + the fine-tuned Gemma 3 1B instruction parser in the image: Decision -> Gemma -> rules
+    "v1.7": _v17,  # v1.6 + lean fallback: a failed / implausible arm fit reuses the last believed one (real robot)
     "look": _look,  # never moves: logs v1.4's camera fit, objects and a hand check, for a first real-robot run
 }
 

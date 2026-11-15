@@ -55,10 +55,10 @@ m = re.search(r'GEMINI_API_KEY\s*=\s*[\"\']?([^\s\"\']+)', t); open('/root/.deci
     && chmod 600 /root/.decision_key && echo "Gemini key baked in"; fi
 
 ENV POLICY=${POLICY}
-# Load-time check at build: the chosen policy constructs (config, URDF, calibration, parser all load). v1.5/v1.6/v1.6g
+# Load-time check at build: the chosen policy constructs (config, URDF, calibration, parser all load). v1.5/v1.6/v1.6g/v1.7
 # also import task 3's module, which their reset() imports on every episode (.dockerignore must let it in).
 RUN python3 -c "import os, sys; sys.path.insert(0, '/app/policy'); import server; server.POLICIES[os.environ['POLICY']](); \
-p = os.environ['POLICY']; p.startswith(('v1.5', 'v1.6')) and __import__('decision_oracle.insert')"
+p = os.environ['POLICY']; p.startswith(('v1.5', 'v1.6', 'v1.7')) and __import__('decision_oracle.insert')"
 # v1.6g: fail the build if the Gemma weights are missing or fail their self-test (else the image would run as v1.6).
 RUN if [ "$POLICY" = "v1.6g" ]; then python3 -c "import sys; sys.path.insert(0, '/app/policy'); \
 from instruction_gemma import GemmaInstruction; g = GemmaInstruction(); assert g.enabled, g.why_off; \

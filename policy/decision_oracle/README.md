@@ -80,15 +80,17 @@ Everything in this section lives in `upgrades.py` only. The original files are n
      - Why: the bin-wall fit trusts `scene.yaml`, so a bin shifted 2 cm moves the camera estimate and every object with it. MuJoCo: bins-only shift 33 % vs nominal 63 % (e-053).
      - Accuracy in MuJoCo (6 seeds × 3 randomisation modes): object positions within 1.5–3.2 mm, bins found within 2.5–9 mm.
      - MuJoCo, paired (e-078): it triples the score when the bins are shifted (17 % → 56 %), but loses ~15 points in the nominal scene (69 % → 53 %): a ~2 mm bias. Superseded by `lean`.
-   - **`V16_CALIB=lean` (v1.6 only, off by default, Sun 15 Nov): perception as `bins`, IK moved into the camera's frame.**
+   - **`V16_CALIB=lean` (v1.6 only, the default since eb1025f, Sun 15 Nov): perception as `bins`, IK moved into the camera's frame.**
      - **Why:** Aalto's real frames say the torso leans and the camera sits within ~2° of its calibration (`docs/CONTEXT.md` 4.1). The levelled fit then reports objects in a table frame that the arms are not in: ~5–6 cm off at a 6–7° lean in MuJoCo, mostly in height. The same mismatch appears when the bins or the robot-to-table distance differ from `scene.yaml` (1–3.5 cm).
      - **How:**
        - `HandEye.fit_pose` finds the camera's full pose relative to the arms: 6-DOF point-to-plane ICP over the depth points off the table, from 45 starts, best kept. It is never levelled.
        - Then base = T_table · inv(T_arm). `handeye.set_kin_base` moves the planners' Pinocchio model (`pl.kin` of the planner and the relay) by it, so FK, Jacobians, IK targets and "top-down" all live in the frame the camera reports in.
        - Deadband: if the base moves the work area < 4 mm and turns < 0.5°, the model is left alone, so the nominal sim is unchanged.
        - Reset restores the model each episode.
+       - **Fallback (v1.7 only, `CameraPerception.lean_fallback`, Sun ~06:30):** the camera's pose relative to the arms from the last believed arm fit (within `V16_LEAN_MAX_MOVE` / `V16_LEAN_MAX_DEG`, 35 cm / 35° since 07f533c) is kept across episodes (`CameraPerception._arm_T`). When a later episode's arm fit fails or is past those limits, that pose is used with the episode's own table fit, before `lean.py`'s mapping (`V16_LEAN_FALLBACK`). `arm_pose["source"]` in the log says which was used.
+         - Why: on Aalto's real frames the base lifts a grasp 4–9 cm, and the fit runs once per episode. A fit that fails then leaves the whole episode without the arm-based correction.
      - **Reach error in MuJoCo** (`eval/analysis/real_hands/`-style geometry check, 20 scenes): leaning robot 35–65 mm → 0.8–1.4 mm; shifted bins 9–35 mm → 0.8–1.1 mm; nominal unchanged (1.4–2.4 mm, deadband). Paired episodes (e-079): nominal 75 % = 75 % (identical), shifted bins 22 % → 58 %, leaning robot 49 % → 56 %, all randomised 21 % → 49 %.
-     - **Not checked:** real head depth on the black Dex3 hands (the drops have no depth). If the arm fit fails, the policy logs it and keeps the levelled frame (today's behaviour).
+     - **Not checked:** real head depth on the black Dex3 hands (the drops have no depth). If the arm fit fails, v1.6 logs it and keeps the levelled frame; v1.7 does so only in the first episode of a server process (nothing to fall back on).
    - **`V16_BOXES=find` (v1.6 only, off by default, Sun 15 Nov ~02:50): the boxes are measured, not assumed** (`boxes_v16.py`).
      - **Why:** every fit above takes the boxes' spacing from `scene.yaml` (26 cm centre to centre). On Aalto's real depth (drop 3) the boxes are 24 cm apart, so after the bin-wall fit the middle box stands 2.1 cm and the right box 4.2 cm from where the drops aim. Aalto also said they will glue the boxes ~7 cm closer to the robot.
      - **How:** after the camera fit, on the same depth image, seen from above at wall height: the near wall is one line across the three boxes (RANSAC), its top is the wall height, then the far edge, then along the row each box is an interval with a wall at both ends and nothing in the gap to its neighbour. Each box gets its own centre, written into `scene.cfg` for the episode (as `hands` does) and put back on reset.
@@ -126,6 +128,11 @@ python3 policy/decision_oracle/analyze.py <run_dir>=<decisions.jsonl>    # lapto
 Don't pass `--no-cameras`: the Decision chooser needs the head image.
 
 ## Status
+- **v1.7 = v1.6 + lean fallback (Sun 15 Nov ~06:30, Emīls + Claude): `policies/oracle_v17.py`, `camera.fit_head_pose(last_arm_T=…)`; `V17_LEAN_KEEP=off` turns it off. v1.6 is unchanged.**
+  - Real drop-3 frames, 15 episodes in one process (`eval/analysis/real_depth/lean_fallback.py`): with Samer's wider limits (07f533c) all 15 arm fits are used as they are, in v1.6 and v1.7 alike (lift at 35 cm reach 3.7–7.5 cm). With the old 15 cm / 20° limits ep14 (20.9°) was dropped.
+  - What v1.7 adds: an arm fit that fails outright after a good episode keeps the arm-based correction (same frames, simulated failure: lift 4.8 cm; v1.6 goes to `lean.py`'s mapping).
+  - First episode of a server process with a failed arm fit: as v1.6 (`lean.py` mapping), nothing is kept yet.
+  - Unit tests: `policy/tests/test_v16.py` `TestLeanFallback` (7), `policy/tests/test_v17.py` (3). One MuJoCo episode in the leaning scene 3/3, gate ok. Not run in Isaac. Not in any built image.
 - **Standing-triangle grasp (Sun 15 Nov, Emīls + Claude): `tri_v16.py`, `V16_TRI=mid`, on by default since 27b1de9 (`V16_TRI=off` restores Aalto's grasp).**
   - At Aalto's grasp point the closed thumb stops ~11 mm short of a standing prism and the index finger pushes it away (MuJoCo bench `sim/mujoco/tri_bench.py`: 17 % held with perception noise). Midpoint grasp point + per-hand angles: 47 % over all angles, 61–76 % at the angles now tried first.
   - Unit tests: `policy/tests/test_v16.py` `TestTriMid`. v1.5 is unchanged: the shared `motions.grasp_variants` only changes when a policy passes `tri_phis`, which only v1.6 with `V16_TRI=mid` does.
