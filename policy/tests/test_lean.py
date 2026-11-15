@@ -43,6 +43,7 @@ class TestLean(unittest.TestCase):
         cls.kin = ArmKinematics(cls.cfg)
         cls.home = home_arm(cls.cfg)
         lean.install()
+        lean.ERR.update({"left": np.zeros(3), "right": np.zeros(3)})   # the image sets ARM_ERR
 
     def setUp(self):
         import os

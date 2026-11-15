@@ -134,6 +134,21 @@ class Geometry(unittest.TestCase):
                 self.assertLess(np.linalg.norm(r["boxes"][n]["center"] - cen[n]), 0.005, n)
             self.assertGreater(r["boxes"]["left"]["center"][1], r["boxes"]["right"]["center"][1])
 
+    def test_shifted_row_found_or_refused_never_mislabelled(self):
+        """Real run Sun 06:55: the robot stood ~11 cm right of the row and its raised left hand hid most of the left
+        box. Shifted rows, left box cut off at several widths, right side at the image edge: every box within 1 cm, or
+        "not found" (scene.yaml bins); never the visible boxes taken as left + centre."""
+        for mid in (0.0, 0.06, 0.11, 0.13):
+            for ymax in (None, 0.30, 0.27, 0.25, 0.235):
+                Q, cen, _ = scene_points(self.zc, mid=mid)
+                keep = (Q[:, 1] > -0.27) & ((Q[:, 1] < ymax) if ymax is not None else True)
+                r = B.find_boxes(*to_optical(Q[keep], self.zc), self.sc)
+                if r["ok"]:
+                    for n in ("left", "center", "right"):
+                        self.assertLess(np.linalg.norm(r["boxes"][n]["center"] - cen[n]), 0.01, f"{mid} {ymax} {n}")
+                if ymax is None or ymax >= 0.27:
+                    self.assertTrue(r["ok"], f"mid {mid}, view to y {ymax}: {r['why']}")
+
     def test_as_bins_gives_centres_and_shifts(self):
         Q, cen, _ = scene_points(self.zc)
         P, T = to_optical(Q, self.zc)

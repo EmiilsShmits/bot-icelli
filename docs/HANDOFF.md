@@ -1,5 +1,43 @@
 # Handoff: Samer's overnight Claude session → the next agent (Sun 15 Nov, ~01:05 Helsinki)
 
+> **Update Sun ~08:20: the final image for the robot = `bot-icelli/policy:final-v16-real3` (4ec4952; real2 plus the
+> fixes below).**
+> - **The crash at the end of the 06:55 run was the left elbow pushing into the robot's own body.** The retry's
+>   alternative grasp planned the elbow 2 cm from the midline. The purple miss was the same: the right elbow hit the
+>   body and pushed the hand ~2 cm right. The sims never model arm-body contact.
+> - Fixes:
+>   - `policy/selfcol.py` refuses plans with an elbow within 13 cm of the midline beside the torso (`SELFCOL=off` to
+>     undo; tests in `policy/tests/test_selfcol.py`).
+>   - Close hold 1.2 s (the real fingers settle in ~1 s).
+>   - `ARM_ERR` right 3 cm.
+> - Sim check: Modal `real3-nominal`, `real3-venue` (e-087, e-088 in `eval/RESULTS.md`).
+> - Push (Samer, on samer-v1-sim): `docker tag bot-icelli/policy:final-v16-real3 ghcr.io/samer-cyber/bot-icelli-policy:final-v16-real3 && docker push ghcr.io/samer-cyber/bot-icelli-policy:final-v16-real3`
+
+> **Update Sun ~07:40: the 06:55 robot run of `final-v16-real` picked the yellow cube and placed it in a box (the
+> robot's right box; the instruction said centre).**
+> - Analysis: `docs/research/real-run-0655.md`. Gravity feed-forward works (arm 1–3 mm from the command).
+> - Both misses were aim, not grip: the left hand landed ~2 cm to the robot's left, the right hand ~2.3 cm to its right
+>   (after the 2.5 cm correction). The box row stood ~11 cm left of `scene.yaml`, so the "centre" drop hit the wall
+>   between the centre and right boxes. The grasp check called all three picks right.
+> - **Next image: `bot-icelli/policy:final-v16-real2` (7998cb78ff06, 780e1e5, replay PASS, key inside).**
+>   - `ARM_ERR` left 2 cm right, right 3.5 cm left.
+>   - `V16_BOXES=find` (boxes measured; new test: shifted rows found within 1 cm or refused, never mislabelled).
+>   - Thumb closes 1.4 cm further.
+>   - Sim check (e-085, e-086): gate PASS, 0 clips, 11/12 and 13/14; box finder found the boxes in all 6 episodes.
+> - Push (Samer, on samer-v1-sim): `docker tag bot-icelli/policy:final-v16-real2 ghcr.io/samer-cyber/bot-icelli-policy:final-v16-real2 && docker push ghcr.io/samer-cyber/bot-icelli-policy:final-v16-real2`
+> - Submission drafts (name, punchline, description, Modal / Gemini texts, video shot list, slides): `docs/SUBMISSION.md`.
+
+> **Update Sun ~06:40: image for the next robot try = `bot-icelli/policy:final-v16-real` (b998bb9f121a, 709c393,
+> replay PASS).** From the 06:19 run of Marcus's gemini-er-3 image (`docs/research/real-run-0619.md`):
+> - Both hands missed by about a finger-width: right hand to the robot's right, left hand slightly to its left. The left
+>   hand's `middle_0` joint is stuck near −0.15 rad, so every 7-joint grasp check read "holding" and nothing retried.
+>   The arm sagged 11–15 mm low and 7–10 mm short without gravity feed-forward. Lean that session only ~3°.
+> - In the image: grasp check on thumb + index only (`GRASP_JOINTS`, `GRASP_EMPTY_ERR` 0.03), `ARM_ERR` right 2.5 cm
+>   to the robot's left, `AALTO_CFG_OVERRIDES` height_frac 0.35 / close_hold_s 0.5 / drop_inset 0.07 (Dockerfile ENV,
+>   undo with `-e`), plus 06:05's wider lean limits and gravity feed-forward.
+> - Push (Samer, on samer-v1-sim): `docker tag bot-icelli/policy:final-v16-real ghcr.io/samer-cyber/bot-icelli-policy:final-v16-real && docker push ghcr.io/samer-cyber/bot-icelli-policy:final-v16-real`
+> - Sim check of the new grasp defaults (no ARM_ERR): Modal tag `real-defaults-nominal`.
+
 > **Update Sun ~06:05: real-robot test of `final-v16` (05:13 build, `V16_CALIB=lean` + gravity feed-forward) missed:**
 > hand short of the block (and dropped at the near edge of the box instead of its middle), a bit to the robot's right.
 > - That is the uncorrected-lean pattern of `docs/research/hand-offset-real-data.md`. Most likely cause: the arm-based

@@ -37,8 +37,14 @@ from .chooser import make as make_chooser
 from .motions import GRASP_STOCK, OptionEnumerator, face_options, grasp_label, grasp_variants, parse_face, target_bin
 from .policy import DecisionOraclePolicy
 
-GRASP_EMPTY_ERR = 0.012   # rad. Largest |measured - commanded| finger angle of the closed hand at the end of `lift`.
-                          # Sim logs (56 picks): holding an object 0.021-0.100, empty hand 0.000-0.010.
+GRASP_EMPTY_ERR = float(os.environ.get("GRASP_EMPTY_ERR", "0.03") or 0.03)
+                          # rad. Largest |measured - commanded| angle of the PINCH joints of the closed hand at the end of
+                          # `lift`. Sim logs: holding 0.018-0.100, empty 0.000-0.010. Real robot (Sun 06:19 run): empty
+                          # 0.01-0.02 on the pinch joints, while the left hand's middle_0 is stuck near -0.15 rad whatever
+                          # it is told, so a check over all 7 joints always said "holding" there and never retried.
+GRASP_JOINTS = [int(v) for v in os.environ.get("GRASP_JOINTS", "1,2,5,6").split(",") if v.strip()]
+                          # hand joints the check reads (DDS order: thumb_0..2, middle_0..1, index_0..1): thumb + index,
+                          # the pinch (grasp.point_in_palm sits 15 mm towards the index finger)
 MOVED_RADIUS = 0.10       # m. Camera mode: a failed pick keeps the object's name if it is found this close.
 BASIC_PLANS_S = 6.0       # s. Least time allowed for one plan per object before grasp variants are searched.
 CROWD_RADIUS = 0.08       # m. A neighbour for another bin this close can be grabbed instead of the target (seen at 6.2 cm).
@@ -375,8 +381,9 @@ class UpgradedOraclePolicy(DecisionOraclePolicy):
         in (so a prefetched next plan stays valid) and look again."""
         gc, self._gc = self._gc, None
         plan, o = gc["plan"], gc["option"]
-        sl = slice(0, 7) if gc["side"] == "left" else slice(7, 14)
-        err = float(np.abs(np.asarray(obs["hand_q"], float)[sl] - self.hand_cmd[sl]).max())
+        base = 0 if gc["side"] == "left" else 7
+        idx = [base + j for j in GRASP_JOINTS]
+        err = float(np.abs(np.asarray(obs["hand_q"], float)[idx] - np.asarray(self.hand_cmd, float)[idx]).max())
         empty = err < GRASP_EMPTY_ERR
         # Triangle prisms can fit inside the closed hand without moving a finger joint, even when held.
         abort = empty and o.shape not in ("triangle", "tipped") and self.grasp_check == "on"
