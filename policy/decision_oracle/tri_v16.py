@@ -1,4 +1,4 @@
-"""v1.6 standing-triangle grasp (V16_TRI=mid, default off): the grasp point midway between the closed fingertips and
+"""v1.6 standing-triangle grasp (V16_TRI=mid, the default since 27b1de9; V16_TRI=off restores Aalto's): the grasp point midway between the closed fingertips and
 the thumb, and finger angles per hand.
 
 Why (sim/mujoco/tri_bench.py, eval/analysis/grasps/README.md §4):
@@ -47,7 +47,7 @@ def standing_tri(det):
 
 
 class TriPlanner(CrowdPlanner):
-    tri = "off"               # V16OraclePolicy sets it from V16_TRI
+    tri = "off"               # V16OraclePolicy sets it from V16_TRI (default mid)
 
     def _plan_side(self, det, side, bin_name, arm_q, hand_q, **kw):
         """Any plan for a standing triangle (face angles, Aalto's faces, stock claw) uses the midpoint grasp point."""

@@ -325,11 +325,14 @@ class TestCrowd(unittest.TestCase):
     """decision_oracle/crowd_v16.py on seed 1004's cluster (e-050 / e-051: a purple triangle between a yellow
     cylinder and an orange cube; three face grasps closed on nothing). Positions and yaws as the camera saw them."""
 
-    def _setup(self, crowd):
+    def _setup(self, crowd, tri="off"):
+        # tri="off": the scene was recorded with Aalto's triangle grasp (V16_TRI=mid is the default since 27b1de9)
         import copy
         import os
         self._old = os.environ.get("V16_CROWD")
+        self._old_tri = os.environ.get("V16_TRI")
         os.environ["V16_CROWD"] = crowd
+        os.environ["V16_TRI"] = tri
         pol = TestNearBody()._pol("off")
         base = pol.perception.detect()[0]
 
@@ -349,10 +352,11 @@ class TestCrowd(unittest.TestCase):
 
     def tearDown(self):
         import os
-        if getattr(self, "_old", None) is None:
-            os.environ.pop("V16_CROWD", None)
-        else:
-            os.environ["V16_CROWD"] = self._old
+        for k, v in (("V16_CROWD", getattr(self, "_old", None)), ("V16_TRI", getattr(self, "_old_tri", None))):
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
 
     def _first(self, pol, dets):
         opts, _ = pol.enum.feasible_options(dets, pol.arm_cmd, pol.hand_cmd, budget_s=6.0)
@@ -373,6 +377,13 @@ class TestCrowd(unittest.TestCase):
         self.assertGreaterEqual(o.crowd_m, 0.008)
         o2, _ = self._first(pol, [d for d in cl if d.name != o.obj])     # the next look, one neighbour fewer
         self.assertGreaterEqual(o2.crowd_m, 0.008)
+
+    def test_mid_grasp_is_clear(self):
+        # with V16_TRI=mid the triangle gets an angle whose fingers stay off both neighbours, so it may go first
+        pol, cl = self._setup("on", tri="mid")
+        o, _ = self._first(pol, cl)
+        self.assertGreaterEqual(o.crowd_m, 0.008)
+        self.assertGreater(pol.planner.finger_clearance(o.plan, o.plan.side, o.det), 0.008)
 
     def test_tight_default_is_set_aside(self):
         # e-054 seed 1004 (a prefetched look): the planner's default was the tight face grasp; the chooser must still
@@ -425,7 +436,7 @@ class TestTriMid(unittest.TestCase):
         d.shape, d.yaw, d.name, d.color = shape, np.radians(10), "cam_red_9", "red"
         return d
 
-    def test_off_by_default(self):
+    def test_off_restores_aaltos_grasp(self):
         from decision_oracle.motions import grasp_variants
         pol = self._pol("off")
         self.assertEqual(pol.tri, "off")

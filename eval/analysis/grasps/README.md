@@ -114,7 +114,7 @@ Held per planned pick, both arms, angles 0–105° (left-hand terms; right mirro
   - The geometry (thumb 11 mm short) is the same in every simulator and on the real hand, since it comes from the URDF; how far a pushed prism slides before the thumb catches it is what the physics changes.
   - Put it behind a v1.6 flag, default off, until an Isaac run agrees.
 
-### 6. Built and measured in MuJoCo (FACT): `V16_TRI=mid`, off by default
+### 6. Built and measured in MuJoCo (FACT): `V16_TRI=mid` (the default since 27b1de9)
 `policy/decision_oracle/tri_v16.py`. Paired MuJoCo run e-080: the same 72 seeds with the flag off and on, nominal scene, both tasks.
 
 | | off | mid |
@@ -171,8 +171,8 @@ v1.6 with `V16_TRI=off` vs `mid`, the same 12 episodes each (sort_fixed + sort_l
 - **Far cylinders** (x ≥ 0.28 m, 72 %): next in line, not looked at yet.
 
 ## Status
-- **Now:** `V16_TRI=mid` built (off by default), measured in MuJoCo (§6) and Isaac (§7): both agree.
-- **Next:** team decision on turning it on in the v1.6 image (full episodes pass the gate with it on, e-082); the right hand's angle order.
+- **Now:** `V16_TRI=mid` is the v1.6 default (Samer, 27b1de9); measured in MuJoCo (§6), Isaac single triangles (§7) and Isaac full episodes (§8). `V16_TRI=off` restores Aalto's grasp.
+- **Next:** the right hand's angle order (90° first held 6/13 in Isaac).
 - **Blockers:** none.
 
 ## Gotchas
