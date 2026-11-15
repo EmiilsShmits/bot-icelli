@@ -10,7 +10,7 @@
 >   - `ARM_ERR` left 2 cm right, right 3.5 cm left.
 >   - `V16_BOXES=find` (boxes measured; new test: shifted rows found within 1 cm or refused, never mislabelled).
 >   - Thumb closes 1.4 cm further.
->   - Sim check: Modal `real2-nominal`, `real2-venue`.
+>   - Sim check (e-085, e-086): gate PASS, 0 clips, 11/12 and 13/14; box finder found the boxes in all 6 episodes.
 > - Push (Samer, on samer-v1-sim): `docker tag bot-icelli/policy:final-v16-real2 ghcr.io/samer-cyber/bot-icelli-policy:final-v16-real2 && docker push ghcr.io/samer-cyber/bot-icelli-policy:final-v16-real2`
 > - Submission drafts (name, punchline, description, Modal / Gemini texts, video shot list, slides): `docs/SUBMISSION.md`.
 

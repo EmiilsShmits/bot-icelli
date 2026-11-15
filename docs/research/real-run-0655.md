@@ -34,4 +34,4 @@ forward kinematics of `arm_q_cmd` vs `arm_q` with Aalto's `ArmKinematics`, hand 
 - **Thumb closes 1.4 cm further:** `hand.closed` = [0, 0.2, 0.9, −1.0, −0.6, −1.0, −0.6], was [0, −0.1, 1.2, …].
   - The thumb tip passes between index and middle (±2.8 cm), so an empty hand still reaches the command and the grasp check still reads it empty.
   - The squeeze on a 4.5 cm block goes from ~0.7 cm to ~2.1 cm.
-- **Sim check:** Modal tags `real2-nominal` and `real2-venue`; results in `eval/RESULTS.md` (e-085).
+- **Sim check (e-085, e-086):** gate PASS, 0 clips, 11/12 (Aalto look; the same settings without the thumb and box finder: 12/12; the miss was a cube knocked across the table during another pick, not a failed grasp) and 13/14 (venue look). The box finder measured the boxes in all 6 episodes (within 0.3 cm of `scene.yaml`).
