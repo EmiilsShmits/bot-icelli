@@ -124,14 +124,14 @@ Useful options:
 - **Now (Sun 15 Nov ~02:00):**
   - scene, backend, runner, randomisation (`dr.py`) and tests work (6/6 pass);
   - the head camera now uses Aalto's full intrinsics (principal point 5 / 11 px off centre). **Runs before this fix (e-052, e-053) saw the scene ~1° off from the policy's K, so they are slightly pessimistic.**
-  - Verda runs: e-052 randomised 19 %, e-053 paired control (bins shift is what breaks v1.6), e-070 paired `V16_CALIB=bins` vs `hands`, e-071 `bins` vs `lean`, e-072 `V16_TRI=off` vs `mid` (`eval/RESULTS.md`).
+  - Verda runs: e-052 randomised 19 %, e-053 paired control (bins shift is what breaks v1.6), e-078 paired `V16_CALIB=bins` vs `hands`, e-079 `bins` vs `lean`, e-080 `V16_TRI=off` vs `mid` (`eval/RESULTS.md`).
   - **Shape putting (`insert_demo.py`, Sun 15 Nov ~03:25): 19/27 blocks through the right hole** (cubes 7/9, cylinders 9/9, prisms 3/9), score 54 of 81, 0 wrong holes. Every block still in the hand when it reached its hole went in (19/19); the 8 failures all slipped out of the hand during the carry (the grasp, not the insertion). Video: `artifacts/eval/mujoco/insert-demo/highlights.mp4`.
     - Perception from the head camera: holes within 1.7 mm, blocks within 1.4 mm, block angles within 0.2°.
     - Two corrections made it work, both measured here (spread ±2 mm, ±1–2°): the block sits 13 mm behind and 15 mm to the thumb side of the planner's grasp point, and it turns in the hand (prisms 12°, cubes 5°, mirrored between hands). Without them cubes went 1/4. Released blocks were within 5.5 mm and 2.8° of their hole.
     - **With the boxes 7 cm closer, v1.6's default camera fit (`V16_CALIB=bins`) puts everything 7.5 cm off** (it lines the boxes up with `scene.yaml`): 0/4, the arm reaches 7.5 cm beside every block. `V16_CALIB=hands` (camera within 0.3 mm) and `V16_CALIB=lean` (frame 7.5 cm off but the IK model moved with it) both give 4/4. This matters for rungs 1–2 as well, not only the lid.
     - Not done: no policy server, no episode loop with several blocks, MuJoCo's Dex3 grip only; the in-hand offsets are MuJoCo's and need checking on the real hand.
 - **Next:**
-  - analyse the leaning-scene losses in e-071 (`V16_CALIB=lean` 56 % there vs 75 % nominal);
+  - analyse the leaning-scene losses in e-079 (`V16_CALIB=lean` 56 % there vs 75 % nominal);
   - measure the real robot-to-table distance.
 - **Blockers:** none.
 

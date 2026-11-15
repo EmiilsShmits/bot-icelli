@@ -30,16 +30,24 @@ Env:
   LID_LAYOUT   request | mirror (square and circle holes swapped) (default request)
   LID_TOP      lid top above the counter (m) until depth measures it (default 0.075)
   LID_REFINE   on | off: centre, turn and height from head depth (default on)
-  LID_GAP      block bottom above the lid top at release, m (default 0.008)
+  LID_GAP      block bottom above the lid top at release, m (default 0.008). -0.012 (released inside the hole), alone
+               or with LID_GRASP_H 0.6 and LID_DWELL 0.6, scored within noise of the defaults (e-074..e-076)
   LID_BINS     bins still on the table besides the lid box, comma-separated (default "right")
   LID_PARK     on | off: both arms wait at PARK between moves (default on)
   LID_DWELL    s to hold the block still over the hole before letting go (default 0: open at once, as Aalto's planner)
   LID_GRASP_H  grasp point height as a fraction of the block's height, task 3 only (default 0.5 = Aalto's). Above
                0.5 the pinch sits above the block's centre of mass, so it hangs straight instead of tilting.
+  LID_PICK_TOL IK position tolerance (m) for the hand's way down to the block and back up (pregrasp, descend, grasp,
+               lift); the planner's own 6 mm when nothing that close exists (default 0.002; 0 = off). Task-3 Modal runs
+               (Sun 15 Nov): cylinder picks planned within 1.5 mm grasped 18/18, picks at 2.2-5.8 mm 6/12 (a miss
+               pushes the cylinder away or onto its side). A/B, cylinders only, seeds 1000-1008: +22 with 2 mm, +13
+               with 6 mm (e-077); offline (test_insert, 12 layouts) the same plans are found in the same time.
   LID_SHAPES   shapes that are put through the lid, comma-separated (default "cylinder"); the others stay on the
                counter (0 points instead of a likely -1). Modal t3-v16-e (Sun 15 Nov, 3 trials, both fixes above):
                cylinders 2/2 inserted, triangles 0/5 (2 forced), cubes 0/2 (1 forced): +2, +2, -1 with all shapes,
-               +3, +3, 0 with cylinders only. "cube,cylinder,triangle" tries all three.
+               +3, +3, 0 with cylinders only. "cube,cylinder,triangle" tries all three. With all three over 24
+               trials and four release settings (e-073..e-076): cubes 0/16 inserted, triangles 1/24, cylinders 21/32;
+               the cubes and triangles cost points under every setting.
 """
 from __future__ import annotations
 
@@ -91,6 +99,7 @@ PARK = {"left": (0.0, 0.5, 0.6, 0.0, 0.0, 0.0, 0.0), "right": (0.0, -0.5, -0.6, 
 # (left) from the grasp point; the palm, wrist and fingers are thicker than those points.
 HAND_BODY = {"back": 0.11, "front": 0.07, "own": 0.06, "other": 0.03}
 PICK_MARGIN = 0.01                       # m around the lid box for HAND_BODY
+PICK_WAYPOINTS = ("grasp", "pregrasp", "descend", "lift")   # IK held to LID_PICK_TOL (the hand reaching the block)
 
 
 def _env_xy(name, default):
@@ -121,6 +130,7 @@ def settings():
         "shapes": [v.strip() for v in os.environ.get("LID_SHAPES", "cylinder").split(",") if v.strip() in SHAPES],
         "grasp_h": float(os.environ.get("LID_GRASP_H", "0.5") or 0.5),
         "dwell": float(os.environ.get("LID_DWELL", "0") or 0),
+        "pick_tol": float(os.environ.get("LID_PICK_TOL", "0.002") or 0),
     }
 
 
@@ -260,6 +270,36 @@ class _LidAware:
         if self._pick_clear(side, det.top[:2]):
             return None
         return Plan(False, side=side, color=det.color, reason=f"insert: the {side} hand would come down on the lid box")
+
+    # ------------------------------------------------------------ pick precision (LID_PICK_TOL)
+    def _ik(self, side, p, seed, name, plan):
+        return self._tight(name, plan, lambda: super(_LidAware, self)._ik(side, p, seed, name, plan),
+                           lambda out: not out[1])
+
+    def _cartesian(self, side, p0, p1, q0, name, plan):
+        return self._tight(name, plan, lambda: super(_LidAware, self)._cartesian(side, p0, p1, q0, name, plan),
+                           lambda out: not out)
+
+    def _tight(self, name, plan, fn, failed):
+        """fn() with the IK position tolerance at LID_PICK_TOL for the pick waypoints; fn() again at the planner's own
+        tolerance (6 mm) when nothing that close exists. At 6 mm the straight descent to the block takes the first
+        solution of the top-down IK, which can end 5-6 mm off the grasp point (offline probe: 5.6 mm at (0.29, -0.03);
+        the same descent at 2 mm ends 0.9 mm off)."""
+        tol = settings()["pick_tol"]
+        ik = self.kin.cfg["ik"]
+        base = float(ik["pos_tol"])
+        if name not in PICK_WAYPOINTS or not 0.0 < tol < base:
+            return fn()
+        reason = plan.reason
+        ik["pos_tol"] = tol
+        try:
+            out = fn()
+        finally:
+            ik["pos_tol"] = base
+        if not failed(out):
+            return out
+        plan.reason = reason
+        return fn()
 
     def bin_clearance(self, side, arm_q, hand_q, margin=None):
         m = BOX_MARGIN if margin is None else margin
@@ -574,7 +614,8 @@ def configure(pol, task, info):
     info["mapping"] = dict(MAPPING)
     pol.log(f"[insert] task 3: {pol._insert['lid'].describe()}; release {100 * s['gap']:.1f} cm above the lid; "
             + ("arms parked out to the sides between moves" if pol._insert["park"] else "arms wait at home")
-            + f"; shapes tried: {','.join(s['shapes']) or 'none'}")
+            + f"; shapes tried: {','.join(s['shapes']) or 'none'}"
+            + (f"; pick IK within {1000 * s['pick_tol']:.0f} mm where possible" if s["pick_tol"] > 0 else ""))
     return info
 
 

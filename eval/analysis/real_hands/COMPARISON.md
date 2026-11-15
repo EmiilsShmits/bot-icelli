@@ -38,7 +38,7 @@ Reach error with each mapping (`t_lean.py`-style check, same scenes): ours ~1 mm
 turned on 26–29 mm with a leaning robot and 85 mm in the venue look (its auto gate switches on at ≥ 5° tilt there),
 which matches his own Modal result (7/12 with it, 12/12 without).
 
-## Episodes (MuJoCo, paired, e-070 / e-071)
+## Episodes (MuJoCo, paired, e-078 / e-079)
 
 `V16_CALIB=lean` vs today's fit: nominal 75 % = 75 % (identical), shifted bins 22 % → 58 %, leaning robot 49 % → 56 %,
 all randomised 21 % → 49 %.

@@ -114,7 +114,7 @@ Held per planned pick, both arms, angles 0–105° (left-hand terms; right mirro
   - Put it behind a v1.6 flag, default off, until an Isaac run agrees.
 
 ### 6. Built and measured in MuJoCo (FACT): `V16_TRI=mid`, off by default
-`policy/decision_oracle/tri_v16.py`. Paired MuJoCo run e-072: the same 72 seeds with the flag off and on, nominal scene, both tasks.
+`policy/decision_oracle/tri_v16.py`. Paired MuJoCo run e-080: the same 72 seeds with the flag off and on, nominal scene, both tasks.
 
 | | off | mid |
 |---|---|---|
