@@ -138,14 +138,26 @@ Don't pass `--no-cameras`: the Decision chooser needs the head image.
   - What v1.7 adds: an arm fit that fails outright after a good episode keeps the arm-based correction (same frames, simulated failure: lift 4.8 cm; v1.6 goes to `lean.py`'s mapping).
   - First episode of a server process with a failed arm fit: as v1.6 (`lean.py` mapping), nothing is kept yet.
   - Unit tests: `policy/tests/test_v16.py` `TestLeanFallback` (7), `policy/tests/test_v17.py` (3). One MuJoCo episode in the leaning scene 3/3, gate ok. Not run in Isaac. Not in any built image.
-- **v1.7 higher drop (Sun 15 Nov ~07:45, Emīls + Claude): `V17_DROP=high`, off by default. `policies/oracle_v17.py` (`install_climb`). Not committed, not run in Isaac or on the robot, not in an image.**
-  - Why: v1.6 releases with the block's bottom ~3 cm above the real 7 cm rim (the planner assumes 6 cm walls), 5 cm inside the two nearest walls; the real hand has landed 3–9 cm low and 4–6 cm short.
-  - What it does, sorting tasks only: release 6 cm higher (`grasp.drop_above_rim` 0.10: bottom ~9 cm above the real rim) and 8 cm inside the walls (`grasp.drop_inset` 0.08). Pick and lift are v1.6's (16 cm); the carry ends 22 cm above the table over the box (`V17_CARRY_H`), so the arm climbs on the way. Task 3 keeps v1.6's values and its own low release (`LID_GAP`); put-downs on the table (relocation, relay) are v1.6's.
-  - First version lifted to 22 cm at the pick: 11/14 sorted, score +9, 2 cylinders off the table (MuJoCo seeds 1000–1002). Video of seed 1001: the block is lifted through the other hand, which waits in front of the chest, and is stripped out of the grasp (`artifacts/eval/mujoco/v17-dropA-1001-video/`). Hence the climb on the way.
-  - MuJoCo, `sort_fixed`, seeds 1000–1002, 14 objects, both servers run side by side (`artifacts/eval/mujoco/v17-climb-high`, `v17-climb-off`): **high 12/14, score +12, nothing off the table; off 11/14, score +11.** 0 safety clips in both. Three episodes, so the one-object difference is within noise: the result is "no longer worse", not "better".
-  - The sim gate failed in the third episode of both runs on rate only (high: 26.4 commands/s; off: policy real-time rate 22 Hz). The Mac was running other sims (sim real-time factor 0.25), so this is not a clean rate check: rerun on an idle machine or in Isaac before using it.
-  - Offline, 8 random layouts (Aalto's oracle + `install_climb`): 31/31 objects plan in all variants, 10.0 s per pick (v1.6 9.6 s). Grasp point above the table: end of lift 16.0 cm, never under 15.1 cm during the carry (v1.6 dips to 12.3 cm), release at 18.3 cm (v1.6 12.3 cm).
-  - Unit tests: `policy/tests/test_v17.py` (7, incl. `TestClimb`); whole `policy/tests` suite 153 OK.
+- **Potential insight, not a new model: releasing from higher (`V17_DROP=high` in `policies/oracle_v17.py`, off by default; Sun 15 Nov ~08:40, Emīls + Claude). Not in any image, not run in Isaac or on the robot. As tested it sorts fewer objects than v1.6: do not turn it on.**
+  - Idea: v1.6 releases with the block's bottom ~3 cm above the real 7 cm rim (the planner assumes 6 cm walls), 5 cm inside the two nearest walls, and the real hand has landed 3–9 cm low and 4–6 cm short. `V17_DROP=high` (sorting tasks only; task 3 keeps its low release) releases ~9 cm above the real rim (`grasp.drop_above_rim` 0.10) and 8 cm inside the walls (`grasp.drop_inset` 0.08). Pick and lift stay v1.6's (16 cm); the carry ends 22 cm above the table over the box (`install_climb`, `V17_CARRY_H`).
+  - **Result (MuJoCo on Verda sim-5 / sim-6, paired: the same seed, layout and task with the setting off and on; `sort_fixed` + `sort_language`; e-091, e-092):**
+
+    | run | robot | off (v1.6) | high | planning per look, off → high |
+    |---|---|---|---|---|
+    | `v17-drop-a` (192 episodes) | upright | 180/216 (83 %) | 122/216 (56 %) | 15.5 s → 40.5 s |
+    | | leaning | 145/216 (67 %) | 138/216 (64 %) | 10.0 s → 15.5 s |
+    | `v17-drop-b` (153 episodes, carry planned with one IK) | upright | 130/166 (78 %) | 92/166 (55 %) | 15.6 s → 28.7 s |
+    | | leaning | 118/170 (69 %) | 107/165 (65 %) | 9.7 s → 10.8 s |
+
+  - **What it shows:**
+    1. A pick that is carried out ends in the box as often with the high release as with the low one (sorted per direct pick 0.69 vs 0.69 and 0.61 vs 0.64 upright, 0.53 vs 0.54 and 0.51 vs 0.54 leaning). Blocks did not bounce out more: 4 objects off the table in 345 episodes, 2 with the setting on and 2 with it off.
+    2. The loss is time. Planning a look takes about twice as long upright, so fewer picks fit in the 120 s (4.0–4.7 per episode instead of 5.4–5.6) and twice as many objects stay on the table. Making the carry itself as cheap as v1.6's (`v17-drop-b`) helped only partly, so most of the extra time comes from the release point: higher and 3 cm further out, at the edge of the arms' reach. Not isolated yet: height alone (inset left at v1.6's) against inset alone.
+    3. With the robot leaning the difference is small (−3 to −4 points, within noise for 38–48 pairs). No gain showed where the idea was meant to help, but MuJoCo does not model the real hand landing low and short.
+    4. Rate gate: 345/345 episodes passed, lowest 29.3 commands/s, 0 safety clips, with the setting on or off. The gate failures in the Mac runs below were machine load.
+    5. Lifting to the drop height at the pick does not work: the block is lifted through the other hand, which waits in front of the chest, and is stripped out of the grasp (MuJoCo seed 1001, video frame in `artifacts/eval/mujoco/v17-dropA-1001-video/`: 2 cylinders off the table in 3 episodes). Keep the lift low and climb on the way to the box.
+  - Small runs on the Mac before that (3 episodes each, seeds 1000–1002): high 12/14, off 11/14. Three episodes hid the planning cost; the paired Verda runs are the ones to believe.
+  - If someone picks this up: test the height alone first (`V17_DROP=high V17_DROP_INSET=<v1.6's value>`), and check planning time per look in the decision log before the success rate.
+  - Code state: v1.7 without `V17_DROP` is unchanged (lean fallback only). Unit tests `policy/tests/test_v17.py` (7, incl. `TestClimb`). The Verda runs used the working tree on f62a5a1, before the 06:19 / 06:55 real-robot settings.
 - **Standing-triangle grasp (Sun 15 Nov, Emīls + Claude): `tri_v16.py`, `V16_TRI=mid`, on by default since 27b1de9 (`V16_TRI=off` restores Aalto's grasp).**
   - At Aalto's grasp point the closed thumb stops ~11 mm short of a standing prism and the index finger pushes it away (MuJoCo bench `sim/mujoco/tri_bench.py`: 17 % held with perception noise). Midpoint grasp point + per-hand angles: 47 % over all angles, 61–76 % at the angles now tried first.
   - Unit tests: `policy/tests/test_v16.py` `TestTriMid`. v1.5 is unchanged: the shared `motions.grasp_variants` only changes when a policy passes `tri_phis`, which only v1.6 with `V16_TRI=mid` does.
