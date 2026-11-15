@@ -1,5 +1,18 @@
 # Handoff: Samer's overnight Claude session → the next agent (Sun 15 Nov, ~01:05 Helsinki)
 
+> **Update Sun ~08:20: the final image for the robot = `bot-icelli/policy:final-v16-real3` (4ec4952; real2 plus the
+> fixes below).**
+> - **The crash at the end of the 06:55 run was the left elbow pushing into the robot's own body.** The retry's
+>   alternative grasp planned the elbow 2 cm from the midline. The purple miss was the same: the right elbow hit the
+>   body and pushed the hand ~2 cm right. The sims never model arm-body contact.
+> - Fixes:
+>   - `policy/selfcol.py` refuses plans with an elbow within 13 cm of the midline beside the torso (`SELFCOL=off` to
+>     undo; tests in `policy/tests/test_selfcol.py`).
+>   - Close hold 1.2 s (the real fingers settle in ~1 s).
+>   - `ARM_ERR` right 3 cm.
+> - Sim check: Modal `real3-nominal`, `real3-venue` (e-087, e-088 in `eval/RESULTS.md`).
+> - Push (Samer, on samer-v1-sim): `docker tag bot-icelli/policy:final-v16-real3 ghcr.io/samer-cyber/bot-icelli-policy:final-v16-real3 && docker push ghcr.io/samer-cyber/bot-icelli-policy:final-v16-real3`
+
 > **Update Sun ~07:40: the 06:55 robot run of `final-v16-real` picked the yellow cube and placed it in a box (the
 > robot's right box; the instruction said centre).**
 > - Analysis: `docs/research/real-run-0655.md`. Gravity feed-forward works (arm 1–3 mm from the command).

@@ -50,7 +50,8 @@ On the real G1 it picked a block from the table and placed it in a box, fully au
 - the arm sag;
 - a stuck finger joint on the left hand (the grasp check now reads only the pinch joints);
 - a 2 cm aim error per arm;
-- boxes standing 11 cm from their default place.
+- boxes standing 11 cm from their default place;
+- an elbow pushing into the robot's own body on reaches across it, which the simulator never shows (such plans are now refused).
 
 **What we learned.** Simulation gets you most of the way. The last centimetres are calibration, and the robot's own logs are the best sensor for it.
 
