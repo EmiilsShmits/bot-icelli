@@ -13,7 +13,13 @@ rung-3 instruction, and restores the sorting planners for any other task. On top
     every 90 deg and the triangle every 120 deg, so the turn is at most 45 / 60 deg. A plan whose wrist ends more than
     ALIGN_TOL_DEG off, or whose block centre misses the hole centre by more than DROP_TOL, is rejected. The square and
     the triangle need a face grasp (their yaw in the hand is then known); a lying triangle is left alone.
-  * clearance: the hand stays above the lid box and the bins still on the table, instead of the sorting bins.
+  * clearance: the hand stays above the lid box and the bins still on the table, instead of the sorting bins. A pick
+    (or relay pickup) whose hand would come down on the lid box is refused (HAND_BODY: the 8 hand points the planner
+    checks do not cover the palm's body).
+  * park: both arms wait at PARK (hands out to the sides) instead of the sim home pose. At home the left hand hangs
+    over the lid, right where the right hand has to go to reach the triangle hole (Modal run t3-v16-b, Sun 15 Nov),
+    and the right hand hangs over the right half of the band, where the left arm picks cubes and cylinders (only it
+    reaches the square and circle holes). Every plan starts and ends there; the first move of each episode goes there.
   * lid: the placement we asked Aalto for (docs/research/task3-lid-placement.md), refined from head depth at the first
     look of each episode (find_lid: the lid's top plane gives its centre, turn and height). Blocks inside or on the
     lid box are never detected as objects.
@@ -26,6 +32,7 @@ Env:
   LID_REFINE   on | off: centre, turn and height from head depth (default on)
   LID_GAP      block bottom above the lid top at release, m (default 0.008)
   LID_BINS     bins still on the table besides the lid box, comma-separated (default "right")
+  LID_PARK     on | off: both arms wait at PARK between moves (default on)
 """
 from __future__ import annotations
 
@@ -64,8 +71,19 @@ DROP_TOL = 0.004                         # m: block centre at release vs the hol
 BOX_MARGIN = 0.005                       # m around the lid box where the hand must stay above the lid
 FOUND_MAX_SHIFT = 0.08                   # m: a lid found further than this from the expected place is not believed
 ALIGN_PHASES = ("carry", "carry_mid", "lower", "retreat")
-# Relay points (pelvis xy) for task 3: on the centre line and right of it, in front of the lid box.
+# Relay points (pelvis xy) for task 3: on the centre line and right of it, in front of the lid box. Points where the
+# picking hand would come down on the box are skipped per arm (_pick_clear).
 RELAY_POINTS = [(0.26, 0.0), (0.23, 0.0), (0.26, -0.04), (0.23, -0.04), (0.29, -0.02), (0.23, 0.04)]
+# Park poses (7 arm joints) for task 3. At the sim home pose (layout.ARM_HOME) the left hand hangs 11 cm above the
+# requested lid, over the triangle hole: the right hand, lowering a block into that hole, reaches into the same space.
+# Parked, the left hand points are at pelvis x 0.20-0.36, y +0.32..+0.42, z 0.17-0.24 (FK, Aalto's ArmKinematics):
+# beside the box, which ends at y +0.255. The right arm's pose mirrors it (y -0.42..-0.32, short of the right bin).
+PARK = {"left": (0.0, 0.5, 0.6, 0.0, 0.0, 0.0, 0.0), "right": (0.0, -0.5, -0.6, 0.0, 0.0, 0.0, 0.0)}
+# Footprint of a hand picking from the counter, around its grasp point (m, pelvis axes; "own" = towards the hand's
+# own side, +y for the left hand). FK of a top-down grasp puts the hand points at x -0.099..+0.057, y -0.014..+0.044
+# (left) from the grasp point; the palm, wrist and fingers are thicker than those points.
+HAND_BODY = {"back": 0.11, "front": 0.07, "own": 0.06, "other": 0.03}
+PICK_MARGIN = 0.01                       # m around the lid box for HAND_BODY
 
 
 def _env_xy(name, default):
@@ -92,6 +110,7 @@ def settings():
         "refine": os.environ.get("LID_REFINE", "on") != "off",
         "gap": float(os.environ.get("LID_GAP", "0.008") or 0.008),
         "bins": [b.strip() for b in os.environ.get("LID_BINS", "right").split(",") if b.strip()],
+        "park": os.environ.get("LID_PARK", "on") != "off",
     }
 
 
@@ -217,6 +236,21 @@ class _LidAware:
     def set_lid(self, lid):
         self.lid = lid
 
+    def _pick_clear(self, side, xy):
+        """False if `side`'s hand, picking at pelvis xy from the counter, would come down on the lid box."""
+        x, y = float(xy[0]), float(xy[1])
+        hb = HAND_BODY
+        y0, y1 = (y - hb["other"], y + hb["own"]) if side == "left" else (y - hb["own"], y + hb["other"])
+        corners = np.array([[x - hb["back"], y0], [x - hb["back"], y1], [x + hb["front"], y0], [x + hb["front"], y1]])
+        loc = self.lid.local(corners)                   # box axes; the rectangle's box-aligned hull (lid turns are small)
+        h = BOX_SIZE / 2 + PICK_MARGIN
+        return bool(loc[:, 0].max() < -h or loc[:, 0].min() > h or loc[:, 1].max() < -h or loc[:, 1].min() > h)
+
+    def _pick_refused(self, det, side):
+        if self._pick_clear(side, det.top[:2]):
+            return None
+        return Plan(False, side=side, color=det.color, reason=f"insert: the {side} hand would come down on the lid box")
+
     def bin_clearance(self, side, arm_q, hand_q, margin=None):
         m = BOX_MARGIN if margin is None else margin
         pts = self.kin.hand_points(side, arm_q, hand_q)
@@ -278,6 +312,9 @@ class InsertPlanner(_LidAware, O._OraclePlanner):
         return self._aligned(name, lambda: super(InsertPlanner, self)._cartesian(side, p0, p1, q0, name, plan))
 
     def _plan_side(self, det, side, bin_name, arm_q, hand_q, place_xy=None):
+        refused = self._pick_refused(det, side)
+        if refused is not None:
+            return refused
         shape = HOLE_SHAPE.get(bin_name)
         if shape is None or place_xy is not None:
             return super()._plan_side(det, side, bin_name, arm_q, hand_q, place_xy=place_xy)
@@ -340,6 +377,10 @@ class RelayPlanner(_LidAware, O._OraclePlanner):
         super().__init__(cfg, _points_scene(base, {f"relay{i}": xy for i, xy in enumerate(RELAY_POINTS)}, 0.0),
                          post, home, kin, safety, spec)
         self.drop_offsets = {}
+
+    def _plan_side(self, det, side, bin_name, arm_q, hand_q, place_xy=None):
+        return self._pick_refused(det, side) or super()._plan_side(det, side, bin_name, arm_q, hand_q,
+                                                                    place_xy=place_xy)
 
 
 def _plan_relay(pol, d, dets, arm, hand):
@@ -450,16 +491,22 @@ def _install(pol, s):
     bins = [b for b in s["bins"] if b in base.cfg["bins"]["centers"]]
     st = {"planner": pol.planner, "relay": pol.relay, "relay_points": O.RELAY_POINTS,
           "perception": pol.perception, "cam_scene": getattr(pol.cam, "scene", None), "bins": bins,
-          "lid": None, "refined": True}
+          "lid": None, "refined": True, "home": pol.home, "park": None}
     lid = requested_lid()
+    home = np.asarray(pol.home, float).copy()
+    if s["park"]:
+        for side in ("left", "right"):
+            home[pol.kin.sl(side)] = PARK[side]
+        st["park"] = home.tolist()
+    pol.home = home                                      # the policy's first move of each episode goes here
     icfg = copy.deepcopy(pol.cfg)
     icfg["grasp"]["drop_inset"] = None                   # release over the hole centre
     icfg["grasp"]["drop_above_rim"] = s["gap"]           # block bottom this far above the lid
     rcfg = copy.deepcopy(pol.cfg)
     rcfg["grasp"]["drop_above_rim"] = 0.012              # as Aalto's relay
     pol._insert = st
-    pol.planner = InsertPlanner(icfg, base, lid, bins, pol.post, pol.home, pol.kin, pol.safety, pol.spec)
-    pol.relay = RelayPlanner(rcfg, base, lid, bins, pol.post, pol.home, pol.kin, pol.safety, pol.spec)
+    pol.planner = InsertPlanner(icfg, base, lid, bins, pol.post, home, pol.kin, pol.safety, pol.spec)
+    pol.relay = RelayPlanner(rcfg, base, lid, bins, pol.post, home, pol.kin, pol.safety, pol.spec)
     O.RELAY_POINTS = list(RELAY_POINTS)                  # read by the policies' _plan_relay at call time
     pol._plan_relay = types.MethodType(_plan_relay, pol)
     if pol.cam is not None:
@@ -470,6 +517,7 @@ def _install(pol, s):
 def _restore(pol):
     st = pol._insert
     pol.planner, pol.relay, pol.perception = st["planner"], st["relay"], st["perception"]
+    pol.home = st["home"]
     O.RELAY_POINTS = st["relay_points"]
     pol.__dict__.pop("_plan_relay", None)
     if pol.cam is not None and st["cam_scene"] is not None:
@@ -492,7 +540,8 @@ def configure(pol, task, info):
     _set_lid(pol, requested_lid())
     pol._insert["refined"] = not (s["refine"] and pol.cam is not None)
     info["mapping"] = dict(MAPPING)
-    pol.log(f"[insert] task 3: {pol._insert['lid'].describe()}; release {100 * s['gap']:.1f} cm above the lid")
+    pol.log(f"[insert] task 3: {pol._insert['lid'].describe()}; release {100 * s['gap']:.1f} cm above the lid; "
+            + ("arms parked out to the sides between moves" if pol._insert["park"] else "arms wait at home"))
     return info
 
 

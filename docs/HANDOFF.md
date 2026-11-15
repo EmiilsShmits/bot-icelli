@@ -1,5 +1,20 @@
 # Handoff: Samer's overnight Claude session → the next agent (Sun 15 Nov, ~01:05 Helsinki)
 
+> **Update Sun ~02:10 (same next session). Results of §0 items 1–4 are in `eval/RESULTS.md` e-056 … e-063 (Emīls took e-050 … e-055 meanwhile):**
+> - **Smoothing A/B (e-056 … e-059): keep it on.** Same score with and without (venue 23/27 vs 23/27, randomised
+>   19/20 vs 19/20, 0 clips), peak arm acceleration ~13 vs 25–58 rad/s², largest one-tick speed change 0.39 vs
+>   0.8–1.7 rad/s; episodes ~16 % longer.
+> - **Lean mapping (e-061/e-062): ship it off.** In the lean look (robot pitched 8°, camera +2.4°) `LEAN_MAP=off`
+>   sorted 12/12, `auto` 7/12 (same seeds). `policy/lean.py` default is now `off` (tests updated, 5/5 in the image).
+> - **Regression (e-060):** v1.6 with the new code, Aalto's nominal look, 9/12; misses are ordinary empty grasps.
+> - **Task 3 (e-063) was not a valid test:** the sim starts with both arms near the joint-zero pose and the
+>   evaluator's homing lifts them; in the task-3 scene the left hand's zero pose is under the lid plate, so it stayed
+>   caught all episode. `modal_pipeline/sim/eval_patches.py` (installed by `modal_sim.py`'s eval command) now
+>   resets the scene when the homing fails (probe `t3-probe-b`: 0.40 → 0.01 rad from home). `insert.py` also parks
+>   both arms beside the lid between moves (at home the left hand hangs over the triangle hole). Rerun: `t3-v16-e`.
+> - Gemma retrain (sim machine, `/root/v16g`): teacher done ~00:05 UTC, then fine-tune + eval (`RETRAIN_DONE` in
+>   `/root/v16g/logs/retrain.log`).
+
 > **Update Sun ~01:55 (next session, "Sim venue look and LLM instruction parsing"):** everything below marked
 > uncommitted is now committed (75ed976 Modal + lean variant + task-3 lid, 49f78b3 policy, plus a docs commit).
 > - The queued Modal runs `t3-v16-a` and `reg-v16-all-nominal` had failed in 6–18 s: Windows-built images lose

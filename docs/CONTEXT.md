@@ -1,6 +1,6 @@
 # Team context: read this first
 
-**Last updated:** Sat 14 Nov 2026, ~21:30 Helsinki time, by Samer + Claude. If you change something this file describes, update it in the same commit.
+**Last updated:** Sun 15 Nov 2026, ~02:15 Helsinki time, by Samer + Claude (§4.3 overnight results; §1–2 still as of Sat evening). If you change something this file describes, update it in the same commit.
 
 **Every statement here is one of three kinds:**
 - **FACT**: measured by us, or said by the organisers. Each one names its source and time. Numbers come from `eval/RESULTS.md` and the linked files; check there before you build on one.
@@ -65,6 +65,17 @@ How to hand in: [`runbooks/submit.md`](runbooks/submit.md). Hard rules for code:
 - Gemma 3 1B student: 0.14 s on the GPU (1.6 s on 8 CPU threads), 2.0 GB VRAM, 2.0 GB of weights, 9.5 s from a cold disk to the first answer.
 
 ### 4.3 Sim scores ([`../eval/RESULTS.md`](../eval/RESULTS.md))
+**Overnight Sat → Sun (Samer + Claude, e-056 … e-063):**
+- **Smooth motion (W1, `policy/smooth_motion.py`) costs no score:** v1.6 with vs without, same seeds: venue look
+  23/27 vs 23/27, `AALTO_DR=train` 19/20 vs 19/20, 0 clipped steps. Peak arm acceleration ~13 vs 25–58 rad/s²,
+  largest one-tick speed change 0.39 vs 0.8–1.7 rad/s; episodes ~16 % longer. On by default.
+- **Lean mapping (`policy/lean.py`) hurts in sim:** robot pitched 8° + camera 2.4° (the lean fitted to Aalto's real
+  footage), v1.6 seeds 1000–1002: mapping off 12/12, on 7/12. Default switched to off (847df56).
+- **Task 3:** the first run (e-063, 0/6 inserted, −1 per episode) was invalid: the sim starts with the arms near
+  joint zero and in our lid placement the left hand got caught under the lid before every trial. Fixed for our
+  Modal runs (`modal_pipeline/sim/eval_patches.py`); `insert.py` now parks both arms beside the lid. Rerun pending.
+- v1.6 with all the new code in Aalto's nominal look: 9/12 (e-060).
+
 | Run | Policy | Sim / task / trials | Objects sorted | Notes |
 |---|---|---|---|---|
 | e-008 | Aalto's classical baseline, camera only (a valid submission) | nominal, sort_fixed, 10 | 26/40 (65 %), gate PASS | **far cross-body objects 2/9**, the rest 24/31 |

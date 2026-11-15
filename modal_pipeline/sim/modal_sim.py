@@ -117,6 +117,7 @@ image = (
     .add_local_file(HERE.parent / "submission/server.py", "/opt/submission/server.py")
     .add_local_file(HERE / "gen_demos.py", "/opt/sim/gen_demos.py")
     .add_local_file(HERE / "scene_variant.py", "/opt/sim/scene_variant.py")
+    .add_local_file(HERE / "eval_patches.py", "/opt/sim/eval_patches.py")
     .add_local_dir(TEAM / "sim" / "task3", "/opt/task3", ignore=["*.md"])          # rung-3 lid (scene_variant --task3)
     .add_local_dir(HERE.parent / "agent", "/opt/agent_pkg/agent", ignore=["**/__pycache__", "**/*.pyc", "**/*.md"])
     # The ADK agent (adk_agents/robot_sorter). Its .env holds the API key and must not leave the laptop: the key
@@ -140,10 +141,12 @@ convert_image = (
 )
 
 # Their evaluator, unchanged, except that its per-trial recorder also writes the head-camera video (the runner's
-# own --video flag, which evaluate.py does not expose).
+# own --video flag, which evaluate.py does not expose) and that an arm caught during its homing is freed before the
+# trial (sim/eval_patches.py: the left hand caught in the task-3 lid; no effect when the homing works).
 EVAL_WITH_VIDEO = ("python -c 'import ssl, sys; from aaltonomous.deploy import runner as R; Rec = R.Recorder; "
                    "R.Recorder = lambda path, **kw: Rec(path, video=True); "
-                   "from aaltonomous.sim import evaluate as E; sys.exit(E.main(sys.argv[1:]))'")
+                   "from aaltonomous.sim import evaluate as E; sys.path.insert(0, \"/opt/sim\"); import eval_patches; "
+                   "eval_patches.install(E); sys.exit(E.main(sys.argv[1:]))'")
 
 kit_vol = modal.Volume.from_name("aalto-kitcache", create_if_missing=True)      # RTX shader cache (first start is slow)
 out_vol = modal.Volume.from_name("aalto-sim-out", create_if_missing=True)
