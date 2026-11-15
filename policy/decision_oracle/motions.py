@@ -214,8 +214,12 @@ def parse_face(grasp):
     return int(s), None
 
 
-def grasp_variants(det, arm):
-    """Grasp labels to try for one object and arm: Aalto's faces, stock hints, then triangle finger-angle variants."""
+def grasp_variants(det, arm, tri_phis=None):
+    """Grasp labels to try for one object and arm: Aalto's faces, stock hints, then triangle finger-angle variants.
+    tri_phis: v1.6 V16_TRI only (tri_v16.tri_angles): a standing triangle gets these angles for this arm, then the
+    stock claw, instead of Aalto's faces + TRI_PHI_ALTS. None (v1.5, v1.6 default) = unchanged."""
+    if tri_phis is not None and getattr(det, "shape", None) == "triangle":
+        return [f"face{k}p{phi:.0f}" for phi in tri_phis(arm) for k, _ in face_options(det, arm, phi)] + [GRASP_STOCK]
     out = [f"face{k}" for k, _ in face_options(det, arm)] + [GRASP_STOCK]
     if getattr(det, "shape", None) == "triangle":
         out += [f"face{k}p{phi:.0f}" for phi in TRI_PHI_ALTS for k, _ in face_options(det, arm, phi)]

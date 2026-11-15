@@ -227,7 +227,8 @@ class MemoryEnumerator(OptionEnumerator):
 
         def variants(d):
             """Arm x grasp variants of one object: untried pairs first, face grasps before the stock claw."""
-            pairs = [(arm, g) for arm in ("left", "right") for g in grasp_variants(d, arm)]
+            pairs = [(arm, g) for arm in ("left", "right")
+                     for g in grasp_variants(d, arm, getattr(pol, "tri_phis", None))]
             # Aalto's rule already tried every face on its arm before it fell back to the stock claw
             stock_arms = {o.arm for o in options if o.obj == d.name and o.grasp == GRASP_STOCK}
             pairs = [(a, g) for a, g in pairs if not (a in stock_arms and g.startswith("face") and "p" not in g)]

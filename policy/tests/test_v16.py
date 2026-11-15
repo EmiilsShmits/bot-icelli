@@ -267,5 +267,233 @@ class TestDecisionLog(unittest.TestCase):
         self.assertEqual(out["rows"], [{"a": 1}])
 
 
+@unittest.skipUnless(HAVE_PIN, "needs OpenCV + Pinocchio")
+class TestNearBody(unittest.TestCase):
+    """decision_oracle/near_v16.py: V16_NEAR off by default; with relay / push a near-body triangle without a face
+    grasp to its bin gets that option instead of the stock claw."""
+
+    def _pol(self, mode):
+        import os
+        from aaltonomous.interface import tasks
+        from decision_oracle.test_offline import FakeClient, setup
+        from decision_oracle.test_tipcheck import venue_scene
+        from decision_oracle.upgrades_v16 import V16OraclePolicy
+        old = os.environ.get("V16_NEAR")
+        os.environ["V16_NEAR"] = mode
+        try:
+            scene = venue_scene(str(ROOT / "sim" / "venue_look" / "venue.yaml"))
+            fc = FakeClient(scene, tasks.sample_layout(np.random.default_rng(0), **scene.layout_kwargs()))
+            pol = V16OraclePolicy(fc, scene=scene, sides="off", threaded=False, prefetch=False, log=None,
+                                  instruction="rules", labels="off")
+        except Exception as e:  # no URDF on laptops
+            self.skipTest(f"planner unavailable: {e!r}")
+        finally:
+            if old is None:
+                os.environ.pop("V16_NEAR", None)
+            else:
+                os.environ["V16_NEAR"] = old
+        setup(pol)
+        pol._update_drop_offsets()
+        return pol
+
+    def _choose(self, pol):
+        import copy
+        d = copy.copy(pol.perception.detect()[0])
+        d.top = np.array([0.21, 0.07, d.top[2]])
+        d.shape, d.yaw, d.name, d.color = "triangle", np.radians(60), "cam_red_9", "red"
+        opts, _ = pol.enum.feasible_options([d], pol.arm_cmd, pol.hand_cmd, budget_s=3.0)
+        o, _, _ = pol.chooser.choose(opts, {"dets": [d]})
+        return o
+
+    def test_off_by_default(self):
+        pol = self._pol("off")
+        self.assertEqual(pol.near, "off")
+        self.assertEqual(self._choose(pol).grasp, "stock")
+
+    def test_push_and_relay(self):
+        o = self._choose(self._pol("push"))
+        self.assertEqual(o.route, "push")
+        self.assertEqual(o.plan.safety_clips, 0)
+        self.assertGreater(o.plan.waypoints["push_to"][0], 0.23)        # ends where grasps have room
+        o = self._choose(self._pol("relay"))
+        self.assertEqual(o.route, "relay")
+        self.assertTrue(o.grasp.startswith("face"), o.grasp)
+
+
+
+class TestCrowd(unittest.TestCase):
+    """decision_oracle/crowd_v16.py on seed 1004's cluster (e-050 / e-051: a purple triangle between a yellow
+    cylinder and an orange cube; three face grasps closed on nothing). Positions and yaws as the camera saw them."""
+
+    def _setup(self, crowd):
+        import copy
+        import os
+        self._old = os.environ.get("V16_CROWD")
+        os.environ["V16_CROWD"] = crowd
+        pol = TestNearBody()._pol("off")
+        base = pol.perception.detect()[0]
+
+        def det(name, color, shape, xy, yaw, b):
+            d = copy.copy(base)
+            d.top = np.array([xy[0], xy[1], base.top[2]])
+            d.name, d.color, d.shape, d.yaw, d.tipped, d.bin = name, color, shape, np.radians(yaw), False, b
+            return d
+        pol.mapping = {"red": "right", "yellow": "left", "blue": "center"}
+        cl = [det("cam_red_1", "red", "cube", (0.222, 0.016), -28.8, "right"),
+              det("cam_yellow_2", "yellow", "cylinder", (0.313, 0.034), 0.0, "left"),
+              det("cam_blue_5", "blue", "triangle", (0.258, 0.074), 39.8, "center")]
+        for pl in (pol.planner, pol.relay):
+            pl.crowd = crowd == "on"
+        pol.hist = {}
+        return pol, cl
+
+    def tearDown(self):
+        import os
+        if getattr(self, "_old", None) is None:
+            os.environ.pop("V16_CROWD", None)
+        else:
+            os.environ["V16_CROWD"] = self._old
+
+    def _first(self, pol, dets):
+        opts, _ = pol.enum.feasible_options(dets, pol.arm_cmd, pol.hand_cmd, budget_s=6.0)
+        o, _, rec = pol.chooser.choose(opts, {"dets": dets})
+        return o, rec
+
+    def test_off_reproduces_the_miss(self):
+        pol, cl = self._setup("off")
+        o, _ = self._first(pol, cl)
+        self.assertEqual((o.obj, o.arm, o.grasp), ("cam_blue_5", "left", "face1"))
+        self.assertLess(pol.planner.finger_clearance(o.plan, o.plan.side, o.det), 0.0)   # fingers on a neighbour
+
+    def test_on_picks_from_the_outside_in(self):
+        pol, cl = self._setup("on")
+        o, rec = self._first(pol, cl)
+        self.assertNotEqual(o.obj, "cam_blue_5")
+        self.assertIn("cam_blue_5", rec.get("wait") or [])
+        self.assertGreaterEqual(o.crowd_m, 0.008)
+        o2, _ = self._first(pol, [d for d in cl if d.name != o.obj])     # the next look, one neighbour fewer
+        self.assertGreaterEqual(o2.crowd_m, 0.008)
+
+    def test_tight_default_is_set_aside(self):
+        # e-054 seed 1004 (a prefetched look): the planner's default was the tight face grasp; the chooser must still
+        # pick a clear option, not fall back to the default with an error
+        pol, cl = self._setup("on")
+        opts, _ = pol.enum.feasible_options(cl, pol.arm_cmd, pol.hand_cmd, budget_s=6.0)
+        tight = [o for o in opts if o.crowd_m is not None and o.crowd_m < 0.008]
+        self.assertTrue(tight)
+        for o in opts:
+            o.is_default = o is tight[0]
+        o, _, rec = pol.chooser.choose(opts, {"dets": cl})
+        self.assertIsNone(rec.get("fallback"))
+        self.assertGreaterEqual(o.crowd_m, 0.008)
+
+
+
+@unittest.skipUnless(HAVE_PIN, "needs Pinocchio")
+class TestTriMid(unittest.TestCase):
+    """decision_oracle/tri_v16.py: V16_TRI off by default; with "mid" a standing triangle is planned with the grasp
+    point at the fingertip/thumb midpoint and this hand's angles (labelled face<k>p<angle>), other shapes unchanged."""
+
+    def _pol(self, mode):
+        import os
+        from aaltonomous.interface import tasks
+        from decision_oracle.test_offline import FakeClient, setup
+        from decision_oracle.test_tipcheck import venue_scene
+        from decision_oracle.upgrades_v16 import V16OraclePolicy
+        old = os.environ.get("V16_TRI")
+        os.environ["V16_TRI"] = mode
+        try:
+            scene = venue_scene(str(ROOT / "sim" / "venue_look" / "venue.yaml"))
+            fc = FakeClient(scene, tasks.sample_layout(np.random.default_rng(0), **scene.layout_kwargs()))
+            pol = V16OraclePolicy(fc, scene=scene, sides="off", threaded=False, prefetch=False, log=None,
+                                  instruction="rules", labels="off")
+        except Exception as e:  # no URDF on laptops
+            self.skipTest(f"planner unavailable: {e!r}")
+        finally:
+            if old is None:
+                os.environ.pop("V16_TRI", None)
+            else:
+                os.environ["V16_TRI"] = old
+        setup(pol)
+        pol._update_drop_offsets()
+        return pol
+
+    def _det(self, pol, shape, y=0.10):
+        import copy
+        d = copy.copy(pol.perception.detect()[0])
+        d.top = np.array([0.24, y, d.top[2]])
+        d.shape, d.yaw, d.name, d.color = shape, np.radians(10), "cam_red_9", "red"
+        return d
+
+    def test_off_by_default(self):
+        from decision_oracle.motions import grasp_variants
+        pol = self._pol("off")
+        self.assertEqual(pol.tri, "off")
+        self.assertIsNone(pol.tri_phis)
+        d = self._det(pol, "triangle")
+        self.assertEqual(grasp_variants(d, "left", pol.tri_phis), grasp_variants(d, "left"))
+
+    def test_mid(self):
+        from decision_oracle.motions import GRASP_STOCK, grasp_variants
+        from decision_oracle.tri_v16 import TRI_POINT_X, tri_angles
+        pol = self._pol("mid")
+        self.assertEqual(tri_angles("right"), (90.0, 30.0, 105.0, 45.0))     # mirror of the left hand's
+        d = self._det(pol, "triangle")
+        for arm in ("left", "right"):
+            v = grasp_variants(d, arm, pol.tri_phis)
+            self.assertEqual(v[-1], GRASP_STOCK)
+            self.assertTrue(all("p" in g for g in v[:-1]) and v[:-1], v)
+            self.assertEqual(v[0].split("p")[1], f"{tri_angles(arm)[0]:.0f}", v)
+        x0 = pol.planner.kin.offset["left"].copy()
+        p = pol.planner.plan(d, pol.arm_cmd, pol.hand_cmd, bin_name="left", relocate=False)
+        self.assertTrue(p.ok, p.reason)
+        self.assertIn("[tri mid]", p.reason)
+        self.assertTrue(p.tri_label.startswith("face"), p.tri_label)
+        np.testing.assert_array_equal(pol.planner.kin.offset["left"], x0)          # restored after planning
+        # the grasp point used: the palm point at the grasp is the planned grasp waypoint with x = TRI_POINT_X
+        kin = pol.planner.kin
+        e = next(e for n, s_, e in p.phases if n == "descend")
+        kin.offset["left"] = np.array([TRI_POINT_X, x0[1], x0[2]])
+        try:
+            g = kin.grasp_pose("left", p.arm[e - 1])[0]
+        finally:
+            kin.offset["left"] = x0
+        self.assertLess(np.linalg.norm(g[:2] - p.waypoints["grasp"][:2]), 0.004)
+        # the option keeps the plan's own label; a cube is planned exactly as with the flag off
+        opts, _ = pol.enum.feasible_options([d], pol.arm_cmd, pol.hand_cmd, budget_s=0.0)
+        self.assertEqual(opts[0].grasp, p.tri_label)
+        c = self._det(pol, "cube")
+        pc = pol.planner.plan(c, pol.arm_cmd, pol.hand_cmd, bin_name="left", relocate=False)
+        po = self._pol("off").planner.plan(c, pol.arm_cmd, pol.hand_cmd, bin_name="left", relocate=False)
+        self.assertEqual(pc.ok, po.ok)
+        if pc.ok:
+            np.testing.assert_allclose(pc.arm, po.arm)
+
+
+class TestLeanBase(unittest.TestCase):
+    """V16_CALIB=lean: the IK model moved into the camera's table frame (handeye.set_kin_base)."""
+
+    def test_fk_ik_follow_the_base_and_restore(self):
+        from aaltonomous.baselines.classical.config import load_config
+        from aaltonomous.baselines.classical.kinematics import ArmKinematics
+        from decision_oracle.handeye import _rodrigues, set_kin_base
+        kin = ArmKinematics(load_config())
+        q = np.zeros(14)
+        q[3] = q[10] = 1.0
+        p0, a0 = kin.grasp_pose("left", q)
+        A = np.eye(4)
+        A[:3, :3], A[:3, 3] = _rodrigues(np.radians([0.0, 8.0, 0.0])), [0.01, -0.02, 0.03]
+        set_kin_base(kin, A)
+        p1, a1 = kin.grasp_pose("left", q)
+        np.testing.assert_allclose(p1, A[:3, :3] @ p0 + A[:3, 3], atol=1e-9)
+        np.testing.assert_allclose(a1, A[:3, :3] @ a0, atol=1e-9)
+        tgt = A[:3, :3] @ np.array([0.35, 0.15, 0.05]) + A[:3, 3]
+        _, ok, err, _ = kin.solve("left", tgt, q)
+        self.assertTrue(ok)
+        self.assertLess(err, 0.002)
+        set_kin_base(kin, None)
+        np.testing.assert_allclose(kin.grasp_pose("left", q)[0], p0, atol=1e-12)
+
+
 if __name__ == "__main__":
     unittest.main()
