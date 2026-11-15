@@ -1,0 +1,69 @@
+# MuJoCo re-creation of the Junction venue table (sim/mujoco/build.py). Every number says where it comes from:
+#   measured  = team tape measurement at the venue, Sat 14 Nov 2026
+#   aalto     = Aalto's scene.yaml / calibration.yaml / Isaac scene (third_party/aaltonomous-humanoid)
+#   venue     = our image-based venue look (sim/venue_look/venue.yaml)
+#   guess     = ours, to be measured
+# Frames as in Aalto's scene.yaml: pelvis x forward, y left, z up; world = pelvis + (0, 0, pelvis_height).
+
+robot:
+  mjcf: artifacts/mujoco/g1/g1_body29_hand14.xml   # Unitree xr_teleoperate @817fb00 (sim/mujoco/get_assets.sh)
+  pelvis_height: 0.79          # aalto: pelvis above the floor (scene.yaml assumption)
+  # Position control like Unitree's G1 arm / Dex3 controllers (xr_teleoperate robot_arm.py, robot_hand_unitree.py),
+  # with the arm's gravity feed-forward as body gravity compensation.
+  gains:
+    arm:   {kp: 80.0, kd: 3.0, armature: 0.01}
+    wrist: {kp: 40.0, kd: 1.5, armature: 0.01}
+    hand:  {kp: 1.5, kd: 0.2, armature: 0.001}
+
+table:
+  height: 0.80                 # aalto: table top above the floor (pelvis z = +0.01)
+  robot_to_table_edge: 0.10    # guess: the robot leans against the table (measured: "leaning against it"); pelvis x of
+                               # the near edge. With table_edge_to_bins it puts the bins 40 cm in front of the
+                               # pelvis, as Aalto's published layout says.
+  size: [0.60, 1.10]           # aalto counter_size, x (away from the robot) by y
+  thickness: 0.04
+  rgb: [200, 168, 156]         # venue counter tone
+  friction: 0.8                # aalto Isaac table (static 0.8, dynamic 0.6)
+
+bins:
+  table_edge_to_bins: 0.30     # measured: table edge -> near edge of the bins
+  gap: 0.05                    # measured (~5 cm), = aalto
+  outer_size: 0.21             # aalto, measured by Aalto on Fri 13 Nov
+  wall_height: 0.07            # measured (aalto default 0.06, venue look 0.075)
+  wall_thickness: 0.003        # aalto
+  rgb: [228, 98, 58]           # venue (orange paper)
+  liner_rgb: [190, 182, 160]   # venue (cardboard inside)
+
+camera:
+  above_table: 0.48            # measured: head camera lens straight down to the table top
+  # Direction: Aalto's calibration.yaml T_pelvis_optical (URDF d435_link) turned as in the venue look, about the
+  # camera's own axes. The height above replaces the URDF height (0.464 m above the table).
+  pitch_down_deg: 9.0          # venue
+  roll_deg: 1.0                # venue
+  yaw_deg: -0.5                # venue
+  shift_y: 0.025               # venue (towards the robot's left)
+  width: 640                   # aalto calibration.yaml (D435i colour)
+  height: 480
+  fx: 604.827                  # aalto calibration.yaml: the render uses the full intrinsics (principal point off
+  fy: 604.298                  # centre by 5 / 11 px; a centred render tilts the view ~1 deg against the policy's K)
+  cx: 325.042
+  cy: 250.927
+
+objects:
+  mass: 0.05                   # aalto Isaac (45 mm PLA at ~20 % infill)
+  friction: 1.2                # aalto Isaac static friction (dynamic 1.0)
+  # sim colour name -> RGB as the real head camera sees the blocks (venue look default; --colors sim = Aalto's)
+  colors:
+    venue: {red: [250, 140, 55], yellow: [218, 204, 88], blue: [92, 96, 182]}
+    sim:   {red: [200, 30, 30], yellow: [235, 200, 20], blue: [30, 70, 200]}
+    real_camera: {red: [230, 129, 62], yellow: [194, 217, 150], blue: [82, 119, 191]}   # scene_variant --colors venue
+
+layout:                        # venue look (sim/venue_look/venue.yaml scene:), same seeds -> same layouts as Isaac runs
+  region_x: [0.30, 0.60]
+  region_y: [0.04, 0.20]
+  min_spacing: 0.065
+  n_cubes: [3, 6]
+
+physics:
+  timestep: 0.002
+  settle_s: 3.0
