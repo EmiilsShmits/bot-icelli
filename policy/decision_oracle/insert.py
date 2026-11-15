@@ -33,6 +33,7 @@ Env:
   LID_GAP      block bottom above the lid top at release, m (default 0.008)
   LID_BINS     bins still on the table besides the lid box, comma-separated (default "right")
   LID_PARK     on | off: both arms wait at PARK between moves (default on)
+  LID_DWELL    s to hold the block still over the hole before letting go (default 0: open at once, as Aalto's planner)
   LID_GRASP_H  grasp point height as a fraction of the block's height, task 3 only (default 0.5 = Aalto's). Above
                0.5 the pinch sits above the block's centre of mass, so it hangs straight instead of tilting.
   LID_SHAPES   shapes that are put through the lid, comma-separated (default "cylinder"); the others stay on the
@@ -119,6 +120,7 @@ def settings():
         "park": os.environ.get("LID_PARK", "on") != "off",
         "shapes": [v.strip() for v in os.environ.get("LID_SHAPES", "cylinder").split(",") if v.strip() in SHAPES],
         "grasp_h": float(os.environ.get("LID_GRASP_H", "0.5") or 0.5),
+        "dwell": float(os.environ.get("LID_DWELL", "0") or 0),
     }
 
 
@@ -361,7 +363,7 @@ class InsertPlanner(_LidAware, O._OraclePlanner):
                 elif derr > DROP_TOL:
                     p.ok, p.reason = False, f"block centre {1000 * derr:.0f} mm off the {shape} hole"
             if p.ok:
-                return p
+                return _add_dwell(p, settings()["dwell"], self.dt)
             last = p
         return last
 
@@ -377,6 +379,25 @@ class InsertPlanner(_LidAware, O._OraclePlanner):
         x = self.kin.data.oMf[self.kin.palm[side]].rotation[:, 0]
         ach = float(np.arctan2(x[1], x[0]))
         return float(np.degrees(abs(_wrap(ach - a2, P)))), derr
+
+
+def _add_dwell(plan, dwell_s, dt):
+    """Hold the release pose for dwell_s before the hand opens (Aalto's planner opens the moment the lowering ends,
+    so a block still swinging in the pinch is let go mid-swing). A new phase "settle" sits between carry and open."""
+    n = int(round(float(dwell_s) / dt))
+    starts = {name: s for name, s, e in plan.phases}
+    if n <= 0 or "open" not in starts or starts["open"] == 0:
+        return plan
+    k = starts["open"]
+    plan.arm = np.vstack([plan.arm[:k], np.repeat(plan.arm[k - 1][None], n, 0), plan.arm[k:]])
+    plan.hand = np.vstack([plan.hand[:k], np.repeat(plan.hand[k - 1][None], n, 0), plan.hand[k:]])
+    phases = []
+    for name, s, e in plan.phases:
+        if name == "open":
+            phases.append(("settle", k, k + n))
+        phases.append((name, s + n, e + n) if s >= k else (name, s, e))
+    plan.phases = phases
+    return plan
 
 
 class RelayPlanner(_LidAware, O._OraclePlanner):

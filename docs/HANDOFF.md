@@ -1,5 +1,22 @@
 # Handoff: Samer's overnight Claude session → the next agent (Sun 15 Nov, ~01:05 Helsinki)
 
+> **Update Sun ~03:00: teammates' latest work vs `final-v16`, and task 3.**
+> - **Emīls** (838a407): latest main in the venue look + real colours 22/27 with push on (e-068); `LEAN_MAP=auto`
+>   there 0/27; crowd check on 13/18 vs off 11/18 (e-069). Confirms `final-v16`'s defaults (lean off, crowd on);
+>   push on/off is within noise (e-066 push off 24/27). **Tiya** (8a45b81): triangles no longer abort on an "empty"
+>   finger reading (already in `final-v16`); her wrist-camera triangle check is only in our copy of Marcus's agent
+>   (`modal_pipeline/adk_agents/`), not in `final-adk`. **Marcus**: 1855ff4 (= `final-adk`) scored 19/20 in Aalto's
+>   nominal look (his run, seeds 1000–1004; 1000–1002: 11/12 vs v1.6's 9/12 in e-060); his 75f39af self-calibration
+>   (camera against the robot's own arms, GTSAM) measured on Aalto's real drop 3: table rises 12.3° away from the
+>   robot, bins 6–8 cm further than `scene.yaml`, arm-vs-model error 15 mm → 4 mm. Not in any image (needs gtsam +
+>   meshes), ~20 s per episode, no sim gain, not run on the robot.
+> - **Task-3 videos** (head camera, Modal runs of `final-v16`'s code): `artifacts/task3_videos/` (git-ignored, on
+>   Samer's laptop). `t3-v16-f_*` = cylinders only (`final-v16`'s default), `t3-v16-e_*` = all shapes. More runs:
+>   `modal.exe volume get aalto-sim-out <tag> <dir>`, files `runs/eval/*/episode_NNN.mp4`.
+> - **Task-3 failure modes** (videos): the cylinder hangs tilted in the 2-finger pinch and jams on the rim; the cube
+>   arrives turned ~25° (the square hole allows ~19°); the triangle arrives lying on its side. Tests running:
+>   release 12 mm down into the hole (`LID_GAP=-0.012`), with and without a higher pinch (`LID_GRASP_H=0.6`).
+
 > **Update Sun ~02:30: final candidate images are built on `samer-v1-sim` (main 14e39ce), NOT pushed** (pushing
 > to the public GHCR package publishes the Gemini key inside; Samer's call, as for `presubmit-adk-1`):
 > - `bot-icelli/policy:final-v16` (v1.6 + Emīls's 83d53a7 + smoothing + lean off + task-3 park), `:final-v16g`
