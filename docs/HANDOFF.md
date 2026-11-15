@@ -10,7 +10,7 @@
 >     undo; tests in `policy/tests/test_selfcol.py`).
 >   - Close hold 1.2 s (the real fingers settle in ~1 s).
 >   - `ARM_ERR` right 3 cm.
-> - Sim check: Modal `real3-nominal`, `real3-venue` (e-087, e-088 in `eval/RESULTS.md`).
+> - Sim check: Modal `real3-nominal`, `real3-venue` (e-089, e-090 in `eval/RESULTS.md`).
 > - Push (Samer, on samer-v1-sim): `docker tag bot-icelli/policy:final-v16-real3 ghcr.io/samer-cyber/bot-icelli-policy:final-v16-real3 && docker push ghcr.io/samer-cyber/bot-icelli-policy:final-v16-real3`
 
 > **Update Sun ~07:40: the 06:55 robot run of `final-v16-real` picked the yellow cube and placed it in a box (the
