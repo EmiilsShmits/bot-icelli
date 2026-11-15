@@ -33,6 +33,8 @@ Env:
   LID_GAP      block bottom above the lid top at release, m (default 0.008)
   LID_BINS     bins still on the table besides the lid box, comma-separated (default "right")
   LID_PARK     on | off: both arms wait at PARK between moves (default on)
+  LID_GRASP_H  grasp point height as a fraction of the block's height, task 3 only (default 0.5 = Aalto's). Above
+               0.5 the pinch sits above the block's centre of mass, so it hangs straight instead of tilting.
   LID_SHAPES   shapes that are put through the lid, comma-separated (default "cylinder"); the others stay on the
                counter (0 points instead of a likely -1). Modal t3-v16-e (Sun 15 Nov, 3 trials, both fixes above):
                cylinders 2/2 inserted, triangles 0/5 (2 forced), cubes 0/2 (1 forced): +2, +2, -1 with all shapes,
@@ -116,6 +118,7 @@ def settings():
         "bins": [b.strip() for b in os.environ.get("LID_BINS", "right").split(",") if b.strip()],
         "park": os.environ.get("LID_PARK", "on") != "off",
         "shapes": [v.strip() for v in os.environ.get("LID_SHAPES", "cylinder").split(",") if v.strip() in SHAPES],
+        "grasp_h": float(os.environ.get("LID_GRASP_H", "0.5") or 0.5),
     }
 
 
@@ -509,6 +512,7 @@ def _install(pol, s):
     icfg = copy.deepcopy(pol.cfg)
     icfg["grasp"]["drop_inset"] = None                   # release over the hole centre
     icfg["grasp"]["drop_above_rim"] = s["gap"]           # block bottom this far above the lid
+    icfg["grasp"]["height_frac"] = s["grasp_h"]          # grasp point height on the block (Aalto default 0.5)
     rcfg = copy.deepcopy(pol.cfg)
     rcfg["grasp"]["drop_above_rim"] = 0.012              # as Aalto's relay
     pol._insert = st
