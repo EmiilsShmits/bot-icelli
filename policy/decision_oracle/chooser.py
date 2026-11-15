@@ -40,14 +40,26 @@ GRASP_WORDS = {
 }
 
 
+def clean_key(text):
+    """The key from a key file or the environment: the bare key, or a `GEMINI_API_KEY= <key>` line (the team's .env
+    has a space after the '='; Sun 15 Nov the image's key file held that whole line and every call got HTTP 400)."""
+    t = (text or "").strip()
+    for line in t.splitlines():
+        if "=" in line and line.split("=", 1)[0].strip().endswith("API_KEY"):
+            return line.split("=", 1)[1].strip().strip("\"'") or None
+    return t.strip("\"'") or None
+
+
 def _api_key():
-    k = os.environ.get("GEMINI_API_KEY")
+    k = clean_key(os.environ.get("GEMINI_API_KEY"))
     if k:
-        return k.strip()
+        return k
     for path in (os.environ.get("DECISION_KEY_FILE", ""), "/root/.decision_key"):
         if path and os.path.exists(path):
             with open(path) as f:
-                return f.read().strip()
+                k = clean_key(f.read())
+            if k:
+                return k
     raise RuntimeError("no GEMINI_API_KEY / key file")
 
 

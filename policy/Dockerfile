@@ -49,7 +49,9 @@ COPY policy/ policy/
 #   make docker-build POLICY=v1.6 GEMINI_KEY_FILE=~/adk_key.env      (a file with GEMINI_API_KEY=... or just the key)
 RUN --mount=type=secret,id=gemini,required=false \
     if [ -s /run/secrets/gemini ]; then python3 -c "import re; t = open('/run/secrets/gemini').read(); \
-m = re.search(r'GEMINI_API_KEY=[\"\']?([^\s\"\']+)', t); open('/root/.decision_key', 'w').write(m.group(1) if m else t.strip())" \
+m = re.search(r'GEMINI_API_KEY\s*=\s*[\"\']?([^\s\"\']+)', t); open('/root/.decision_key', 'w').write(m.group(1) if m else t.strip())" \
+    && python3 -c "k = open('/root/.decision_key').read(); assert k and '=' not in k and not any(c.isspace() for c in k), \
+'key file holds more than the key (Sun 15 Nov: the whole .env line went in and every call got HTTP 400)'" \
     && chmod 600 /root/.decision_key && echo "Gemini key baked in"; fi
 
 ENV POLICY=${POLICY}
