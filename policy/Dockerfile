@@ -55,6 +55,11 @@ m = re.search(r'GEMINI_API_KEY\s*=\s*[\"\']?([^\s\"\']+)', t); open('/root/.deci
     && chmod 600 /root/.decision_key && echo "Gemini key baked in"; fi
 
 ENV POLICY=${POLICY}
+# Real robot, from the Sun 06:19 run (docs/research/real-run-0619.md): the right hand lands ~2.5 cm to the robot's
+# right; grasp a bit lower on the block; the real fingers need ~0.5 s to close; release further into the box.
+# Any of these: docker run -e ARM_ERR= -e AALTO_CFG_OVERRIDES= ... to undo.
+ENV ARM_ERR="right=0,-0.025,0" \
+    AALTO_CFG_OVERRIDES='{"grasp.height_frac": 0.35, "motion.close_hold_s": 0.5, "grasp.drop_inset": 0.07}'
 # Load-time check at build: the chosen policy constructs (config, URDF, calibration, parser all load). v1.5/v1.6/v1.6g
 # also import task 3's module, which their reset() imports on every episode (.dockerignore must let it in).
 RUN python3 -c "import os, sys; sys.path.insert(0, '/app/policy'); import server; server.POLICIES[os.environ['POLICY']](); \
