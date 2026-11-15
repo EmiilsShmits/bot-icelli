@@ -4,7 +4,8 @@ agent image's serve.py via policy/adk/patch_smooth.py):
   * smooth_motion: smooth, jerk-limited arm motions (SMOOTH_MOTION=0 turns them off);
   * cfg_overrides: planner config from the environment (AALTO_CFG_OVERRIDES, ARM_XY_OFFSET);
   * lean: IK targets mapped from the head-camera fit's table frame into the arm frame when the fit says the robot
-    leans (real robot only; LEAN_MAP=off turns it off). Needs a set_fit() call per episode from the camera fit.
+    leans. Off by default since Sun 15 Nov (it cost 5 of 12 objects in the lean sim); LEAN_MAP=auto turns it on.
+    Needs a set_fit() call per episode from the camera fit.
 """
 from __future__ import annotations
 

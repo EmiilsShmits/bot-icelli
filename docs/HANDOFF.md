@@ -197,7 +197,7 @@ and the `_v16g` part of `policy/server.py`.
 
 ## 6. Decisions for Samer / the team
 1. Final image: Marcus's agent or v1.6/v1.6g (task 3 only exists in our v1.x stack so far).
-2. Ship the lean mapping `auto` (on for the real robot) or off. Evidence: 109 real frames, 43 episodes; the lean model
+2. **Decided by the sim (Sun ~02:00): off** (e-061/e-062, default changed in 847df56). Was: ship the lean mapping `auto` (on for the real robot) or off. Evidence: 109 real frames, 43 episodes; the lean model
    fits to 2.3 cm, the mounted-tilt model (what all our policies assume) to 6.4 cm. Not yet tested in a sim.
 3. Attempt task 3 on the real robot (+3 per block, −1 per block left on/beside the lid).
 4. Stop idle sim A (pid 185881) to speed up the A/B.

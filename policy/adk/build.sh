@@ -6,8 +6,8 @@
 # 3) patch_headpose.py: his head-camera fit judged by the camera's own move (else the real ~10 deg tilt is ignored);
 #    patch_smooth.py + policy/runtime.py: smooth, jerk-limited arm motions (SMOOTH_MOTION=0 turns it off) and
 #    planner config overrides from the environment (AALTO_CFG_OVERRIDES, ARM_XY_OFFSET; policy/cfg_overrides.py);
-#    patch_lean.py + policy/lean.py: on the real robot (head fit tilted >= 5 deg) IK targets are mapped into the
-#    arm frame, because the robot leans (docs/research/hand-offset-real-data.md; LEAN_MAP=off turns it off);
+#    patch_lean.py + policy/lean.py: the arm-frame mapping for a leaning robot (docs/research/hand-offset-real-data.md),
+#    OFF by default since Sun 15 Nov (it cost 5 of 12 objects in the lean sim, eval/RESULTS.md e-062); LEAN_MAP=auto;
 # 4) the Gemini key from ~/adk_key.env (GEMINI_API_KEY=..., copied in by hand, never committed) written as
 #    adk_agents/robot_sorter/.env, which the agent reads at start. Samer's decision (Sat 14 Nov ~21:15): the image
 #    carries that key, so anyone who pulls it can read it. The context copy is deleted after the build.
