@@ -43,13 +43,39 @@ How to hand in: [`runbooks/submit.md`](runbooks/submit.md). Hard rules for code:
 - **Episode:** 120 s, arms at home, hands open, head depth available. (erkka, Sat 15:07)
 - **Scoring:** sort_fixed +1 / −1 per object; sort_language +2 / −1; knocked off the table −1; left on the table 0. (Aalto docs)
 - **Layout:** the values in Aalto's INTERFACE.md are a plan until measured at the venue. (erkka, Sat 15:07)
+- **The boxes will be glued closer to the robot** before the finals, by about 7 cm. (Aalto, said to Emīls, Sun ~02:00; the 7 cm is Emīls's recollection, not a published number)
+- **Shape putting (rung 3) on the real robot uses a printed lid on the MIDDLE box**: `lid_shape_holes_200mm.stl`, 200 × 200 × 4 mm with a square, a round and a triangular hole. (Aalto, file given to Emīls, Sun ~02:10.) Aalto's sim has another lid (210 mm, other hole places) on the LEFT box. The brief calls rung 3 a stretch, "real robot only as a bonus".
 
 ## 4. What we measured (FACT)
 ### 4.1 Aalto's real-robot data
 - **Colours in the robot's head camera** (OpenCV hue 0–180): orange objects 11–13, yellow 34–46, purple ~110 (reads as blue), orange boxes 4–7. Aalto's stock baseline misses orange and most yellow. ([`research/aalto-discord-notes.md`](research/aalto-discord-notes.md))
 - **The real head camera looks ~10° further down than `calibration.yaml`** (7.9° and 12.2° in the two datasets), and the bin walls are ~7.5 cm, not 6. Emīls's fit can't tell a tilted camera from a leaning torso. ([`../sim/venue_look/README.md`](../sim/venue_look/README.md))
+- **Relative to the arms, the real head camera is within ~2° of `calibration.yaml`; the rest of the 10° is the torso leaning towards the table** (Emīls + Claude, Sun 15 Nov ~02:00, `eval/analysis/real_hands/`). We projected the Dex3 hand model (URDF forward kinematics from the recorded `observation.state`) into all 61 saved real head frames of both drops and scored how much of it lands on the black hand pixels.
+  - Aalto's calibration as-is: 5.6 px mean distance, 60 % on the hand.
+  - The venue look's camera, 9° further down on its mount: worse (9.2 px, 48 %).
+  - Best single turn: 2.25° down, 2.25° yaw, 2° roll (3.1 px, 73 %). Each drop alone gives the same turn within 0.75° (pick_cube 2.5° down, drop 2 1.75° down), although their tables look tilted by 7.9° and 12.2°.
+  - So the camera-to-arm geometry stays put, and the table's tilt changes with the robot's posture.
+  - This explains the "hand sits 4–6 cm closer than in sim" note (the venue look put the tilt in the camera), and it fits the venue note that the robot leans against the table.
+  - **Confirmed with real head depth (drop 3), Sun ~03:30:** two independent arm fits (ours and Marcus's `selfcal.py`) put the camera within ~2° and ~2 cm of its calibration, and the table rising 12.7–14.3° away from the robot in the arm frame. Single frames scatter by ~2°. Comparison of the three team methods: [`../eval/analysis/real_hands/COMPARISON.md`](../eval/analysis/real_hands/COMPARISON.md).
 - **Aalto's demos break the speed caps:** arms 2–4 rad/s (cap 1), fingers up to 25 rad/s (cap 3). Retime before training on them. ([`research/real-data-findings.md`](research/real-data-findings.md))
-- At the same joint angles, the real hand sits 4–6 cm closer to the robot than the sim hand. (venue look README)
+- At the same joint angles, the real hand sits 4–6 cm closer to the robot than the sim hand. (venue look README) Explained by the item above: the venue look tilts the camera instead of the torso.
+- **Tape-measured at the venue** (team, Sat 14 Nov):
+  - head camera lens 48 cm straight above the table top (the URDF default puts it at 46.4 cm);
+  - bins 7 cm tall (Aalto's `scene.yaml`: 6 cm), about 5 cm apart, near edge 30 cm from the table edge;
+  - the robot leans against the table edge. Its distance to the table edge is not measured; 10 cm puts the bins at
+    Aalto's published 40 cm from the torso.
+  - Used by the MuJoCo scene ([`../sim/mujoco/venue_measured.yaml`](../sim/mujoco/venue_measured.yaml)).
+- **The real boxes measured from head depth** (drop 3, 15 frames; Emīls + Claude, Sun 15 Nov ~02:50, [`../eval/analysis/real_depth/README.md`](../eval/analysis/real_depth/README.md)):
+  - walls 7.1 cm, boxes 21.2 cm wide, gaps 2.8 and 2.6 cm, so **24 cm centre to centre** (`scene.yaml`: 5 cm gaps, 26 cm);
+  - near wall 32.3 cm in front of the point below the camera;
+  - after our bin-wall camera fit the middle box stands 2.1 cm and the right box 4.2 cm from where `scene.yaml` puts them: every policy that drops at `scene.yaml`'s bins aims that far off centre (still inside a 21 cm box);
+  - the middle box is cardboard with flaps folded in, opening about 14 × 16 cm. The lid's lip ring (19.2 cm) does not fit it as it is.
+- **Box and lid finder built, off by default** (`policy/decision_oracle/boxes_v16.py`, v1.6 `V16_BOXES=find|lid`; same time, same README):
+  - boxes: real frames 15/15; venue-look sim frames 107/115, within 3 mm where found;
+  - lid: the real STL rendered on the middle box with the real camera pose and noise, 48/48 poses with the right turn and side, hole centres within 2.4 mm;
+  - not run in any episode; no real frame with the lid exists.
+- **Shape putting works in MuJoCo, open-loop** (Emīls + Claude, Sun ~03:25, [`../sim/mujoco/README.md`](../sim/mujoco/README.md) Status): the real lid on the middle box, boxes 7 cm closer, head camera only. 19/27 blocks through the right hole (cubes 7/9, cylinders 9/9, prisms 3/9), 0 wrong holes. Every block still held at its hole went in; the failures were blocks slipping out of the hand while carried. Not run through the policy server.
+- **If the boxes move 7 cm closer, v1.6's default camera fit (`V16_CALIB=bins`) puts every object 7.5 cm off** in MuJoCo: it lines the boxes up with `scene.yaml` and moves the camera to do so. `V16_CALIB=hands` and `V16_CALIB=lean` do not (4/4 blocks vs 0/4). The v1.2–v1.5 images and Marcus's agent were not checked; any fit that matches the boxes to `scene.yaml` has the same problem.
 
 ### 4.2 Reading the instruction (Emīls, [`../training/instruction_parser/RESULTS.md`](../training/instruction_parser/RESULTS.md))
 | Method | Aalto's templates | unseen wording (T2a): exact / confidently wrong | hard wording (T2b): exact / confidently wrong |
@@ -158,18 +184,30 @@ Other measurements:
 
 ### 6.6 Risks we see
 - **Triangles:** the biggest loss in sim (stock claw 1/15).
+  - **Cause found (Sun 15 Nov, MuJoCo, `eval/analysis/grasps/README.md` §4):** Aalto's grasp point sits almost at the fingertips, so the closed thumb stops ~11 mm short of a standing prism and the index finger pushes it away instead of pinching. Lying prisms already have their own grasp (e-049).
+  - **Fix built, off by default:** `V16_TRI=mid` (`policy/decision_oracle/tri_v16.py`): midpoint grasp point and per-hand finger angles for standing triangles. MuJoCo paired run (e-072, 72 pairs): triangle grasps held 27 % → 57 % per attempt, objects sorted 83 % → 88 %, gate PASS. **Not yet run in Isaac** (OPINION, Claude: run it there before turning it on in an image).
 - **Far cross-body objects:** 2/9 in the baseline; v1.1 targets them.
 - **Second object into a bin:** fixed in v1.3 (no lost object rests on another one, e-024).
 - **Objects near the robot (pelvis x < ~0.28 m):** where v1.3 loses almost everything it loses (13 of 14, e-024). Failed grasps push objects towards the robot, where they sit at the bottom edge of the head camera's view and partly behind the hands at the home pose. v1.4's grasp check and new-grasp retry are the first step; a nudge outwards or a different approach for close objects is the next.
-- **The venue look is our best stand-in for the real robot, but it assumes the camera is tilted on its mount.** If the robot leans instead (the hand in Aalto's footage sits 4–6 cm lower in the head image than the venue look predicts, about the same angle), a camera re-fit alone would put the arms several cm off on the real robot, and the venue look can't show that. Check it on Aalto's real data (project the hands from the recorded joint angles through both camera poses) or on the robot.
+- **The head-pose re-fit (v1.2–v1.6) levels the camera on the table, and on the real robot that is probably wrong** (see 4.1: it is the torso that leans, not the camera).
+  - Synthetic check with the real geometry (`eval/analysis/real_hands/lean_error.py`): with the torso leaning 8° and the camera exact on its mount, levelling moves every object ~7 cm (4°: 3.3 cm, 12°: 10 cm).
+  - Aalto's calibration used as-is would be exact.
+  - `V16_CALIB=hands` fixes only x, y and yaw after levelling, so it gives up above ~4° and falls back to the bin fit.
+  - **Fix built (Sun ~03:00, Emīls + Claude), off by default: `V16_CALIB=lean`** (`policy/decision_oracle/README.md`).
+    - The arms give the camera's full pose relative to them, and the planners' IK model is moved into the camera's levelled table frame.
+    - MuJoCo with a leaning robot (new `dr.py` mode `lean`): reach error 35–65 mm → ~1 mm. Shifted bins: 9–35 mm → ~1 mm. Nominal unchanged.
+    - Paired episodes (`eval/RESULTS.md` e-071): nominal 75 % = 75 %, shifted bins 22 % → 58 %, leaning 49 % → 56 %, all randomised 21 % → 49 %.
+    - Untested on real depth of the black hands.
+  - The venue look puts the tilt in the camera, so it can't show this. The MuJoCo scene now can (`--dr-mode lean`).
 - **Real robot, none of it tested there:** camera ~10° off (v1.2 targets it), the hand sits 4–6 cm closer than in sim, real depth noise and holes, bins maybe not where `scene.yaml` says.
 - **Infrastructure:** the spot machine can vanish (reinstall: 11 min).
 
 ## 7. Open questions (OPEN)
 - **Aalto:** the image deadline and hand-in form (expected tonight); whether they can pass an API key as an environment variable; how distractors are scored.
-- **Real camera:** is the camera mounted tilted, or is the torso leaning? This decides whether the head-pose re-fit is right on the real robot. Comparing the hands' projected and seen positions in the head camera could tell.
+- **Real camera: mostly answered (Sun ~02:00).** The hands in Aalto's frames say the camera is ~2° off its calibration and the torso leans (4.1). Still open: is the lean the same at the venue, and does the real waist pitch move (it is not in `obs`)?
 - **Sim runs going (Sat ~20:20):** v1.5 (strict and sides off) with randomisation in Aalto's look, seeds 1000–1009: does it match Marcus's agent there (18/20 on 1000–1004) while keeping its venue-look lead over v1.4 (23/27 vs 20/27)? If so, v1.5 becomes the candidate.
 - **Gemma inside the image:** size, and start-up within the 120 s limit, are untested.
+- **Aalto, about the box move and the lid (Sun ~02:50):** the exact new distance and gaps; whether the object area moves too; how the lid is turned and which side is up; which box it sits on, given that the middle box's opening is smaller than the lid's lip; whether shape putting is scored in the finals.
 
 ## 8. Repo rules added today (FACT)
 - **No AI co-author lines in commits or PRs** (`Co-Authored-By: Claude …`, "Generated with …", `Claude-Session:`): GitHub listed "Claude" as a contributor of this repo because of them. Guards: `.claude/settings.json`, `.githooks/commit-msg`, `make setup`, and the rule in `AGENTS.md` (c239100).
