@@ -53,6 +53,7 @@ class PoseFit:
     base: np.ndarray = None       # 4x4 table frame <- arm frame for IK (V16_CALIB=lean); None = same frame
     arm_pose: dict = None         # handeye.HandEye.fit_pose result (the camera relative to the arms)
     arm_T: np.ndarray = None      # 4x4 arm (pelvis) frame <- optical of a trusted arm fit: kept for later episodes
+    arm_shift: dict = None        # {side: (3,) m, table frame}: real hand minus model hand, each arm alone (V16_ARM_SHIFT)
 
 
 def _points(cal, depth, step=1):
@@ -110,7 +111,22 @@ def _lean_base(T_table, T_arm, scene):
     return A, move, rot, lean_deg
 
 
-def fit_head_pose(depth, cal, scene, T0=None, rng=None, max_range_mm=1600, hands=None, lean=None, last_arm_T=None):
+def _arm_shift(fit, he, P_off, T_arm, A, arm_q, hand_q):
+    """V16_ARM_SHIFT: each arm's leftover after the joint arm fit (handeye.arm_shifts), turned into the table frame
+    (A = table <- arm) -> fit.arm_shift, and into fit.arm_pose for the log. Never raises."""
+    try:
+        r = he.arm_shifts(P_off, T_arm, arm_q, hand_q)
+    except Exception as e:
+        fit.arm_pose["hand_off_cm"] = f"error: {e!r}"
+        return
+    R = np.asarray(A, float)[:3, :3]
+    fit.arm_shift = {s: (R @ v["d"] if v["d"] is not None else np.zeros(3)) for s, v in r.items()}
+    fit.arm_pose["hand_off_cm"] = {s: ([round(100 * float(x), 1) for x in fit.arm_shift[s]] if v["d"] is not None
+                                       else f"none ({v['why']})") for s, v in r.items()}
+
+
+def fit_head_pose(depth, cal, scene, T0=None, rng=None, max_range_mm=1600, hands=None, lean=None, last_arm_T=None,
+                  per_arm=False):
     """fit_head_pose_levelled, plus (lean = (HandEye, arm_q, hand_q)) the base transform for IK.
 
     The levelled fit puts the camera where the table is flat at counter height and the bins (or the arms) line up;
@@ -123,7 +139,11 @@ def fit_head_pose(depth, cal, scene, T0=None, rng=None, max_range_mm=1600, hands
     look's arm fit fails or is past the limits, that pose is used with this look's table fit, and the base stays
     arm-based instead of going to lean.py's mapping (V16_LEAN_FALLBACK) or the uncorrected frame. Without it: as
     v1.6. Why: on Aalto's real frames (drop 3) the base lifts a grasp 4-9 cm and the fit runs once per episode
-    (eval/analysis/real_depth/README.md). fit.arm_pose["source"] says which pose was used."""
+    (eval/analysis/real_depth/README.md). fit.arm_pose["source"] says which pose was used.
+
+    per_arm (V16_ARM_SHIFT, CameraPerception.arm_shift): with an arm-based base, also measure each arm against its
+    own model (fit.arm_shift, table frame): the one camera pose is set mostly by the left arm, and the real right
+    hand sits 1.3-1.8 cm off it (handeye.arm_shifts)."""
     fit = fit_head_pose_levelled(depth, cal, scene, T0=T0, rng=rng, max_range_mm=max_range_mm, hands=hands)
     if lean is None or not fit.ok:
         return fit
@@ -136,8 +156,9 @@ def fit_head_pose(depth, cal, scene, T0=None, rng=None, max_range_mm=1600, hands
     # Only points well above the table: on Aalto's real frames (drop 3) the objects and the 7 cm bin walls made up
     # most of the points above 1.5 cm, and every arm fit failed its 30 % check; above 7.5 cm (Marcus's selfcal.py
     # cut) 15/15 passed. Same result as 1.5 cm in MuJoCo (eval/analysis/real_hands/COMPARISON.md).
+    off = (z > scene.counter_z + 0.075) & (z < scene.counter_z + 0.6)
     try:
-        r = he.fit_pose(P, T0, arm_q, hand_q, off_table=(z > scene.counter_z + 0.075) & (z < scene.counter_z + 0.6))
+        r = he.fit_pose(P, T0, arm_q, hand_q, off_table=off)
     except Exception as e:                          # never let calibration break perception
         r = {"ok": False, "why": f"arm pose error: {e!r}"}
     fit.arm_pose = {k: v for k, v in r.items() if k != "T"}
@@ -152,6 +173,8 @@ def fit_head_pose(depth, cal, scene, T0=None, rng=None, max_range_mm=1600, hands
             else:
                 fit.base = A
                 fit.arm_pose["base"] = "moved"
+            if per_arm:
+                _arm_shift(fit, he, P[off], r["T"], A, arm_q, hand_q)
             return fit
     why = "implausible" if r["ok"] else "arm fit failed"
     if last_arm_T is not None:                                      # v1.7: the last believed arm fit + this look's table
@@ -164,6 +187,8 @@ def fit_head_pose(depth, cal, scene, T0=None, rng=None, max_range_mm=1600, hands
             else:
                 fit.base = A2
                 fit.arm_pose["base"] = "moved"
+            if per_arm:
+                _arm_shift(fit, he, P[off], last_arm_T, A2, arm_q, hand_q)
             return fit
     fit.arm_pose["base"] = f"same frame ({why})"
     return fit
@@ -445,12 +470,14 @@ class CameraPerception:
         self._bins0 = copy.deepcopy(scene.cfg["bins"]["centers"])
         self._joints = None
         self.lean_fallback = False   # v1.7: a failed / implausible arm fit uses the last believed one (fit_head_pose)
+        self.arm_shift = False    # V16_ARM_SHIFT: each arm corrected by its own leftover after the arm fit (lean.FIT_ERR)
         self._arm_T = None        # camera relative to the arms, last believed arm fit: survives reset()
         self.reset()
 
     def reset(self):
         self.fit = None
         self._set_base(None)
+        self._set_arm_shift(None)
         if getattr(self, "_bins0", None) is not None:      # bins located last episode: back to scene.yaml
             self.scene.cfg["bins"]["centers"].clear()
             self.scene.cfg["bins"]["centers"].update(copy.deepcopy(self._bins0))
@@ -472,7 +499,7 @@ class CameraPerception:
         hands = (self.handeye, *self._joints) if self.handeye is not None and self._joints is not None else None
         lean = (self.lean, *self._joints) if self.lean is not None and self._joints is not None else None
         fit = fit_head_pose(depth, self.cal0, self.scene, hands=hands, lean=lean,
-                            last_arm_T=self._arm_T if self.lean_fallback else None)
+                            last_arm_T=self._arm_T if self.lean_fallback else None, per_arm=self.arm_shift)
         if fit.ok or self.fit is None:
             self.fit = fit
             if fit.arm_T is not None:
@@ -487,6 +514,7 @@ class CameraPerception:
             if fit.arm_pose is not None:
                 self.log(f"[camera] arm pose: {fit.arm_pose}")
             self._set_base(fit.base)
+            self._set_arm_shift(fit.arm_shift)
             try:   # real robot (fit tilted >= 5 deg): aim the arms in the arm frame, policy/lean.py
                 import lean
                 mode = None                       # None: LEAN_MAP decides (V16_CALIB bins / hands)
@@ -514,6 +542,16 @@ class CameraPerception:
         for k in {id(k): k for k in ks}.values():
             if A is not None or getattr(k, "base", None) is not None:
                 set_kin_base(k, A)
+
+    def _set_arm_shift(self, d):
+        """Per-arm correction of every IK target this episode (policy/lean.py FIT_ERR); None clears it."""
+        if not self.arm_shift:
+            return
+        try:
+            import lean
+            lean.set_fit_err(d)
+        except ImportError:
+            pass
 
     def _apply_bins(self, b):
         """Drop targets (and the in-bin mask) follow the bins found: scene.cfg['bins']['centers'] in mat coords."""

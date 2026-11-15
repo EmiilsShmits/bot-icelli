@@ -30,6 +30,10 @@ PYTHONPATH=third_party/aaltonomous-humanoid:policy .venv/bin/python eval/analysi
 #    (.venv with mujoco: sim/mujoco/requirements.txt)
 PYTHONPATH=third_party/aaltonomous-humanoid:policy .venv/bin/python eval/analysis/real_depth/lid_render.py \
     sim/task3/lid_shape_holes_200mm.stl artifacts/real_frames/drop3/depth_ep03_start.npy
+# 8. the arm fit's precision and V16_ARM_SHIFT: every 3rd depth frame of each episode (scratch env, 100 MB), then (.venv)
+python eval/analysis/real_depth/extract_mid.py artifacts/datasets/g1_junction_drop_3 artifacts/real_frames/drop3
+PYTHONPATH=third_party/aaltonomous-humanoid:policy .venv/bin/python eval/analysis/real_depth/arm_shift.py \
+    artifacts/real_frames/drop3 artifacts/real_frames/drop3/drop3_mid.npz
 # the same checks as unit tests
 .venv/bin/python -m unittest policy/tests/test_boxes_v16.py -v
 ```
@@ -71,6 +75,15 @@ PYTHONPATH=third_party/aaltonomous-humanoid:policy .venv/bin/python eval/analysi
 - The base lifts a grasp 35 cm in front of the pelvis by 3.7–7.5 cm (14 frames 3.7–6.0, ep14 7.5) and one 45 cm out by 5.9–9.1 cm. Without it the hand aims that far below where it should.
 - With the limits of 07f533c (35 cm / 35°) all 15 arm fits are used as they are, v1.6 and v1.7 alike. With the old 15 cm / 20° limits ep14 (20.9°, 148 mm) was dropped and that episode ran uncorrected.
 - An arm fit that fails outright after a good episode (simulated): v1.7 keeps the earlier arm fit with the new table fit (lift 4.8 cm); v1.6 goes to `lean.py`'s mapping. In the first episode of a process both do.
+
+**How precise the arm fit is, and the per-arm correction** (`arm_shift.py`, Sun ~07:05; `V16_ARM_SHIFT`, `policy/decision_oracle/README.md`):
+- **Unconfirmed (Sun ~08:20):** the same hand-against-model measurement reads 0.9–2.2 cm in Isaac where the true error is 0 (`docs/research/hover-check-preliminary.md`). The real-frame numbers below point the same way as the `ARM_ERR` values found on the robot, but they have not been checked against anything else.
+- The camera is bolted to the head, so the fitted camera-to-arms pose should be the same in all 15 episodes. Over the 15 episodes it varies by 0.4–0.7 cm (one standard deviation per axis, at the work area). 13 episodes are within 0.9 cm of the mean at the centre of the work area; ep01 and ep14 are 1.3 and 2.2 cm off (up to 4 cm at its corners). The fitted rotation ranges over 0.5–6.9°.
+- The fit follows the left arm: the left hand ends within 0.4 cm of its model in every episode, the right hand up to 3.6 cm from it (median 1.1 cm), mostly towards the robot's right. Fitting each arm alone does not work: the right arm alone fails or turns the camera 7–17°.
+- Later in the episodes, on frames where an arm is still and reaching 29 cm or more forward (measured joint angles, so the controller is not part of this): left hand 0.3 cm from its model (90 frames, 4 episodes); right hand 1.2 cm (107 frames), per episode 1.1, 3.2, 0.9, 1.1, 0.7, 0.9, 1.4 cm. With the shift measured at frame 0 taken off: 1.0, 1.2, 0.5, 0.6, 0.6, 0.7, 0.3 cm. A fixed right-arm offset taken from the other episodes barely helps (1.8 → 1.6 cm, in a first pass with a slightly different choice of points): the error changes from episode to episode.
+- Measuring the hand again 0.2–0.5 s later in nearly the same place gives the same shift to 0.1 cm (90 % under 0.3). Repeatable is not the same as right: see the first bullet.
+- Teleop's own tracking in these episodes (commanded minus measured joints, as hand position): median 0.4 cm. How well our gravity feed-forward holds the arm on the robot is not known.
+- 73 of the 107 right-hand frames are from ep00. The arms start from teleop's pose, not the policy's home pose.
 
 **If the boxes are glued ~7 cm closer to the robot** (Aalto, told to the team Sun ~02:00; assumed: along the table, from the drop-3 layout):
 - the bin-wall fit's shift goes from −9.3 cm to about −2.3 cm: inside the search range;

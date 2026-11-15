@@ -280,6 +280,59 @@ class HandEye:
         res.update(ok=True, T=T)
         return res
 
+    def arm_shifts(self, P_opt, T, arm_q, hand_q, max_shift=0.04, min_pts=150, deadband=0.003,
+                   sides=("left", "right")):
+        """Each arm on its own after the joint fit: real hand minus model hand (m, arm frame), from the same frame.
+
+        fit_pose gives one camera pose for both arms, and on Aalto's real frames (drop 3) the left arm decides it
+        (more of it is in view): the left hand then sits 0.2 cm from its model, the right hand 1.3-1.8 cm (short, to
+        the robot's right, low), different in every episode. The shift measured here at the start pose predicts the
+        right hand's error when it reaches out to 0.5 cm (same episodes). Translation only, wrist and hand links,
+        point-to-plane. P_opt: optical-frame points clear of the table; T: the believed camera pose (arm <- optical).
+        -> {side: {"d": (3,) or None, "n": points, "why": ""}}; d is None when it cannot be trusted or is under
+        `deadband` (a sim, where model and hand agree). max_shift over 4 cm also widens the search (hover_v16)."""
+        from scipy.spatial import cKDTree
+        T = np.asarray(T, float)
+        M_all, N_all = self.cloud(arm_q, hand_q)
+        X = np.asarray(P_opt, float) @ T[:3, :3].T + T[:3, 3]
+        out = {}
+        ths = ((0.07, 0.05) if max_shift > 0.04 else ()) + (0.04, 0.03, 0.02, 0.012, 0.008, 0.006, 0.005, 0.005, 0.004, 0.004)
+        for side in sides:
+            keep = [i for i, n in enumerate(self.names) if n.startswith(side) and ("hand" in n or "wrist" in n)]
+            m = np.isin(self.link, keep)
+            M, N = M_all[m], N_all[m]
+            vis = np.einsum("ij,ij->i", N, T[:3, 3] - M) > 0
+            M, N = M[vis], N[vis]
+            res = out[side] = {"d": None, "n": 0, "why": ""}
+            if len(M) < 200 or len(X) == 0:
+                res["why"] = "hand not in view"
+                continue
+            tree, d, n = cKDTree(M), np.zeros(3), None
+            for th in ths:
+                dd, ii = tree.query(X + d, distance_upper_bound=th)
+                s = np.isfinite(dd)
+                if s.sum() < min_pts:
+                    n = None
+                    break
+                n = N[ii[s]]
+                d = d + np.linalg.lstsq(n, np.einsum("ij,ij->i", n, M[ii[s]] - (X[s] + d)), rcond=None)[0]
+            res["n"] = int(s.sum())
+            if n is None:
+                res["why"] = f"too few points on the hand ({res['n']})"
+                continue
+            ev = np.linalg.eigvalsh(n.T @ n / len(n))
+            if ev[0] < 0.03:                          # the surfaces seen all face one way: a slide along them is free
+                res["why"] = f"hand seen from one side only ({ev[0]:.3f})"
+                continue
+            if np.linalg.norm(d) > max_shift:
+                res["why"] = f"shift too large ({np.linalg.norm(d) * 100:.1f} cm)"
+                continue
+            if np.linalg.norm(d) < deadband:
+                res["why"] = f"within {deadband * 1000:.0f} mm"
+                continue
+            res["d"] = -d                             # the points had to move by d to meet the model: real = model - d
+        return out
+
 
 def _rx(a):
     c, s = np.cos(a), np.sin(a)

@@ -105,7 +105,21 @@ def _parse_err(raw):
     return out
 
 
-ERR = _parse_err(os.environ.get("ARM_ERR", ""))   # read once at import (the server's environment)
+ERR = _parse_err(os.environ.get("ARM_ERR", ""))   # read once at import (the server's environment); ARM_ERR + FIT_ERR
+ARM_ERR = {k: v.copy() for k, v in ERR.items()}   # the environment's part
+FIT_ERR = {"left": np.zeros(3), "right": np.zeros(3)}
+
+
+def set_fit_err(d, log_fn=None):
+    """V16_ARM_SHIFT: this episode's measured hand error per arm (m, table frame: real hand minus model hand, from
+    decision_oracle/camera.py after the arm fit), added to ARM_ERR. None or a missing side = none."""
+    for side in ("left", "right"):
+        v = None if d is None else d.get(side)
+        FIT_ERR[side] = np.zeros(3) if v is None else np.asarray(v, float).copy()
+        ERR[side] = ARM_ERR[side] + FIT_ERR[side]
+    if d is not None:
+        (log_fn or log.info)("[lean] per-arm correction this episode (cm): " + ", ".join(
+            f"{k} ({v[0] * 100:+.1f}, {v[1] * 100:+.1f}, {v[2] * 100:+.1f})" for k, v in FIT_ERR.items()))
 
 
 def _busy():

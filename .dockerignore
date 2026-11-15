@@ -41,6 +41,7 @@ policy/decision_oracle/
 # "hand calibration off" and keeps the bin-wall fit)
 !policy/decision_oracle/tri_v16.py
 !policy/decision_oracle/handeye.py
+!policy/decision_oracle/hover_v16.py
 !policy/decision_oracle/hand_model.npz
 # v1.5/v1.6: task 3; policies/oracle_v15.py imports it at EVERY reset (without it every episode would crash)
 !policy/decision_oracle/insert.py

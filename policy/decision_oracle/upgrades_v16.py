@@ -257,7 +257,12 @@ class V16OraclePolicy(V15OraclePolicy):
                         self.cam.handeye = he
                     else:
                         self.cam.lean = he
-                        self.cam.kins = lambda: [pl.kin for pl in (self.planner, self.relay)]
+                        self.cam.kins = lambda: [pl.kin for pl in (self.planner, self.relay)] + (
+                            [self.hover.kin] if getattr(self, "hover", None) is not None else [])
+                        # V16_ARM_SHIFT (on | off, default off): after the arm fit, each arm is measured against its
+                        # own model in the same frame and its IK targets are corrected by that (handeye.arm_shifts:
+                        # on Aalto's real frames the right hand is 1.3-1.8 cm off the two-arm fit, the left 0.2 cm)
+                        self.cam.arm_shift = os.environ.get("V16_ARM_SHIFT", "off").lower() in ("1", "on", "true", "yes")
                 except Exception as e:          # no model / URDF: the bin-wall fit as before
                     self.log(f"[v1.6] hand calibration off: {e!r}")
             # V16_BOXES: "off" | "find" (after the camera fit, measure the three boxes from depth and drop into them
@@ -265,14 +270,41 @@ class V16OraclePolicy(V15OraclePolicy):
             from . import boxes_v16
             if boxes_v16.mode() != "off":
                 boxes_v16.enable(self.cam, lid=boxes_v16.mode() == "lid")
+        # V16_HOVER (off | log | on, default off): the hand is measured over the block before it goes down and the
+        # rest of the pick is moved by what is seen (hover_v16.py); needs V16_CALIB=lean
+        self.hover = None
+        if os.environ.get("V16_HOVER", "off").strip().lower() in ("on", "log"):
+            try:
+                from . import hover_v16
+                self.hover = hover_v16.make(self)
+                self.log(f"[v1.6] hover check: {self.hover.mode if self.hover is not None else 'off (needs V16_CALIB=lean)'}")
+            except Exception as e:              # module not in the image, no URDF: picks as before
+                self.log(f"[v1.6] hover check off: {e!r}")
         if instruction == "d1":
             from instruction_d1 import DecisionInstruction
             self.instr = DecisionInstruction()
             if not self.instr.enabled:
                 self.log("[v1.6] instruction: no key, rule parser only")
 
+    def _start(self, plan, t):
+        out = super()._start(plan, t)
+        if self.hover is not None:
+            self.hover.arm(plan)                # the queue now ends over the block
+        return out
+
+    def act(self, obs):
+        if self.hover is not None and self.hover.pending():
+            self._rgb = obs.get("head_rgb")
+            self._t = float(obs.get("t", self._t))
+            if self.cam is not None:
+                self.cam.update(obs)
+            return self.hover.step(obs)
+        return super().act(obs)
+
     def reset(self, info=None):
         super().reset(info)
+        if getattr(self, "hover", None) is not None:
+            self.hover.reset()
         if hasattr(getattr(self, "enum", None), "pushed"):
             self.enum.reset()
         self._instr_pending = False

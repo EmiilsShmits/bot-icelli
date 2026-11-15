@@ -100,6 +100,7 @@ trajectories.
     settings make no difference). `LID_PICK_TOL` (2 mm, on): the hand's way down to the block stays within 2 mm of
     the planned grasp point when the IK can (Aalto's 6 mm otherwise); e-077. final-v16 (`6a02fad81f37`) and
     final-v16g (`3308f1b4489e`) rebuilt from 2de82ce with it (replay PASS, key 53 bytes, not pushed).
+  - **Experimental, off by default, do not turn on: `V16_ARM_SHIFT`, `V16_HOVER`** (Sun ~08:20, Emīls + Claude; not in an image, not run on the robot). A per-arm correction after the camera fit and a check of the hand over the block. MuJoCo: fine. **Isaac (Verda, 3 seeds): the hover check lowers the score, 13/14 → 9/14** (its measurement reads 1–2 cm where the true error is 0, and corrected picks take much longer). Findings: [`../docs/research/hover-check-preliminary.md`](../docs/research/hover-check-preliminary.md). `ARM_ERR` from the robot logs stays the correction to use.
   - **`V16_CALIB=lean` is the v1.6 default (Sun ~05:30, team decision):** aims the arms in the camera's table frame using the robot's own arms in head depth (`decision_oracle/handeye.py` + `hand_model.npz`, now in git and in the image). Drop 3: arm fit 15/15, base moved 14/15, 1 rejected as implausible; any failure keeps the bin-wall fit. Rebuild `final-v16` to pick it up.
   - **Real robot (Sun ~03:20, Aalto's pre-submission video):** our pre-submitted agent's grasps land a hand-width
     beside the cube (`docs/CONTEXT.md` §4.1). Every image here aims in the table-fitted camera frame.
