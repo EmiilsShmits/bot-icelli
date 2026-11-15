@@ -19,6 +19,7 @@ python3 eval/analysis/grasps/breakdown.py      # held rate by shape, grasp kind,
 python3 eval/analysis/grasps/tri_angle.py      # standing triangles by arm x finger angle, Isaac logs
 python3 eval/analysis/grasps/tri_angle.py --mj # the same for MuJoCo logs
 python3 eval/analysis/grasps/paired_tri.py artifacts/eval/mujoco/tri-v16-b   # V16_TRI off vs mid, paired
+python3 eval/analysis/grasps/isaac_tri.py artifacts/eval/isaac/tri16          # the same in Isaac (tri_sweep.py)
 ```
 
 ## Findings
@@ -125,7 +126,28 @@ Held per planned pick, both arms, angles 0–105° (left-hand terms; right mirro
 
 - Per pair: mid better 18, worse 9, same 45 (sign test p = 0.12).
 - Rerun the table: `python3 eval/analysis/grasps/paired_tri.py artifacts/eval/mujoco/tri-v16-b`.
-- **Still to do:** one Isaac run with the flag on, before an image uses it (see §2).
+
+### 7. Isaac agrees (FACT): e-081
+`policy/decision_oracle/tri_sweep.py` on Modal, Aalto's Isaac sim, venue look.
+- One standing triangle per episode, full v1.6 policy (camera, planner, chooser, retries; rule-based instruction, no API calls).
+- 24 cases: 4 columns × 3 rows over the object area, 2 turns each, both arms, the same cases with the flag off and on.
+
+| | off | mid |
+|---|---|---|
+| Triangles sorted | 12/24 | **21/24** |
+| Grasps held per attempt | 12/47 (26 %) | **21/34 (62 %)** |
+| Left hand, held | 4/23 | **10/12** |
+| Right hand, held | 8/24 | **11/22** |
+| Tries per case | 2.0 | 1.4 |
+
+- Per case: mid better 9, worse 0, same 15 (sign test p = 0.004).
+- Two of the 3 misses with the flag on (cases 22–23, pelvis 0.31 m, +0.15 m) were never seen by the camera, with the flag off too: a perception gap at the far-left-front corner, not a grasp result.
+- So the gain is not a MuJoCo artefact.
+- By angle, with the flag on:
+  - left hand: 30° held 6/6, 15° 2/2, 90° 2/4;
+  - right hand: 90° (the mirror of the left's 30°) 6/13, 30° 3/6, 105° 2/2.
+
+  The right hand still needs ~2 tries per triangle. Its angle order is a mirror of the left's MuJoCo order, not measured in Isaac: worth a per-angle check for the right hand.
 
 ### 3b. Earlier idea (superseded by 4–5)
 - **Mirror the triangle angle for the right hand in Isaac.** Try 105 / 75 for the left hand and −105 / −75 for the right, one standing prism per case, about 20 grasps per arm and angle (Marcus's grasp bench, as in the grip sweep).
@@ -135,8 +157,8 @@ Held per planned pick, both arms, angles 0–105° (left-hand terms; right mirro
 - **Far cylinders** (x ≥ 0.28 m, 72 %): next in line, not looked at yet.
 
 ## Status
-- **Now:** `V16_TRI=mid` built (off by default) and measured in MuJoCo (§6).
-- **Next:** one Isaac run with it on.
+- **Now:** `V16_TRI=mid` built (off by default), measured in MuJoCo (§6) and Isaac (§7): both agree.
+- **Next:** team decision on turning it on in the v1.6 image; full-episode check (eval-policy) with it on.
 - **Blockers:** none.
 
 ## Gotchas

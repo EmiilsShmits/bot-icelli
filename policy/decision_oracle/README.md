@@ -130,7 +130,8 @@ Don't pass `--no-cameras`: the Decision chooser needs the head image.
   - At Aalto's grasp point the closed thumb stops ~11 mm short of a standing prism and the index finger pushes it away (MuJoCo bench `sim/mujoco/tri_bench.py`: 17 % held with perception noise). Midpoint grasp point + per-hand angles: 47 % over all angles, 61–76 % at the angles now tried first.
   - Unit tests: `policy/tests/test_v16.py` `TestTriMid`. v1.5 is unchanged: the shared `motions.grasp_variants` only changes when a policy passes `tri_phis`, which only v1.6 with `V16_TRI=mid` does.
   - **MuJoCo paired run (e-080, 72 pairs):** triangle grasps held 27 % → 57 % per attempt, all objects sorted 83 % → 88 %, gate PASS.
-  - **Next:** one Isaac run before turning it on in an image.
+  - **Isaac paired sweep (e-081, `tri_sweep.py`, 24 single-triangle cases):** triangles sorted 12/24 → 21/24, grasps held 26 % → 62 %, 9 better / 0 worse.
+  - **Next:** team decision on turning it on in the image; one full-episode Isaac eval with it on; the right hand's angle order (90° first held 6/13 in Isaac).
 - **Box and lid finder (Sun 15 Nov, ~02:50, Emīls + Claude): `boxes_v16.py`, opt-in `V16_BOXES=find|lid`, off by default.**
   - Measures the three boxes from head depth instead of taking them from `scene.yaml`: real drop-3 frames 15/15, sim frames 107/115 (within 3 mm where found). Finds Aalto's printed lid and its holes on rendered depth within 2.4 mm. Details under "Camera perception" above.
   - **Shape putting with this lid (Sun ~03:25):** `sim/mujoco/insert_demo.py` puts blocks through the real lid's holes in MuJoCo (19/27, 0 wrong holes, `sim/mujoco/README.md`); it takes the lid pose from the scene, not yet from `cam.lid`.
