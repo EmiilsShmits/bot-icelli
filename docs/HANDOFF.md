@@ -1,5 +1,16 @@
 # Handoff: Samer's overnight Claude session → the next agent (Sun 15 Nov, ~01:05 Helsinki)
 
+> **Update Sun ~06:40: image for the next robot try = `bot-icelli/policy:final-v16-real` (b998bb9f121a, 709c393,
+> replay PASS).** From the 06:19 run of Marcus's gemini-er-3 image (`docs/research/real-run-0619.md`):
+> - Both hands missed by about a finger-width: right hand to the robot's right, left hand slightly to its left. The left
+>   hand's `middle_0` joint is stuck near −0.15 rad, so every 7-joint grasp check read "holding" and nothing retried.
+>   The arm sagged 11–15 mm low and 7–10 mm short without gravity feed-forward. Lean that session only ~3°.
+> - In the image: grasp check on thumb + index only (`GRASP_JOINTS`, `GRASP_EMPTY_ERR` 0.03), `ARM_ERR` right 2.5 cm
+>   to the robot's left, `AALTO_CFG_OVERRIDES` height_frac 0.35 / close_hold_s 0.5 / drop_inset 0.07 (Dockerfile ENV,
+>   undo with `-e`), plus 06:05's wider lean limits and gravity feed-forward.
+> - Push (Samer, on samer-v1-sim): `docker tag bot-icelli/policy:final-v16-real ghcr.io/samer-cyber/bot-icelli-policy:final-v16-real && docker push ghcr.io/samer-cyber/bot-icelli-policy:final-v16-real`
+> - Sim check of the new grasp defaults (no ARM_ERR): Modal tag `real-defaults-nominal`.
+
 > **Update Sun ~06:05: real-robot test of `final-v16` (05:13 build, `V16_CALIB=lean` + gravity feed-forward) missed:**
 > hand short of the block (and dropped at the near edge of the box instead of its middle), a bit to the robot's right.
 > - That is the uncorrected-lean pattern of `docs/research/hand-offset-real-data.md`. Most likely cause: the arm-based
