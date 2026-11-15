@@ -31,7 +31,7 @@ TRI_ANGLES_LEFT = (30.0, 90.0, 15.0, 75.0)   # finger direction vs the apex, deg
 
 def tri_mode():
     """V16_TRI: "off" (Aalto's grasp point and angles) | "mid" (this file)."""
-    m = os.environ.get("V16_TRI", "off").strip().lower()
+    m = os.environ.get("V16_TRI", "mid").strip().lower()
     return m if m in ("off", "mid") else "off"
 
 
