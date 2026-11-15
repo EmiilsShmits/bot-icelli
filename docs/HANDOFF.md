@@ -1,5 +1,23 @@
 # Handoff: Samer's overnight Claude session → the next agent (Sun 15 Nov, ~01:05 Helsinki)
 
+> **Update Sun ~04:45: gravity feed-forward (the likely main cause of the real-robot misses), the best system now.**
+> - **Aalto's PR #4** (`arm_tau_ff`, erkka "merged" 04:18; still open on GitHub at 04:35): on the real robot the arm
+>   controller holds ~9.6 Nm at most, so an outstretched arm **sinks 15–18 cm**. A policy may now send feed-forward
+>   torque per arm joint; the teleop that recorded Aalto's demos sends gravity compensation. None of our images did.
+>   **Done (3768226): `policy/gravity_ff.py`**, on by default, wraps Aalto's `policy_server.handle`, so every action of
+>   every policy (ours and Marcus's agent, via `runtime.install()`) carries `arm_tau_ff` = gravity torque at each row
+>   of `arm_q_target`, clamped to the runner's ±15 / ±2.5 Nm. Tests 7/7 in the image (arm straight out at 0.41 m: 8.5 Nm
+>   at the shoulder); Aalto's PR #4 runner + mock against our v1.6 server: all replies accepted, torque recorded on
+>   93/93 ticks, 0 clipped steps. Sim scores cannot change (the sim ignores it). **Not in any built image yet.**
+> - **Best system now (OPINION, Samer + Claude):** v1.6 from main + gravity feed-forward (on) + Emīls's `V16_TRI=mid`
+>   (standing triangles 21/24 vs 12/24 in Isaac, e-081; still off by default) + a camera correction for the leaning
+>   robot (`V16_CALIB=lean`, `LEAN_MAP=auto` or Marcus's self-calibration: Samer's decision, open). Task 3 on the real
+>   robot needs the lid on the middle box (Emīls's `V16_BOXES=lid` finder, not wired into `insert.py`) or stays off.
+> - **Task-3 cylinders in sim:** two failure types remain: a missed grab that knocks the cylinder away or over, and a
+>   cylinder jamming on the hole's rim (it hangs tilted or off-centre in the 2-finger pinch; Emīls measured blocks
+>   13–15 mm off the grasp point in MuJoCo, the hole allows 7.5 mm). Aalto's episode files log no block poses, so
+>   measuring the Isaac offset needs an instrumented run.
+
 > **Update Sun ~03:50: the real-robot video of our pre-submission, the three image gates, task 3 settled.**
 > - **Real robot (Aalto's pre-submission video, Samer has the file, recorded ~03:20):** almost certainly
 >   `presubmit-adk-1` (between moves the arms go out to the side: Marcus's `_park`, `adk_agents/robot_sorter/tools.py`).

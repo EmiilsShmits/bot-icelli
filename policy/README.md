@@ -101,6 +101,10 @@ trajectories.
     final-v16g (`3308f1b4489e`) rebuilt from 2de82ce with it (replay PASS, key 53 bytes, not pushed).
   - **Real robot (Sun ~03:20, Aalto's pre-submission video):** our pre-submitted agent's grasps land a hand-width
     beside the cube (`docs/CONTEXT.md` §4.1). Every image here aims in the table-fitted camera frame.
+  - **Gravity feed-forward (Sun ~04:40, 3768226):** `gravity_ff.py` adds `arm_tau_ff` (Aalto PR #4) to every action:
+    the gravity torque at the commanded arm pose, so the real arms stop sagging (15–18 cm for an outstretched arm
+    without it). On by default (`GRAVITY_FF=off`); the sim ignores it. Tests: `tests/test_gravity_ff.py` 7/7 in the
+    image; Aalto's PR #4 runner + mock: accepted, 0 clipped steps. Not in the built images yet.
   - **Sat ~20:05:** v1.4 in the venue look 20/27 (e-028); v1.3 with `AALTO_DR=train` 26/40, the baseline 11/40 (e-027). Public on GHCR: v1.4 `sha256:cd8311e9…`, v1.3 `sha256:60ef1b89…`, look `sha256:f4f871b5…` (full lines in `docs/CONTEXT.md` §2). 27 tests pass on the sim machine.
 - **Triangle skill:** all policy versions expose a lazy `pick_triangle` tool through `ClassicalV1.get_tools(obs)`. It uses face-aligned grasp planning and returns an Aalto-planner-checked trajectory. A caller must provide triangle shape and pelvis-frame top centre/yaw; the normal submission detector is shape-agnostic and the policy executor does not yet dispatch skill trajectories.
 - **Before:** placeholder `hold` policy; `make check` passes (100 calls, 0 errors, p50 latency ~4 ms)
