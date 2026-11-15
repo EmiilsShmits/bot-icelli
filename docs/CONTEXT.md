@@ -43,6 +43,8 @@ How to hand in: [`runbooks/submit.md`](runbooks/submit.md). Hard rules for code:
 - **Episode:** 120 s, arms at home, hands open, head depth available. (erkka, Sat 15:07)
 - **Scoring:** sort_fixed +1 / −1 per object; sort_language +2 / −1; knocked off the table −1; left on the table 0. (Aalto docs)
 - **Layout:** the values in Aalto's INTERFACE.md are a plan until measured at the venue. (erkka, Sat 15:07)
+- **The boxes will be glued closer to the robot** before the finals, by about 7 cm. (Aalto, said to Emīls, Sun ~02:00; the 7 cm is Emīls's recollection, not a published number)
+- **Shape putting (rung 3) on the real robot uses a printed lid on the MIDDLE box**: `lid_shape_holes_200mm.stl` (in the repo as `sim/task3/lid_shape_holes_200mm.stl`), 200 × 200 × 4 mm with a square, a round and a triangular hole. (Aalto, file given to Emīls, Sun ~02:10.) Aalto's sim has another lid (210 mm, other hole places) on the LEFT box. The brief calls rung 3 a stretch, "real robot only as a bonus".
 
 ## 4. What we measured (FACT)
 ### 4.1 Aalto's real-robot data
@@ -58,6 +60,17 @@ How to hand in: [`runbooks/submit.md`](runbooks/submit.md). Hard rules for code:
   moves. Samer: every team's run showed an offset. Fits the hand-offset analysis (torso leaning 5–10°, right hand y
   −2.9 cm; [`research/hand-offset-real-data.md`](research/hand-offset-real-data.md)) and Marcus's drop-3 check (table
   tilted 12.3°, 6–8 cm further than `scene.yaml`). Every image we have aims in the table-fitted camera frame.
+- **The real boxes measured from head depth** (drop 3, 15 frames; Emīls + Claude, Sun 15 Nov ~02:50, [`../eval/analysis/real_depth/README.md`](../eval/analysis/real_depth/README.md)):
+  - walls 7.1 cm, boxes 21.2 cm wide, gaps 2.8 and 2.6 cm, so **24 cm centre to centre** (`scene.yaml`: 5 cm gaps, 26 cm);
+  - near wall 32.3 cm in front of the point below the camera;
+  - after our bin-wall camera fit the middle box stands 2.1 cm and the right box 4.2 cm from where `scene.yaml` puts them: every policy that drops at `scene.yaml`'s bins aims that far off centre (still inside a 21 cm box);
+  - the middle box is cardboard with flaps folded in, opening about 14 × 16 cm. The lid's lip ring (19.2 cm) does not fit it as it is.
+- **Box and lid finder built, off by default** (`policy/decision_oracle/boxes_v16.py`, v1.6 `V16_BOXES=find|lid`; same time, same README):
+  - boxes: real frames 15/15; venue-look sim frames 107/115, within 3 mm where found;
+  - lid: the real STL rendered on the middle box with the real camera pose and noise, 48/48 poses with the right turn and side, hole centres within 2.4 mm;
+  - not run in any episode; no real frame with the lid exists.
+- **Shape putting works in MuJoCo, open-loop** (Emīls + Claude, Sun ~03:25, `sim/mujoco/insert_demo.py`): the real lid on the middle box, boxes 7 cm closer, head camera only. 19/27 blocks through the right hole (cubes 7/9, cylinders 9/9, prisms 3/9), 0 wrong holes. Every block still held at its hole went in; the failures were blocks slipping out of the hand while carried. Not run through the policy server. Separate from the team's `insert.py` (task 3, cylinders only).
+- **If the boxes move 7 cm closer, v1.6's default camera fit (`V16_CALIB=bins`) puts every object 7.5 cm off** in MuJoCo: it lines the boxes up with `scene.yaml` and moves the camera to do so. A camera fit from the hands (`V16_CALIB=hands` / `lean`, Emīls's working tree, not yet on GitHub) does not (4/4 blocks vs 0/4). The v1.2–v1.5 images and Marcus's agent were not checked; any fit that matches the boxes to `scene.yaml` has the same problem.
 
 ### 4.2 Reading the instruction (Emīls, [`../training/instruction_parser/RESULTS.md`](../training/instruction_parser/RESULTS.md))
 | Method | Aalto's templates | unseen wording (T2a): exact / confidently wrong | hard wording (T2b): exact / confidently wrong |
@@ -196,6 +209,7 @@ Other measurements:
 - **Real camera:** is the camera mounted tilted, or is the torso leaning? This decides whether the head-pose re-fit is right on the real robot. Comparing the hands' projected and seen positions in the head camera could tell.
 - **Sim runs going (Sat ~20:20):** v1.5 (strict and sides off) with randomisation in Aalto's look, seeds 1000–1009: does it match Marcus's agent there (18/20 on 1000–1004) while keeping its venue-look lead over v1.4 (23/27 vs 20/27)? If so, v1.5 becomes the candidate.
 - **Gemma inside the image:** size, and start-up within the 120 s limit, are untested.
+- **Aalto, about the box move and the lid (Sun ~02:50):** the exact new distance and gaps; whether the object area moves too; how the lid is turned and which side is up; which box it sits on, given that the middle box's opening is smaller than the lid's lip; whether shape putting is scored in the finals.
 
 ## 8. Repo rules added today (FACT)
 - **No AI co-author lines in commits or PRs** (`Co-Authored-By: Claude …`, "Generated with …", `Claude-Session:`): GitHub listed "Claude" as a contributor of this repo because of them. Guards: `.claude/settings.json`, `.githooks/commit-msg`, `make setup`, and the rule in `AGENTS.md` (c239100).
