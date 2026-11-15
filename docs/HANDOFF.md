@@ -20,7 +20,9 @@
 > - **Task 3 settled (e-073 … e-077):** release height, pinch height and a hold before release make no difference;
 >   cubes (0/16) and triangles (1/24) lose points under every setting, so cylinders only stays. New `LID_PICK_TOL`
 >   (on, 2 mm): the hand's way down to the block no longer drifts up to 6 mm off the planned grasp point (Aalto's
->   planner accepts 6 mm); +22 vs +13 on 9 seeds, within noise. The built images predate it (task-3 code only).
+>   planner accepts 6 mm); +22 vs +13 on 9 seeds, within noise. **Images rebuilt from 2de82ce (~03:40, not pushed):**
+>   `final-v16` `6a02fad81f37` (1.46 GB) and `final-v16g` `3308f1b4489e` (6.35 GB): key 53 bytes, replay test PASS
+>   (0 errors, startup 0.5 s / 7.4 s). Their sorting code is the e-072 / e-070 code; only `insert.py` changed.
 > - **No new pushes** from Emīls (bot-icelli, last 838a407 at 02:41) or Marcus (his repo, last 75f39af at 02:06), as
 >   of 03:45.
 
