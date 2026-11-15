@@ -86,5 +86,42 @@ class TestLimits(unittest.TestCase):
         self.assertGreaterEqual(camera.LEAN_MAX_MOVE_M, 0.30)
 
 
+
+class TestArmErr(unittest.TestCase):
+    """ARM_ERR: a measured per-arm landing error, corrected on every IK target (no mapping needed)."""
+
+    @classmethod
+    def setUpClass(cls):
+        from aaltonomous.baselines.classical.config import home_arm, load_config
+        from aaltonomous.baselines.classical.kinematics import ArmKinematics
+        from aaltonomous.sim.oracle import ORACLE_OVERRIDES
+        cls.cfg = load_config(None, dict(ORACLE_OVERRIDES))
+        cls.kin = ArmKinematics(cls.cfg)
+        cls.home = home_arm(cls.cfg)
+        lean.install()
+
+    def tearDown(self):
+        lean.ERR.update({"left": np.zeros(3), "right": np.zeros(3)})
+        lean.off()
+
+    def test_parse(self):
+        e = lean._parse_err("right=0,-0.02,0.03; left=0.01")
+        np.testing.assert_allclose(e["right"], [0, -0.02, 0.03])
+        np.testing.assert_allclose(e["left"], [0.01, 0, 0])
+
+    def test_targets_move_by_minus_the_error_and_fk_maps_back(self):
+        e = np.array([-0.03, -0.02, 0.01])                 # lands 3 cm short, 2 cm right, 1 cm high
+        lean.ERR["right"] = e.copy()
+        t = np.array([0.30, -0.10, 0.05])
+        q, ok, err, tilt = self.kin.solve("right", t, self.home)
+        self.assertTrue(ok)
+        raw = lean._ORIG["grasp_pose"](self.kin, "right", q)[0]
+        self.assertLess(np.linalg.norm(raw - (t - e)), float(self.cfg["ik"]["pos_tol"]) + 1e-4)
+        self.assertLess(np.linalg.norm(self.kin.grasp_pose("right", q)[0] - t), float(self.cfg["ik"]["pos_tol"]) + 1e-4)
+        q2 = self.kin.solve("left", np.array([0.30, 0.10, 0.05]), self.home)[0]   # the other arm: unchanged
+        q3 = lean._ORIG["solve"](self.kin, "left", np.array([0.30, 0.10, 0.05]), self.home)[0]
+        np.testing.assert_allclose(q2, q3)
+
+
 if __name__ == "__main__":
     unittest.main()

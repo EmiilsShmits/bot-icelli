@@ -16,7 +16,8 @@ The palm's "down" axis and the finger hint are mapped with R, so the grasp stays
 policy/adk/patch_lean.py). Gate: on only if that fit tilts the camera >= LEAN_MIN_TILT from calibration.yaml. Aalto's
 real footage gives 8-12 deg, their sims ~1-2 deg, so in their sims nothing changes.
 
-Env: LEAN_MAP auto | on | off (default off); LEAN_OFFSETS on | off (default on: the per-arm offsets measured in §3
+Env: ARM_ERR "left=dx,dy,dz;right=dx,dy,dz" (m, table frame): where each hand really ends up minus where it was
+sent, measured on the robot; every target of that arm is moved by minus that (default none). LEAN_MAP auto | on | off (default off); LEAN_OFFSETS on | off (default on: the per-arm offsets measured in §3
 of the doc); LEAN_MIN_TILT deg (default 5).
 
 Default off since Sun 15 Nov ~02:00: in a sim where the robot leans 8 deg forward with the head camera 2.4 deg
@@ -95,6 +96,22 @@ def set_fit(T0, T_fit, tilt_deg, log_fn=None, mode=None):
     return _S["on"]
 
 
+def _parse_err(raw):
+    out = {"left": np.zeros(3), "right": np.zeros(3)}
+    for part in filter(None, (x.strip() for x in (raw or "").split(";"))):
+        side, _, v = part.partition("=")
+        vals = [float(x) for x in v.split(",")]
+        out[side.strip()] = np.array((vals + [0.0, 0.0, 0.0])[:3])
+    return out
+
+
+ERR = _parse_err(os.environ.get("ARM_ERR", ""))   # read once at import (the server's environment)
+
+
+def _busy():
+    return _S["on"] or any(np.any(v != 0) for v in ERR.values())
+
+
 def to_arm(p, side):
     """Fitted-frame point -> where the arm model must put its grasp point."""
     M = _S["M"]
@@ -109,8 +126,15 @@ def from_arm(p, side):
 
 # ---------------------------------------------------------------------------------------------- the patch
 def _solve(self, side, target, arm_q_seed, top_down=True, extra_seeds=(), restarts=True):
-    if not _S["on"]:
+    if not _busy():
         return _ORIG["solve"](self, side, target, arm_q_seed, top_down, extra_seeds, restarts)
+    target = np.asarray(target, float) - ERR[side]
+    if not _S["on"]:
+        _tl.raw = getattr(_tl, "raw", 0) + 1
+        try:
+            return _ORIG["solve"](self, side, target, arm_q_seed, top_down, extra_seeds, restarts)
+        finally:
+            _tl.raw -= 1
     from aaltonomous.baselines.classical import kinematics as K
     R = _S["M"][:3, :3]
     down0, hint0 = K.DOWN, self.hint
@@ -126,16 +150,20 @@ def _solve(self, side, target, arm_q_seed, top_down=True, extra_seeds=(), restar
 
 def _grasp_pose(self, side, arm_q):
     p, a = _ORIG["grasp_pose"](self, side, arm_q)
-    if not _S["on"] or getattr(_tl, "raw", 0):
+    if not _busy() or getattr(_tl, "raw", 0):
         return p, a
-    return from_arm(p, side), _S["Minv"][:3, :3] @ a
+    if not _S["on"]:
+        return p + ERR[side], a
+    return from_arm(p, side) + ERR[side], _S["Minv"][:3, :3] @ a
 
 
 def _hand_points(self, side, arm_q, hand_q):
     pts = _ORIG["hand_points"](self, side, arm_q, hand_q)
-    if not _S["on"] or getattr(_tl, "raw", 0):
+    if not _busy() or getattr(_tl, "raw", 0):
         return pts
-    return from_arm(pts, side)
+    if not _S["on"]:
+        return pts + ERR[side]
+    return from_arm(pts, side) + ERR[side]
 
 
 def install():
@@ -147,5 +175,7 @@ def install():
     _ORIG.update(solve=A.solve, grasp_pose=A.grasp_pose, hand_points=A.hand_points)
     A.solve, A.grasp_pose, A.hand_points = _solve, _grasp_pose, _hand_points
     A._bot_icelli_lean = True
-    log.info("arm-frame mapping installed (LEAN_MAP=%s): off until a head-camera fit tilts >= %s deg",
-             os.environ.get("LEAN_MAP", "off"), os.environ.get("LEAN_MIN_TILT", "5"))
+    log.info("arm-frame mapping installed (LEAN_MAP=%s): off until a head-camera fit tilts >= %s deg; ARM_ERR %s",
+             os.environ.get("LEAN_MAP", "off"), os.environ.get("LEAN_MIN_TILT", "5"),
+             {k: [round(float(x), 3) for x in v] for k, v in ERR.items()} if any(np.any(v != 0) for v in ERR.values())
+             else "none")
