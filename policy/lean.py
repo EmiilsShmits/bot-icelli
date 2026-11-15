@@ -56,10 +56,23 @@ def off():
     _S.update(on=False, M=np.eye(4), Minv=np.eye(4), off=dict(_ZERO), info={"on": False})
 
 
-def set_fit(T0, T_fit, tilt_deg, log_fn=None):
+def set_gravity(down_arm, log_fn=None):
+    """Gravity feed-forward (policy/gravity_ff.py) with gravity along `down_arm` (pelvis frame, None = straight down
+    or GRAVITY_FF_PITCH_DEG): on a leaning robot the arms' gravity torque turns with it. GRAVITY_FF_LEAN=off: keep."""
+    if os.environ.get("GRAVITY_FF_LEAN", "on").strip().lower() == "off":
+        return
+    try:
+        import gravity_ff
+        gravity_ff.set_down(down_arm, log_fn)
+    except Exception as e:                       # never break the episode for it
+        (log_fn or log.info)(f"[lean] gravity direction not set: {e!r}")
+
+
+def set_fit(T0, T_fit, tilt_deg, log_fn=None, mode=None):
     """Once per episode, after the head-camera fit. T0 = calibration.yaml pose, T_fit = fitted pose (both 4x4,
-    pelvis <- optical); tilt_deg = the fit's tilt from T0. T_fit None (fit rejected) -> off."""
-    mode = os.environ.get("LEAN_MAP", "off")
+    pelvis <- optical); tilt_deg = the fit's tilt from T0. T_fit None (fit rejected) -> off.
+    mode: auto | on | off, None = env LEAN_MAP (V16_CALIB=lean passes its own: auto only when its arm fit failed)."""
+    mode = mode or os.environ.get("LEAN_MAP", "off")
     thr = float(os.environ.get("LEAN_MIN_TILT", 5.0) or 5.0)
     on = T_fit is not None and (mode == "on" or (mode == "auto" and float(tilt_deg) >= thr))
     if not on:
@@ -77,6 +90,8 @@ def set_fit(T0, T_fit, tilt_deg, log_fn=None):
                       "offsets": "on" if offsets is OFFSETS else "off"}
     msg = (f"arm-frame mapping {'ON' if _S['on'] else 'off'}: {_S['info']}")
     (log_fn or log.info)(f"[lean] {msg}")
+    if _S["on"]:
+        set_gravity(_S["M"][:3, :3] @ np.array([0.0, 0.0, -1.0]), log_fn)
     return _S["on"]
 
 

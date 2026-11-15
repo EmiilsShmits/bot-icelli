@@ -20,6 +20,7 @@ No network calls here. Decision 1 crop labels are added on top in `labels.py` (o
 from __future__ import annotations
 
 import copy
+import os
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -90,6 +91,11 @@ def _bin_outlines(scene, res=0.002):
 
 LEAN_DEADBAND_M = 0.004        # base moves the work area less than this (and turns < 0.5 deg): keep the same frame
 LEAN_DEADBAND_DEG = 0.5
+# Largest base move still believed. Was 15 cm / 20 deg: the real robot (hanging from the crane) leans ~15-21 deg, which
+# moves points 50 cm out by 13-18 cm, so on the robot (Sun 05:30 test) the fit was most likely thrown away and the
+# arms aimed uncorrected (short of the block, near edge of the box). Env V16_LEAN_MAX_MOVE (m), V16_LEAN_MAX_DEG.
+LEAN_MAX_MOVE_M = float(os.environ.get("V16_LEAN_MAX_MOVE", "0.35") or 0.35)
+LEAN_MAX_DEG = float(os.environ.get("V16_LEAN_MAX_DEG", "35") or 35.0)
 
 
 def fit_head_pose(depth, cal, scene, T0=None, rng=None, max_range_mm=1600, hands=None, lean=None):
@@ -128,7 +134,7 @@ def fit_head_pose(depth, cal, scene, T0=None, rng=None, max_range_mm=1600, hands
     fit.arm_pose.update(move_mm=round(move * 1000, 1), turn_deg=round(rot, 2), lean_deg=round(lean_deg, 2))
     if move < LEAN_DEADBAND_M and rot < LEAN_DEADBAND_DEG:
         fit.arm_pose["base"] = "same frame (within the deadband)"
-    elif move > 0.15 or rot > 20.0:
+    elif move > LEAN_MAX_MOVE_M or rot > LEAN_MAX_DEG:
         fit.arm_pose["base"] = "same frame (implausible)"
     else:
         fit.base = A
@@ -451,7 +457,16 @@ class CameraPerception:
             self._set_base(fit.base)
             try:   # real robot (fit tilted >= 5 deg): aim the arms in the arm frame, policy/lean.py
                 import lean
-                lean.set_fit(self.cal0._T(CAM), fit.T if fit.ok else None, fit.tilt_deg, self.log)
+                mode = None                       # None: LEAN_MAP decides (V16_CALIB bins / hands)
+                if self.lean is not None:         # V16_CALIB=lean: lean.py only if the arm fit could not be used
+                    why = (fit.arm_pose or {}).get("base", "")
+                    failed = fit.arm_pose is None or why.endswith(("(arm fit failed)", "(implausible)"))
+                    mode = "off" if fit.base is not None or not failed else os.environ.get("V16_LEAN_FALLBACK", "auto")
+                lean.set_fit(self.cal0._T(CAM), fit.T if fit.ok else None, fit.tilt_deg, self.log, mode=mode)
+                if fit.base is not None:          # gravity feed-forward: gravity as the arms see it this episode
+                    lean.set_gravity(np.asarray(fit.base, float)[:3, :3].T @ np.array([0.0, 0.0, -1.0]), self.log)
+                elif not lean.active():
+                    lean.set_gravity(None, self.log)
             except ImportError:
                 pass
         return self.fit

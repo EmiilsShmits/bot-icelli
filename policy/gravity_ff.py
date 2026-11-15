@@ -78,6 +78,31 @@ class GravityFF:
         return out.reshape(arm.shape)
 
 
+MAX_LEAN_DEG = 35.0
+
+
+def set_down(down, log_fn=None):
+    """Per episode (policy/lean.py, from the head-camera / arm fit): gravity along unit vector `down` in the pelvis
+    frame; None = back to the GRAVITY_FF_PITCH_DEG default. Ignored if feed-forward is off or the lean is > 35 deg."""
+    from aaltonomous.deploy import policy_server as ps
+    g = getattr(ps.handle, "_gravity_ff", None)
+    if g is None:
+        return
+    if down is None:
+        a = np.radians(float(os.environ.get("GRAVITY_FF_PITCH_DEG", "0") or 0.0))
+        d = np.array([np.sin(a), 0.0, -np.cos(a)])
+    else:
+        d = np.asarray(down, float)
+        d = d / max(np.linalg.norm(d), 1e-9)
+    lean = float(np.degrees(np.arccos(np.clip(-d[2], -1.0, 1.0))))
+    if lean > MAX_LEAN_DEG:
+        (log_fn or log.info)(f"[gravity_ff] measured lean {lean:.1f} deg not believed: gravity kept")
+        return
+    g.model.gravity = g.pin.Motion(9.81 * d, np.zeros(3))
+    (log_fn or log.info)(f"[gravity_ff] gravity {lean:.1f} deg off the pelvis z axis, pelvis-frame direction "
+                         f"({d[0]:+.3f}, {d[1]:+.3f}, {d[2]:+.3f})")
+
+
 def install():
     """Wrap Aalto's policy_server.handle so every action carries arm_tau_ff. No-op if off or already installed."""
     if os.environ.get("GRAVITY_FF", "on").strip().lower() == "off":
