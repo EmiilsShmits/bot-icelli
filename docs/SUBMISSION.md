@@ -29,31 +29,37 @@ From simulation to a real humanoid in 48 hours: a G1 that looks, understands the
 
 ## Description (≤ 5000 characters)
 <!-- description -->
-**What we built.** A Unitree G1 humanoid with three-finger Dex3 hands that clears a table on its own. It looks with its head RGB-D camera, reads a free-text instruction ("put the purple blocks in the left box…"), and picks and places each block into one of three boxes. No teleoperation, no markers, no object positions from the simulator: one Docker image that Aalto runs on the real robot.
+**What we built.** bot-icelli is a Unitree G1 humanoid with three-finger Dex3 hands that clears a table on its own. It looks with its head RGB-D camera, reads a free-text instruction ("put the purple blocks in the left box…"), and picks and places each block into one of three boxes. There is no teleoperation, no markers, and no object positions from the simulator: just one Docker image that Aalto runs on the real robot.
 
 **How it works.**
-- **Seeing.** The head depth image gives the table plane, each block's position, and its shape from the top face (cube, cylinder, triangle). Colours come from HSV ranges tuned on the real camera's footage. The robot calibrates itself every episode: it finds its own arms in the depth image and fits them to a hand model. That gives the camera pose and how far the body leans (6° in our last real run), without markers. The three boxes are measured from depth too, so the drops follow the boxes when they move.
-- **Understanding, with Gemini.** Gemini names each new object's colour and shape from an image crop, rescues blobs our colour ranges miss, and turns the instruction into a target box for every object. It runs in a background thread, so the 30 Hz control loop never waits. If the network fails, a fine-tuned Gemma 3 1B inside the image takes over (94.7 % on unseen instructions, against 86.7 % for rules), then a rule parser.
-- **Moving.** Aalto's inverse-kinematics planner, extended with:
-  - face-aligned grasps, and our own grasp for standing triangles (21 of 24 picked in Isaac, against 12 of 24);
+- **Seeing.** The head depth image gives the table plane, each block's position, and its shape from the top face (cube, cylinder, triangle). Colours come from HSV ranges tuned on the real camera's footage. Every episode the robot calibrates itself: it finds its own arms in the depth image and fits them to a hand model, which gives the camera pose and how far the body leans, without markers. The three boxes are measured from depth too, so the drops follow the boxes when they move.
+- **Understanding, with Gemini.** Gemini names each new object's colour and shape from an image crop, rescues blobs the colour ranges miss, and turns the instruction into a target box for every object. It runs in a background thread, so the 30 Hz control loop never waits. If the network fails, a fine-tuned Gemma 3 1B inside the image takes over (94.7 % on unseen instructions, against 86.7 % for rules), then a rule parser.
+- **Moving.** We extended Aalto's inverse-kinematics planner with:
+  - grasps aligned to the block's faces, and our own grasp for standing triangles (21 of 24 picked in Isaac, against 12 of 24);
   - hand-overs between the arms, and retries that remember what failed;
   - jerk-limited smooth paths inside the speed limits (0 safety clips);
-  - gravity feed-forward torque, so the arm lands where it is told. On the real robot the arm sagged 11–15 mm without it and is 1–3 mm off with it.
+  - gravity feed-forward torque, so the arm lands where it is told (on the real robot: 11–15 mm of sag without it, 1–3 mm with it);
+  - a body-clearance check that refuses any plan putting an elbow against the robot's own torso.
 - **Checking.** A held block stops the thumb and index joints, and a grasp check reads exactly that. On the real robot it caught every miss and retried.
 - **Two more brains, explored in parallel.**
-  - An agent built with Google's ADK: Gemini looks at the camera and calls our motion skills as tools (10 of 12 objects sorted in sim).
+  - An agent built with Google's ADK, where Gemini looks at the camera and calls our motion skills as tools (10 of 12 objects sorted in sim).
   - A π0.5 vision-language-action model, fine-tuned on 125 demonstrations we recorded in simulation (still learning: 4 of 12).
 
-**Sim to real.** We logged 84 experiments, almost all in Aalto's Isaac simulator on cloud GPUs. They covered a "venue look" re-rendered to match the real hall, a leaning robot, a shifted camera and the shape-lid task. Our final system sorts 11 of 12 objects in Isaac with Aalto's scene randomisation.
+**Sim to real.** We logged 90 experiments, almost all in Aalto's Isaac simulator on cloud GPUs (Modal), covering a "venue look" re-rendered to match the real hall, a leaning robot, a shifted camera and the shape-lid task. Our final image sorts 12 of 12 objects in Isaac with zero safety clips.
 
-On the real G1 it picked a block from the table and placed it in a box, fully autonomously. Between real runs we went through every joint log and camera frame, and fixed each problem we found in the next image:
-- the arm sag;
+On the real G1 it picked a block from the table and placed it in a box, fully autonomously. Between real runs we went through every joint log and camera frame, and fixed what we found in the next image:
+- the arm sagging under gravity;
 - a stuck finger joint on the left hand (the grasp check now reads only the pinch joints);
-- a 2 cm aim error per arm;
-- boxes standing 11 cm from their default place;
-- an elbow pushing into the robot's own body on reaches across it, which the simulator never shows (such plans are now refused).
+- a 2–3 cm aim error per arm;
+- boxes standing 11 cm from their default place (now measured);
+- fingers that need a full second to close (the hand now holds before lifting);
+- elbows pushing into the robot's own body on reaches across it, something the simulator never shows (such plans are now refused).
 
-**What we learned.** Simulation gets you most of the way. The last centimetres are calibration, and the robot's own logs are the best sensor for it.
+**Why it matters.** Most of the difficulty in getting a humanoid to do a simple task is the gap between the simulator and the real machine. We treated the robot's own logs as a sensor: each real run taught us something measurable, and the next image fixed it.
+
+**What we learned.** Simulation gets you most of the way. The last centimetres are calibration, and the robot is the best teacher.
+
+**Built with:** Unitree G1 + Dex3, Aalto's Isaac Sim and planner, Gemini API, Google ADK, Gemma 3, π0.5 (LeRobot), Modal, Pinocchio, OpenCV.
 
 **Team.** Emīls Šmits, Marcus Öberg, Samer Haddadin, Tiya Kumar.
 <!-- /description -->
