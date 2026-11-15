@@ -43,6 +43,8 @@ mock: ## 2 full episodes on Aalto's mock backend (runner + safety filter, no GPU
 docker-build: ## build the submission image for linux/amd64 (IMAGE=bot-icelli/policy:dev POLICY=hold|v1.5|v1.6|v1.6g [GEMINI_KEY_FILE=...])
 	@if [ "$(POLICY)" = "v1.6g" ] && [ ! -f policy/weights/gemma-parser-1b/config.json ]; then \
 		echo "v1.6g needs the Gemma parser weights in policy/weights/gemma-parser-1b/ (training/instruction_parser/README.md)"; exit 1; fi
+	@if [ "$(POLICY)" != "v1.6g" ] && [ -d policy/weights ]; then \
+		echo "note: policy/weights/ is in the build context, so this $(POLICY) image carries it too (~2 GB); move it aside for a 1.5 GB image"; fi
 	bash policy/get_urdf.sh
 	docker buildx build --platform linux/amd64 -f policy/Dockerfile --build-arg POLICY=$(POLICY) \
 		$(if $(GEMINI_KEY_FILE),--secret id=gemini$(comma)src=$(GEMINI_KEY_FILE)) -t $(IMAGE) --load .
