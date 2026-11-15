@@ -36,6 +36,11 @@ policy/decision_oracle/
 !policy/decision_oracle/crowd_v16.py
 # v1.6: box and lid finder (ec2bbef; imported by upgrades_v16.py even when V16_BOXES is off)
 !policy/decision_oracle/boxes_v16.py
+# v1.6: standing-triangle grasp (V16_TRI, off by default; upgrades_v16.py imports it always) and the arm-based
+# camera calibration (V16_CALIB=hands|lean, off by default; also needs hand_model.npz, which is not in git: without it
+# the policy logs "hand calibration off" and keeps the bin-wall fit)
+!policy/decision_oracle/tri_v16.py
+!policy/decision_oracle/handeye.py
 # v1.5/v1.6: task 3; policies/oracle_v15.py imports it at EVERY reset (without it every episode would crash)
 !policy/decision_oracle/insert.py
 **/__pycache__
