@@ -20,10 +20,12 @@ def install():
     try:
         import cfg_overrides
         import lean
+        import selfcol
         import smooth_motion
         cfg_overrides.install()
         smooth_motion.install()
         lean.install()
+        selfcol.install()
     except ImportError as e:  # `hold` on a machine without the planner's dependencies
         log.warning("runtime patches not installed: %s", e)
     try:                      # separate: it only needs Pinocchio and Aalto's policy server
