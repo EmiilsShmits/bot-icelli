@@ -244,9 +244,9 @@ class V16OraclePolicy(V15OraclePolicy):
                     self.log(f"[v1.6] crop labels off: {e}")
             self.cam.leftovers = self.labeler is not None
             self.cam.merge_warm = os.environ.get("V16_MERGE_WARM", "on").lower() not in ("0", "off", "false", "no")
-            # V16_CALIB: "bins" (the bin walls set the camera's x, y, yaw; bins assumed where scene.yaml says) |
+            # V16_CALIB (default "lean" since Sun 15 Nov): "bins" (the bin walls set the camera's x, y, yaw; bins assumed where scene.yaml says) |
             # "hands" (the arms set them, handeye.py; the bins are then located and the drops follow them)
-            self.calib = os.environ.get("V16_CALIB", "bins").lower()
+            self.calib = os.environ.get("V16_CALIB", "lean").lower()
             # "lean" (perception as "bins"; the arms give the camera's pose relative to them, and the IK model moves
             # into the camera's table frame: a leaning torso or a robot standing off from scene.yaml, handeye.py)
             if self.calib in ("hands", "lean"):

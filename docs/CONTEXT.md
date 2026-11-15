@@ -220,7 +220,7 @@ Other measurements:
   - Synthetic check with the real geometry (`eval/analysis/real_hands/lean_error.py`): with the torso leaning 8° and the camera exact on its mount, levelling moves every object ~7 cm (4°: 3.3 cm, 12°: 10 cm).
   - Aalto's calibration used as-is would be exact.
   - `V16_CALIB=hands` fixes only x, y and yaw after levelling, so it gives up above ~4° and falls back to the bin fit.
-  - **Fix built (Sun ~03:00, Emīls + Claude), off by default: `V16_CALIB=lean`** (`policy/decision_oracle/README.md`).
+  - **Fix built (Sun ~03:00, Emīls + Claude): `V16_CALIB=lean`, the default since Sun ~05:30 (team decision, `docs/DECISIONS.md`)** (`policy/decision_oracle/README.md`). On Aalto's 15 drop-3 frames the arm fit succeeds 15/15 (lean 12–16°), 14 move the IK base, 1 is rejected as implausible (ep14, 20.9°) and keeps the bin-wall frame; a crashing or failed arm fit, or a missing `hand_model.npz`, falls back to the bin-wall fit.
     - The arms give the camera's full pose relative to them, and the planners' IK model is moved into the camera's levelled table frame.
     - MuJoCo with a leaning robot (new `dr.py` mode `lean`): reach error 35–65 mm → ~1 mm. Shifted bins: 9–35 mm → ~1 mm. Nominal unchanged.
     - Paired episodes (`eval/RESULTS.md` e-079): nominal 75 % = 75 %, shifted bins 22 % → 58 %, leaning 49 % → 56 %, all randomised 21 % → 49 %.

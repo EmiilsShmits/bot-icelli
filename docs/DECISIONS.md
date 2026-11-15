@@ -45,3 +45,9 @@ _Append-only. One entry per agreed choice. Format:_
 - Decision: `third_party/aaltonomous-humanoid` is a git submodule pinned at `36daf5b`. We never edit it. `make update-aalto` pulls their updates.
 - Why: we use their tools (protocol, replay, runner, evaluator) unchanged, and the submodule records which version we tested against.
 - Alternatives considered: copying their code (would go stale); pip install (their repo has no packaging).
+
+## 2026-11-15 — Final image: `V16_CALIB=lean` on by default
+- Decision: v1.6 aims the arms with the lean calibration (`policy/decision_oracle/handeye.py`): the head depth's view of the robot's own arms gives the camera's pose relative to them, and the IK model moves into the camera's levelled table frame. `hand_model.npz` is now in git and in the image. `V16_CALIB=bins` restores the old fit.
+- Why: the real robot leans against the table (12–16° on Aalto's drop 3) and the boxes move ~7 cm closer for the finals; the bin-wall fit then aims several cm off (MuJoCo e-079: shifted bins 22 % → 58 %, all randomised 21 % → 49 %, nominal 75 % = 75 %).
+- Risk: never run in Isaac or on the robot. Every failure (arm fit error, fit not ok, implausible move > 15 cm or > 20°, no model file) keeps the bin-wall fit.
+
