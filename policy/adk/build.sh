@@ -35,7 +35,8 @@ cp -r "$BI/third_party/aaltonomous-humanoid/aaltonomous" "$C/aaltonomous"
 cp "$URDF" "$C/"
 cp "$BI/policy/adk/Dockerfile" "$C/"
 python3 "$BI/policy/adk/patch_headpose.py" "$C/adk_agents/robot_sorter"
-cp "$BI/policy/smooth_motion.py" "$BI/policy/cfg_overrides.py" "$BI/policy/runtime.py" "$BI/policy/lean.py" "$C/"
+cp "$BI/policy/smooth_motion.py" "$BI/policy/cfg_overrides.py" "$BI/policy/runtime.py" "$BI/policy/lean.py" \
+   "$BI/policy/gravity_ff.py" "$C/"
 python3 "$BI/policy/adk/patch_smooth.py" "$C/adk_agents/robot_sorter"
 python3 "$BI/policy/adk/patch_lean.py" "$C/adk_agents/robot_sorter"
 umask 077
