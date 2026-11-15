@@ -16,8 +16,14 @@ The palm's "down" axis and the finger hint are mapped with R, so the grasp stays
 policy/adk/patch_lean.py). Gate: on only if that fit tilts the camera >= LEAN_MIN_TILT from calibration.yaml. Aalto's
 real footage gives 8-12 deg, their sims ~1-2 deg, so in their sims nothing changes.
 
-Env: LEAN_MAP auto | on | off (default auto); LEAN_OFFSETS on | off (default on: the per-arm offsets measured in §3
+Env: LEAN_MAP auto | on | off (default off); LEAN_OFFSETS on | off (default on: the per-arm offsets measured in §3
 of the doc); LEAN_MIN_TILT deg (default 5).
+
+Default off since Sun 15 Nov ~02:00: in a sim where the robot leans 8 deg forward with the head camera 2.4 deg
+further down on its mount (modal_pipeline/sim/scene_variant.py --lean 8 --cam-mount 2.4, Aalto look, v1.6,
+seeds 1000-1002), LEAN_MAP=auto sorted 7/12 objects and LEAN_MAP=off 12/12 (Modal runs lean-v16-auto,
+lean-v16-off; 0 clipped steps in both). In the venue look (camera tilted ~10 deg on its mount, robot upright)
+auto would also switch on, wrongly. Untested on the real robot either way.
 """
 from __future__ import annotations
 
@@ -53,7 +59,7 @@ def off():
 def set_fit(T0, T_fit, tilt_deg, log_fn=None):
     """Once per episode, after the head-camera fit. T0 = calibration.yaml pose, T_fit = fitted pose (both 4x4,
     pelvis <- optical); tilt_deg = the fit's tilt from T0. T_fit None (fit rejected) -> off."""
-    mode = os.environ.get("LEAN_MAP", "auto")
+    mode = os.environ.get("LEAN_MAP", "off")
     thr = float(os.environ.get("LEAN_MIN_TILT", 5.0) or 5.0)
     on = T_fit is not None and (mode == "on" or (mode == "auto" and float(tilt_deg) >= thr))
     if not on:
@@ -127,4 +133,4 @@ def install():
     A.solve, A.grasp_pose, A.hand_points = _solve, _grasp_pose, _hand_points
     A._bot_icelli_lean = True
     log.info("arm-frame mapping installed (LEAN_MAP=%s): off until a head-camera fit tilts >= %s deg",
-             os.environ.get("LEAN_MAP", "auto"), os.environ.get("LEAN_MIN_TILT", "5"))
+             os.environ.get("LEAN_MAP", "off"), os.environ.get("LEAN_MIN_TILT", "5"))

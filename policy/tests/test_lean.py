@@ -44,7 +44,13 @@ class TestLean(unittest.TestCase):
         cls.home = home_arm(cls.cfg)
         lean.install()
 
+    def setUp(self):
+        import os
+        os.environ["LEAN_MAP"] = "auto"                 # the default is off since Sun 15 Nov; test the mapping itself
+
     def tearDown(self):
+        import os
+        os.environ.pop("LEAN_MAP", None)
         lean.off()
 
     def targets(self, side):
@@ -90,11 +96,14 @@ class TestLean(unittest.TestCase):
     def test_env_off(self):
         import os
         os.environ["LEAN_MAP"] = "off"
-        try:
-            lean.set_fit(np.eye(4), np.linalg.inv(_pitch(10.0)), 10.0)
-            self.assertFalse(lean.active())
-        finally:
-            os.environ.pop("LEAN_MAP")
+        lean.set_fit(np.eye(4), np.linalg.inv(_pitch(10.0)), 10.0)
+        self.assertFalse(lean.active())
+
+    def test_default_is_off(self):
+        import os
+        os.environ.pop("LEAN_MAP", None)
+        lean.set_fit(np.eye(4), np.linalg.inv(_pitch(10.0)), 10.0)
+        self.assertFalse(lean.active())
 
 
 if __name__ == "__main__":
