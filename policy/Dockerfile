@@ -62,10 +62,12 @@ ENV POLICY=${POLICY}
 # grasp check still reads it empty); the boxes are measured from head depth (06:55: the robot stood ~11 cm right of
 # the box row, the centre drop hit the right box). selfcol.py (on unless SELFCOL=off) refuses plans that put an elbow
 # against the body (06:55: both the purple miss and the end-of-run crash).
+# Real robot 09:2x run: grasps good, but the carry clipped the boxes and swung near the body / other hand:
+# carry 26 cm above the table (was 16), approach from 12 cm, release 6 cm over the rim, lift 15 cm before going home.
 # Any of these: docker run -e ARM_ERR= -e AALTO_CFG_OVERRIDES= -e V16_BOXES=off -e SELFCOL=off ... to undo.
 ENV ARM_ERR="left=0,0.02,0;right=0,-0.03,0" \
     V16_BOXES=find \
-    AALTO_CFG_OVERRIDES='{"grasp.height_frac": 0.35, "motion.close_hold_s": 1.2, "grasp.drop_inset": 0.07, "hand.closed": [0.0, 0.2, 0.9, -1.0, -0.6, -1.0, -0.6]}'
+    AALTO_CFG_OVERRIDES='{"grasp.height_frac": 0.35, "motion.close_hold_s": 1.2, "grasp.drop_inset": 0.07, "grasp.carry_height": 0.26, "grasp.approach_height": 0.12, "grasp.drop_above_rim": 0.06, "grasp.retreat_up": 0.15, "hand.closed": [0.0, 0.2, 0.9, -1.0, -0.6, -1.0, -0.6]}'
 # Load-time check at build: the chosen policy constructs (config, URDF, calibration, parser all load). v1.5/v1.6/v1.6g/v1.7
 # also import task 3's module, which their reset() imports on every episode (.dockerignore must let it in).
 RUN python3 -c "import os, sys; sys.path.insert(0, '/app/policy'); import server; server.POLICIES[os.environ['POLICY']](); \
