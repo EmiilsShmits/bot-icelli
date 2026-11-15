@@ -1,0 +1,16 @@
+# secrets and local environments: never commit
+.env
+.venv/
+.adk/
+# run outputs fetched from Modal (scores, logs, per-tick recordings, videos, 4 GB): not in this copy, read them in
+# github.com/marcusoberg/junction2026 (branch gemini-er)
+sim_out/
+sim/out/
+__pycache__/
+*.pyc
+.DS_Store
+# the organisers' repo is cloned separately (github.com/zupermiez/aaltonomous-humanoid)
+aaltonomous-humanoid/
+# model weights
+submission/weights/
+data_drops/
