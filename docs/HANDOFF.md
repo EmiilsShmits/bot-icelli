@@ -1,5 +1,19 @@
 # Handoff: Samer's overnight Claude session → the next agent (Sun 15 Nov, ~01:05 Helsinki)
 
+> **Update Sun ~07:40: the 06:55 robot run of `final-v16-real` picked the yellow cube and placed it in a box (the
+> robot's right box; the instruction said centre).**
+> - Analysis: `docs/research/real-run-0655.md`. Gravity feed-forward works (arm 1–3 mm from the command).
+> - Both misses were aim, not grip: the left hand landed ~2 cm to the robot's left, the right hand ~2.3 cm to its right
+>   (after the 2.5 cm correction). The box row stood ~11 cm left of `scene.yaml`, so the "centre" drop hit the wall
+>   between the centre and right boxes. The grasp check called all three picks right.
+> - **Next image: `bot-icelli/policy:final-v16-real2` (7998cb78ff06, 780e1e5, replay PASS, key inside).**
+>   - `ARM_ERR` left 2 cm right, right 3.5 cm left.
+>   - `V16_BOXES=find` (boxes measured; new test: shifted rows found within 1 cm or refused, never mislabelled).
+>   - Thumb closes 1.4 cm further.
+>   - Sim check: Modal `real2-nominal`, `real2-venue`.
+> - Push (Samer, on samer-v1-sim): `docker tag bot-icelli/policy:final-v16-real2 ghcr.io/samer-cyber/bot-icelli-policy:final-v16-real2 && docker push ghcr.io/samer-cyber/bot-icelli-policy:final-v16-real2`
+> - Submission drafts (name, punchline, description, Modal / Gemini texts, video shot list, slides): `docs/SUBMISSION.md`.
+
 > **Update Sun ~06:40: image for the next robot try = `bot-icelli/policy:final-v16-real` (b998bb9f121a, 709c393,
 > replay PASS).** From the 06:19 run of Marcus's gemini-er-3 image (`docs/research/real-run-0619.md`):
 > - Both hands missed by about a finger-width: right hand to the robot's right, left hand slightly to its left. The left
