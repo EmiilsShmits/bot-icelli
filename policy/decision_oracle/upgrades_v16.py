@@ -240,6 +240,11 @@ class V16OraclePolicy(V15OraclePolicy):
                     self.log(f"[v1.6] crop labels off: {e}")
             self.cam.leftovers = self.labeler is not None
             self.cam.merge_warm = os.environ.get("V16_MERGE_WARM", "on").lower() not in ("0", "off", "false", "no")
+            # V16_BOXES: "off" | "find" (after the camera fit, measure the three boxes from depth and drop into them
+            # where they really stand, boxes_v16.py) | "lid" (also look for the shape lid and its holes: cam.lid)
+            from . import boxes_v16
+            if boxes_v16.mode() != "off":
+                boxes_v16.enable(self.cam, lid=boxes_v16.mode() == "lid")
         if instruction == "d1":
             from instruction_d1 import DecisionInstruction
             self.instr = DecisionInstruction()
