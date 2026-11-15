@@ -1,5 +1,29 @@
 # Handoff: Samer's overnight Claude session → the next agent (Sun 15 Nov, ~01:05 Helsinki)
 
+> **Update Sun ~03:50: the real-robot video of our pre-submission, the three image gates, task 3 settled.**
+> - **Real robot (Aalto's pre-submission video, Samer has the file, recorded ~03:20):** almost certainly
+>   `presubmit-adk-1` (between moves the arms go out to the side: Marcus's `_park`, `adk_agents/robot_sorter/tools.py`).
+>   The robot hangs from the crane; its head camera is ~50 cm above the desk (Samer). The sim assumes 46.4 cm
+>   (`calibration.yaml`: camera 47.4 cm above the pelvis, counter +1 cm). In 46 s it reaches for the purple cube with
+>   its right hand twice. Both times the fingers come down on the table about a hand-width beside the cube, on the
+>   side towards the robot's right hand, close on nothing, and the arm carries on as if holding it. The cube never moves
+>   (frames at 17–18 s and 35–36 s). Samer: every team's run showed an offset. Matches the Saturday finding (§3b,
+>   `docs/research/hand-offset-real-data.md`: torso leans 5–10°, right hand y −2.9 cm off the model) and Marcus's
+>   drop-3 check (table tilted 12.3°, 6–8 cm further than `scene.yaml`). From this camera angle "beside" can't be split
+>   into "to the right" vs "short".
+>   **Every image we have aims the arms in the table-fitted camera frame, `final-v16` included: expect the same miss
+>   on the real robot unless one of these goes in:** Marcus's self-calibration (75f39af: not in an image, needs gtsam
+>   + meshes, never run on a robot), our lean mapping (`LEAN_MAP=auto`, off since 847df56 because it cost 5/12 in our
+>   lean sim), or a per-arm correction measured on the robot. Team decision; Samer thinks Marcus has solved it.
+> - **Gates on sim B (`AALTO_DR=train`, seeds 1000–1002, all PASS, 0 clips):** `final-v16` 11/12 (e-072),
+>   `final-v16g` 10/12 with one wrong bin (e-070), `final-adk` 10/12 with one time-limit episode (e-071).
+> - **Task 3 settled (e-073 … e-077):** release height, pinch height and a hold before release make no difference;
+>   cubes (0/16) and triangles (1/24) lose points under every setting, so cylinders only stays. New `LID_PICK_TOL`
+>   (on, 2 mm): the hand's way down to the block no longer drifts up to 6 mm off the planned grasp point (Aalto's
+>   planner accepts 6 mm); +22 vs +13 on 9 seeds, within noise. The built images predate it (task-3 code only).
+> - **No new pushes** from Emīls (bot-icelli, last 838a407 at 02:41) or Marcus (his repo, last 75f39af at 02:06), as
+>   of 03:45.
+
 > **Update Sun ~03:00: teammates' latest work vs `final-v16`, and task 3.**
 > - **Emīls** (838a407): latest main in the venue look + real colours 22/27 with push on (e-068); `LEAN_MAP=auto`
 >   there 0/27; crowd check on 13/18 vs off 11/18 (e-069). Confirms `final-v16`'s defaults (lean off, crowd on);

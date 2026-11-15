@@ -94,6 +94,12 @@ trajectories.
     replay test passes on all three (0 errors; startup 0.6 s / 12.5 s / 3.7 s). Gate runs on sim B (`AALTO_DR=train`,
     seeds 1000–1002): `~/dr_lane_b.log`. The first build failed its load check: `.dockerignore` lacked
     `near_v16.py` / `crowd_v16.py`, and `insert.py`, which v1.5/v1.6 import at every reset (fixed in 1e49ddb).
+    Gates (Sun ~03:20): final-v16 11/12 (e-072), final-v16g 10/12 (e-070), final-adk 10/12 (e-071), all PASS.
+  - **Task 3 (Sun ~03:50):** cylinders only stays the default (cubes 0/16, triangles 1/24 over e-073…e-076; release
+    settings make no difference). `LID_PICK_TOL` (2 mm, on): the hand's way down to the block stays within 2 mm of
+    the planned grasp point when the IK can (Aalto's 6 mm otherwise); e-077. Not in the built images yet.
+  - **Real robot (Sun ~03:20, Aalto's pre-submission video):** our pre-submitted agent's grasps land a hand-width
+    beside the cube (`docs/CONTEXT.md` §4.1). Every image here aims in the table-fitted camera frame.
   - **Sat ~20:05:** v1.4 in the venue look 20/27 (e-028); v1.3 with `AALTO_DR=train` 26/40, the baseline 11/40 (e-027). Public on GHCR: v1.4 `sha256:cd8311e9…`, v1.3 `sha256:60ef1b89…`, look `sha256:f4f871b5…` (full lines in `docs/CONTEXT.md` §2). 27 tests pass on the sim machine.
 - **Triangle skill:** all policy versions expose a lazy `pick_triangle` tool through `ClassicalV1.get_tools(obs)`. It uses face-aligned grasp planning and returns an Aalto-planner-checked trajectory. A caller must provide triangle shape and pelvis-frame top centre/yaw; the normal submission detector is shape-agnostic and the policy executor does not yet dispatch skill trajectories.
 - **Before:** placeholder `hold` policy; `make check` passes (100 calls, 0 errors, p50 latency ~4 ms)

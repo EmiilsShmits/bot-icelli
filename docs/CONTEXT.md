@@ -1,6 +1,6 @@
 # Team context: read this first
 
-**Last updated:** Sun 15 Nov 2026, ~02:15 Helsinki time, by Samer + Claude (§4.3 overnight results; §1–2 still as of Sat evening). If you change something this file describes, update it in the same commit.
+**Last updated:** Sun 15 Nov 2026, ~03:50 Helsinki time, by Samer + Claude (§4.1 our pre-submission on the real robot; §4.3 image gates and task 3; §4.4; §1–2 still as of Sat evening). If you change something this file describes, update it in the same commit.
 
 **Every statement here is one of three kinds:**
 - **FACT**: measured by us, or said by the organisers. Each one names its source and time. Numbers come from `eval/RESULTS.md` and the linked files; check there before you build on one.
@@ -50,6 +50,14 @@ How to hand in: [`runbooks/submit.md`](runbooks/submit.md). Hard rules for code:
 - **The real head camera looks ~10° further down than `calibration.yaml`** (7.9° and 12.2° in the two datasets), and the bin walls are ~7.5 cm, not 6. Emīls's fit can't tell a tilted camera from a leaning torso. ([`../sim/venue_look/README.md`](../sim/venue_look/README.md))
 - **Aalto's demos break the speed caps:** arms 2–4 rad/s (cap 1), fingers up to 25 rad/s (cap 3). Retime before training on them. ([`research/real-data-findings.md`](research/real-data-findings.md))
 - At the same joint angles, the real hand sits 4–6 cm closer to the robot than the sim hand. (venue look README)
+- **Our pre-submission on the real robot misses its grasps** (Aalto's pre-submission video, Sun ~03:20; Samer +
+  Claude, frames 17–18 s and 35–36 s): almost certainly `presubmit-adk-1` (Marcus's agent: arms parked out to the
+  side between moves). The robot hangs from the crane, head camera ~50 cm above the desk (Samer; the sim assumes
+  46.4 cm). It reaches for the purple cube with the right hand twice; both times the fingers land on the table about
+  a hand-width beside the cube, on the side towards the robot's right hand, and close on nothing. The cube never
+  moves. Samer: every team's run showed an offset. Fits the hand-offset analysis (torso leaning 5–10°, right hand y
+  −2.9 cm; [`research/hand-offset-real-data.md`](research/hand-offset-real-data.md)) and Marcus's drop-3 check (table
+  tilted 12.3°, 6–8 cm further than `scene.yaml`). Every image we have aims in the table-fitted camera frame.
 
 ### 4.2 Reading the instruction (Emīls, [`../training/instruction_parser/RESULTS.md`](../training/instruction_parser/RESULTS.md))
 | Method | Aalto's templates | unseen wording (T2a): exact / confidently wrong | hard wording (T2b): exact / confidently wrong |
@@ -73,7 +81,13 @@ How to hand in: [`runbooks/submit.md`](runbooks/submit.md). Hard rules for code:
   footage), v1.6 seeds 1000–1002: mapping off 12/12, on 7/12. Default switched to off (847df56).
 - **Task 3:** the first run (e-063, 0/6 inserted, −1 per episode) was invalid: the sim starts with the arms near
   joint zero and in our lid placement the left hand got caught under the lid before every trial. Fixed for our
-  Modal runs (`modal_pipeline/sim/eval_patches.py`); `insert.py` now parks both arms beside the lid. Rerun pending.
+  Modal runs (`modal_pipeline/sim/eval_patches.py`); `insert.py` now parks both arms beside the lid. Since then
+  (e-064 … e-077, Modal, Aalto's look): **cylinders go in ~2 times in 3** (21/32 over four release settings), **cubes
+  0/16 and triangles 1/24**, which lose points under every setting, so `insert.py` tries cylinders only. Releasing
+  12 mm inside the hole, a higher pinch or a 0.6 s hold change nothing beyond noise. `LID_PICK_TOL` (2 mm, on) keeps
+  the hand's way down on the planned grasp point (Aalto's planner allows 6 mm): +22 vs +13 on 9 seeds, within noise.
+- **Candidate image gates** (sim B, `AALTO_DR=train`, seeds 1000–1002, PASS, 0 clips): `final-v16` 11/12 (e-072),
+  `final-v16g` 10/12 (one wrong bin, e-070), `final-adk` 10/12 (one time-limit episode, e-071).
 - v1.6 with all the new code in Aalto's nominal look: 9/12 (e-060).
 
 | Run | Policy | Sim / task / trials | Objects sorted | Notes |
@@ -130,7 +144,7 @@ Other measurements:
 | v1.5 | not built on v1.x: Aalto's oracle motions (face grasps, relay, drop spots) on the head camera + decision_oracle upgrades (failure memory, grasp check, option search) + same-side arms (`V15_SIDES=strict`, default) + a ridge grasp for lying triangles | venue look 20/27 strict, 23/27 sides off (e-029, e-030); sort_language 22/28 (e-031). Uses Aalto's `scene.yaml` bin walls (6 cm) for the camera fit; the venue look has 7.5 cm |
 | v1.6 | v1.5 sides off + Gemini Decision 1 (API) for colour and shape of each object crop and for the instruction; v1.5's HSV, depth shape and rule parser stay as the offline fallback (no key / error / 2.5 s deadline / confidence < 0.6). v1.6 only: lying-prism grasp fix (hand 18 mm along the ridge, ridge plan on either arm before the stock claw) | venue look sort_fixed 23/27 (e-044), sort_language 25/28 (e-045): 48/55 vs v1.5 sides off 47/55; lying prisms 48/53 vs v1.5 46/53 (e-049); no key 8/9 (e-048). Real-colour sim (venue colours, sort_fixed 1000-1005): 17/27 with 5 in a wrong bin (e-046) → 22/27, 0 wrong after the colour wording fix (e-050) → 25/27 and 23/27 (e-054, e-055) with the red/yellow merge, the crowd check and the near-body push (push off by default). Not built as an image; an image with the key baked in must not go on our public GHCR package |
 | look | never moves: logs v1.4's camera fit, the objects it sees and a hand check (`policy/policies/look.py`) | for the first real-robot run; image on GHCR. **Tested live in the venue look (e-034): every line right** |
-| **final images** (Sun ~02:35) | built on `samer-v1-sim` from main (≥ 92b2999), **not pushed**: `bot-icelli/policy:final-v16` (1.46 GB: v1.6 + Emīls's 83d53a7 + smoothing on + lean off + task 3 cylinders only, arms parked), `:final-v16g` (6.35 GB, + retrained Gemma 1B), `bot-icelli/adk:final-adk` (Marcus 1855ff4 + smoothing). Gemini key inside all three (as `presubmit-adk-1`) | replay test PASS on all three; Decision 1 verified from inside final-v16 (0.26 s, right mapping). Gate runs on sim B (e-065 = the first final-v16 build, whose key was broken: 9/12) and venue-look runs on Modal: `eval/RESULTS.md` |
+| **final images** (Sun ~02:35) | built on `samer-v1-sim` from main (≥ 92b2999), **not pushed**: `bot-icelli/policy:final-v16` (1.46 GB: v1.6 + Emīls's 83d53a7 + smoothing on + lean off + task 3 cylinders only, arms parked), `:final-v16g` (6.35 GB, + retrained Gemma 1B), `bot-icelli/adk:final-adk` (Marcus 1855ff4 + smoothing). Gemini key inside all three (as `presubmit-adk-1`) | replay test PASS on all three; Decision 1 verified from inside final-v16 (0.26 s, right mapping). **Gates on sim B, same seeds: final-v16 11/12 (e-072), final-v16g 10/12 (e-070), final-adk 10/12 (e-071)**; e-065 was the first final-v16 build, whose key was broken (9/12). They predate `LID_PICK_TOL` (task 3 only). None corrects the real-robot offset (§4.1) |
 | all three | `reset()` never blocks (a blocked reset made Aalto's baseline fail the gate once on our loaded machine) | 80d7c9a |
 
 `policy/decision_oracle/` (Emīls) is **exploration, not in the image**: Aalto's oracle split into motion functions, choosers (Aalto's rule, Gemini Decision 1, random, prefer-face, memory), camera-only perception and a grasp check. It runs inside Aalto's evaluator, not yet as a policy server.
