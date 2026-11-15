@@ -31,5 +31,10 @@ policy/decision_oracle/
 # v1.6: Decision 1 colour / shape labels + the any-colour camera (labels.py above is their base)
 !policy/decision_oracle/labels_v16.py
 !policy/decision_oracle/upgrades_v16.py
+# v1.6: near-body push and the finger-clearance check (imported by upgrades_v16.py)
+!policy/decision_oracle/near_v16.py
+!policy/decision_oracle/crowd_v16.py
+# v1.5/v1.6: task 3; policies/oracle_v15.py imports it at EVERY reset (without it every episode would crash)
+!policy/decision_oracle/insert.py
 **/__pycache__
 **/*.pyc
