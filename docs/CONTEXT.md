@@ -1,6 +1,6 @@
 # Team context: read this first
 
-**Last updated:** Sat 14 Nov 2026, ~21:30 Helsinki time, by Samer + Claude. If you change something this file describes, update it in the same commit.
+**Last updated:** Sun 15 Nov 2026, ~02:15 Helsinki time, by Samer + Claude (§4.3 overnight results; §1–2 still as of Sat evening). If you change something this file describes, update it in the same commit.
 
 **Every statement here is one of three kinds:**
 - **FACT**: measured by us, or said by the organisers. Each one names its source and time. Numbers come from `eval/RESULTS.md` and the linked files; check there before you build on one.
@@ -91,6 +91,17 @@ How to hand in: [`runbooks/submit.md`](runbooks/submit.md). Hard rules for code:
 - Gemma 3 1B student: 0.14 s on the GPU (1.6 s on 8 CPU threads), 2.0 GB VRAM, 2.0 GB of weights, 9.5 s from a cold disk to the first answer.
 
 ### 4.3 Sim scores ([`../eval/RESULTS.md`](../eval/RESULTS.md))
+**Overnight Sat → Sun (Samer + Claude, e-056 … e-063):**
+- **Smooth motion (W1, `policy/smooth_motion.py`) costs no score:** v1.6 with vs without, same seeds: venue look
+  23/27 vs 23/27, `AALTO_DR=train` 19/20 vs 19/20, 0 clipped steps. Peak arm acceleration ~13 vs 25–58 rad/s²,
+  largest one-tick speed change 0.39 vs 0.8–1.7 rad/s; episodes ~16 % longer. On by default.
+- **Lean mapping (`policy/lean.py`) hurts in sim:** robot pitched 8° + camera 2.4° (the lean fitted to Aalto's real
+  footage), v1.6 seeds 1000–1002: mapping off 12/12, on 7/12. Default switched to off (847df56).
+- **Task 3:** the first run (e-063, 0/6 inserted, −1 per episode) was invalid: the sim starts with the arms near
+  joint zero and in our lid placement the left hand got caught under the lid before every trial. Fixed for our
+  Modal runs (`modal_pipeline/sim/eval_patches.py`); `insert.py` now parks both arms beside the lid. Rerun pending.
+- v1.6 with all the new code in Aalto's nominal look: 9/12 (e-060).
+
 | Run | Policy | Sim / task / trials | Objects sorted | Notes |
 |---|---|---|---|---|
 | e-008 | Aalto's classical baseline, camera only (a valid submission) | nominal, sort_fixed, 10 | 26/40 (65 %), gate PASS | **far cross-body objects 2/9**, the rest 24/31 |
@@ -143,8 +154,9 @@ Other measurements:
 | v1.3 | v1.2 + a free drop spot per bin (`eval/analysis/FINDINGS.md` §1) | nominal 26/40 (e-024), **randomised 26/40 (e-027)**; venue look 0/9 (head fit rejected). On GHCR (fallback) |
 | v1.4 | v1.3 + grasp check at the end of the lift (empty: skip the carry, go home, look again) + a retry with another arm / finger direction + the head-fit check fixed | **venue look 20/27 (e-028)**; **randomised 29/40 (e-035)**; not yet in the nominal sim. On GHCR (candidate) |
 | v1.5 | not built on v1.x: Aalto's oracle motions (face grasps, relay, drop spots) on the head camera + decision_oracle upgrades (failure memory, grasp check, option search) + same-side arms (`V15_SIDES=strict`, default) + a ridge grasp for lying triangles | venue look 20/27 strict, 23/27 sides off (e-029, e-030); sort_language 22/28 (e-031). Uses Aalto's `scene.yaml` bin walls (6 cm) for the camera fit; the venue look has 7.5 cm |
-| v1.6 | v1.5 sides off + Gemini Decision 1 (API) for colour and shape of each object crop and for the instruction; v1.5's HSV, depth shape and rule parser stay as the offline fallback (no key / error / 2.5 s deadline / confidence < 0.6). v1.6 only: lying-prism grasp fix (hand 18 mm along the ridge, ridge plan on either arm before the stock claw) | venue look sort_fixed 23/27 (e-044), sort_language 25/28 (e-045): 48/55 vs v1.5 sides off 47/55; lying prisms 48/53 vs v1.5 46/53 (e-049); no key 8/9 (e-048). Real-colour sim: 17/27, 5 in a wrong bin (e-046, orange called "yellow": colour wording fixed after, re-run pending). Not built as an image; an image with the key baked in must not go on our public GHCR package |
+| v1.6 | v1.5 sides off + Gemini Decision 1 (API) for colour and shape of each object crop and for the instruction; v1.5's HSV, depth shape and rule parser stay as the offline fallback (no key / error / 2.5 s deadline / confidence < 0.6). v1.6 only: lying-prism grasp fix (hand 18 mm along the ridge, ridge plan on either arm before the stock claw) | venue look sort_fixed 23/27 (e-044), sort_language 25/28 (e-045): 48/55 vs v1.5 sides off 47/55; lying prisms 48/53 vs v1.5 46/53 (e-049); no key 8/9 (e-048). Real-colour sim (venue colours, sort_fixed 1000-1005): 17/27 with 5 in a wrong bin (e-046) → 22/27, 0 wrong after the colour wording fix (e-050) → 25/27 and 23/27 (e-054, e-055) with the red/yellow merge, the crowd check and the near-body push (push off by default). Not built as an image; an image with the key baked in must not go on our public GHCR package |
 | look | never moves: logs v1.4's camera fit, the objects it sees and a hand check (`policy/policies/look.py`) | for the first real-robot run; image on GHCR. **Tested live in the venue look (e-034): every line right** |
+| **final images** (Sun ~02:35) | built on `samer-v1-sim` from main (≥ 92b2999), **not pushed**: `bot-icelli/policy:final-v16` (1.46 GB: v1.6 + Emīls's 83d53a7 + smoothing on + lean off + task 3 cylinders only, arms parked), `:final-v16g` (6.35 GB, + retrained Gemma 1B), `bot-icelli/adk:final-adk` (Marcus 1855ff4 + smoothing). Gemini key inside all three (as `presubmit-adk-1`) | replay test PASS on all three; Decision 1 verified from inside final-v16 (0.26 s, right mapping). Gate runs on sim B (e-065 = the first final-v16 build, whose key was broken: 9/12) and venue-look runs on Modal: `eval/RESULTS.md` |
 | all three | `reset()` never blocks (a blocked reset made Aalto's baseline fail the gate once on our loaded machine) | 80d7c9a |
 
 `policy/decision_oracle/` (Emīls) is **exploration, not in the image**: Aalto's oracle split into motion functions, choosers (Aalto's rule, Gemini Decision 1, random, prefer-face, memory), camera-only perception and a grasp check. It runs inside Aalto's evaluator, not yet as a policy server.

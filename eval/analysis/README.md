@@ -10,6 +10,7 @@
 | [`trace.py`](trace.py) | Run folders (+ policy logs) → the tables | where Aalto's sim is installed (needs Pinocchio + the G1 URDF), e.g. the Verda sim machine |
 | [`traced_eval.py`](traced_eval.py) | Aalto's evaluator plus object positions 5×/s, the container's log, video; also adds the missing `--policy` (see below). **Not run end-to-end yet:** test it on one trial before using it for a scored run | the sim machine |
 | [`numbers.py`](numbers.py) | Every number in FINDINGS.md from a data folder | anywhere with pandas |
+| [`hand_offset.py`](hand_offset.py) | Real Dex3 hand vs joint angles in Aalto's real head-camera footage (drops 1–3; drop 3's depth also runs our `fit_head_pose` and `look.py`'s hand check): tilted camera, leaning robot or per-arm offset? Results: [`docs/research/hand-offset-real-data.md`](../../docs/research/hand-offset-real-data.md) | anywhere with numpy, opencv-python, pyarrow, pandas, av, scipy, pyyaml, matplotlib + the datasets' videos in `artifacts/drops/` (no Pinocchio: own kinematics, checked against Aalto's) |
 
 ## How to run
 ```bash

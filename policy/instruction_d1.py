@@ -109,15 +109,26 @@ def slots_to_mapping(slots: dict) -> dict:
     return out
 
 
+def _clean_key(text):
+    """Bare key, or a `GEMINI_API_KEY= <key>` line (same as decision_oracle/chooser.py clean_key)."""
+    t = (text or "").strip()
+    for line in t.splitlines():
+        if "=" in line and line.split("=", 1)[0].strip().endswith("API_KEY"):
+            return line.split("=", 1)[1].strip().strip("\"'") or None
+    return t.strip("\"'") or None
+
+
 def _api_key():
     """GEMINI_API_KEY, else the key file baked into the image (same lookup as decision_oracle/chooser.py)."""
-    k = (os.environ.get("GEMINI_API_KEY") or "").strip()
+    k = _clean_key(os.environ.get("GEMINI_API_KEY"))
     if k:
         return k
     for path in (os.environ.get("DECISION_KEY_FILE", ""), "/root/.decision_key"):
         if path and os.path.exists(path):
             with open(path) as f:
-                return f.read().strip() or None
+                k = _clean_key(f.read())
+            if k:
+                return k
     return None
 
 

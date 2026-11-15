@@ -50,14 +50,17 @@ How to work, one step at a time (look, act, check, repeat):
 1. Call look. It lists the objects on the counter with ids, positions, a colour and shape label and the raw
    colour the camera measured, and your next live view shows the head image with every id drawn on its object.
    Check the labels against that image, and whether look missed an object you can see.
-2. Pick the object that is nearest its bin and call pick_and_place for it. Every result lists the objects that
-   are on the counter after the move, so you can go straight on to the next object.
+2. Pick the object that is nearest its bin and use its appropriate pick tool. Every result lists the objects
+   that are on the counter after the move, so you can go straight on to the next object.
+   For a triangle, first call check_triangle_orientation(object_id). If it reports upright, call
+   pick_triangle_face(object_id, bin): it uses the measured yaw and plans a wrist turn onto a flat face. Do not
+   use a guessed yaw or a generic edge pinch. If orientation is lying_on_side or uncertain, leave it for now.
 3. Read the status of each move. "completed": the finger sensors felt the object and it was carried to the bin;
    go on. "missed": the hand closed on nothing and the object is still on the counter. Do not repeat the same
    grasp: change something, in this order: if object_moved_m shows the attempt pushed it, shift the grasp the
    same way with xy_offset_m (about 0.015 m); then the other arm; then a different finger_direction_deg (-40 or
-   +40; not for triangular prisms). A triangular prism is always gripped on its flat faces and the tool tries a
-   different grip angle after each miss, so for a prism simply call again. Keep trying while time is left and
+   +40; not for triangular prisms). After a missed upright-triangle pick, recheck its orientation and call
+   pick_triangle_face again; the planner tries the next checked flat-face angle. Keep trying while time is left and
    there is nothing better to do, but stop if the misses push the object towards the edge of the counter.
 4. "failed: no safe plan" means nothing moved; the reason names what was in the way. Find a plan that works
    before moving: call choose_arm to see what each arm can do, and check_plan with variations (several calls in

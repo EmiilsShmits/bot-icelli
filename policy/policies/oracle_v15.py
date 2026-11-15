@@ -104,9 +104,12 @@ class OracleV15(Policy):
         return job is not None and job["result"] is None
 
     def _apply_reset(self):
+        from decision_oracle import insert
         info, task, seed = self._pending_reset
         self.pol.episode_seed, self.pol.task = seed, task
+        info = insert.configure(self.pol, task, info)   # task 3: the lid's holes are the targets (insert.py)
         self.pol.reset(info)
+        insert.after_reset(self.pol)
         self._pending_reset = None
         if self._stale_since is not None:
             log.info("old planning thread done after %.1f s: episode starts", time.monotonic() - self._stale_since)

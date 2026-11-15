@@ -9,6 +9,7 @@ _Add to this list freely. When the team agrees, move the item into the log below
 - [ ] Git workflow: branches, reviews, who merges
 - [ ] Who owns the submission (`policy/`) and the hand-in
 - [ ] Owners for `data/` and `eval/`
+- [ ] v1.6: turn the near-body push on by default (`V16_NEAR=push`)? The e-054 / e-055 gains were measured with it on; alone it was 2/2 in full runs, but both pushed triangles fell over (`policy/decision_oracle/README.md`)
 
 ## Log
 _Append-only. One entry per agreed choice. Format:_

@@ -449,6 +449,11 @@ class CameraPerception:
             if fit.arm_pose is not None:
                 self.log(f"[camera] arm pose: {fit.arm_pose}")
             self._set_base(fit.base)
+            try:   # real robot (fit tilted >= 5 deg): aim the arms in the arm frame, policy/lean.py
+                import lean
+                lean.set_fit(self.cal0._T(CAM), fit.T if fit.ok else None, fit.tilt_deg, self.log)
+            except ImportError:
+                pass
         return self.fit
 
     def _set_base(self, A):

@@ -117,6 +117,8 @@ image = (
     .add_local_file(HERE.parent / "submission/server.py", "/opt/submission/server.py")
     .add_local_file(HERE / "gen_demos.py", "/opt/sim/gen_demos.py")
     .add_local_file(HERE / "scene_variant.py", "/opt/sim/scene_variant.py")
+    .add_local_file(HERE / "eval_patches.py", "/opt/sim/eval_patches.py")
+    .add_local_dir(TEAM / "sim" / "task3", "/opt/task3", ignore=["*.md"])          # rung-3 lid (scene_variant --task3)
     .add_local_dir(HERE.parent / "agent", "/opt/agent_pkg/agent", ignore=["**/__pycache__", "**/*.pyc", "**/*.md"])
     # The ADK agent (adk_agents/robot_sorter). Its .env holds the API key and must not leave the laptop: the key
     # comes from the Modal secret `gemini` instead.
@@ -139,10 +141,12 @@ convert_image = (
 )
 
 # Their evaluator, unchanged, except that its per-trial recorder also writes the head-camera video (the runner's
-# own --video flag, which evaluate.py does not expose).
+# own --video flag, which evaluate.py does not expose) and that an arm caught during its homing is freed before the
+# trial (sim/eval_patches.py: the left hand caught in the task-3 lid; no effect when the homing works).
 EVAL_WITH_VIDEO = ("python -c 'import ssl, sys; from aaltonomous.deploy import runner as R; Rec = R.Recorder; "
                    "R.Recorder = lambda path, **kw: Rec(path, video=True); "
-                   "from aaltonomous.sim import evaluate as E; sys.exit(E.main(sys.argv[1:]))'")
+                   "from aaltonomous.sim import evaluate as E; sys.path.insert(0, \"/opt/sim\"); import eval_patches; "
+                   "eval_patches.install(E); sys.exit(E.main(sys.argv[1:]))'")
 
 kit_vol = modal.Volume.from_name("aalto-kitcache", create_if_missing=True)      # RTX shader cache (first start is slow)
 out_vol = modal.Volume.from_name("aalto-sim-out", create_if_missing=True)
@@ -159,6 +163,10 @@ def bash(script, check=False, timeout=None):
 
 
 def prepare_container():
+    # An image built from Windows copies Aalto's scripts without the executable bit, so `aalto` (a symlink to
+    # cloud/aalto.sh) fails with "Permission denied" and the sim never starts (t3-v16-a, reg-v16-all-nominal,
+    # Sun 15 Nov 00:58). Restore it at container start: works whichever machine built the image.
+    subprocess.run(f"chmod +x {APP_DIR}/aaltonomous/cloud/*.sh {APP_DIR}/aaltonomous/sim/*.sh", shell=True, check=False)
     # Same job as their cloud/entrypoint.sh: make the NVIDIA Vulkan / EGL drivers discoverable.
     subprocess.run(["bash", f"{APP_DIR}/aaltonomous/cloud/entrypoint.sh", "true"], check=False)
     # Shader cache on a volume, seeded from the image the first time (what a Docker named volume does).

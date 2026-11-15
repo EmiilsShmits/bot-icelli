@@ -16,6 +16,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 python3
 COPY policy/requirements.txt /tmp/requirements.txt
 RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
+ARG POLICY=hold
+# v1.6g only: CPU-only torch + transformers for the offline Gemma 3 1B instruction parser (policy/instruction_gemma.py).
+# Its weights come in with policy/ below: policy/weights/gemma-parser-1b/ (git-ignored, 2.0 GB; any image built from a
+# checkout that has them carries them, only v1.6g loads them).
+COPY policy/requirements-gemma.txt /tmp/requirements-gemma.txt
+RUN if [ "$POLICY" = "v1.6g" ]; then pip3 install --no-cache-dir -r /tmp/requirements-gemma.txt; fi
+
 WORKDIR /app
 # G1 URDF (IK + safety filter): where Aalto's safety.py DEFAULT_URDF looks for it. Fetched by policy/get_urdf.sh.
 COPY artifacts/urdf/g1_body29_hand14.urdf third_party/xr_teleoperate/assets/g1/
@@ -33,6 +40,8 @@ COPY ${A}/sim/oracle.py aaltonomous/sim/
 COPY ${A}/sim/aalto_task/__init__.py ${A}/sim/aalto_task/layout.py aaltonomous/sim/aalto_task/
 # Emīls's instruction parser (rule stage; offline, no weights). v1.6's Decision stage is policy/instruction_d1.py.
 COPY training/instruction_parser/rule_parser.py training/instruction_parser/spec.py training/instruction_parser/
+# v1.6g's Gemma stage uses the training prompt itself (prompts.ft_messages).
+COPY training/instruction_parser/prompts.py training/instruction_parser/
 COPY policy/ policy/
 
 # v1.6 only: the Gemini key, from a BuildKit secret (never in the repo or the build context). Without it v1.6 runs as
@@ -40,13 +49,20 @@ COPY policy/ policy/
 #   make docker-build POLICY=v1.6 GEMINI_KEY_FILE=~/adk_key.env      (a file with GEMINI_API_KEY=... or just the key)
 RUN --mount=type=secret,id=gemini,required=false \
     if [ -s /run/secrets/gemini ]; then python3 -c "import re; t = open('/run/secrets/gemini').read(); \
-m = re.search(r'GEMINI_API_KEY=[\"\']?([^\s\"\']+)', t); open('/root/.decision_key', 'w').write(m.group(1) if m else t.strip())" \
+m = re.search(r'GEMINI_API_KEY\s*=\s*[\"\']?([^\s\"\']+)', t); open('/root/.decision_key', 'w').write(m.group(1) if m else t.strip())" \
+    && python3 -c "k = open('/root/.decision_key').read(); assert k and '=' not in k and not any(c.isspace() for c in k), \
+'key file holds more than the key (Sun 15 Nov: the whole .env line went in and every call got HTTP 400)'" \
     && chmod 600 /root/.decision_key && echo "Gemini key baked in"; fi
 
-ARG POLICY=hold
 ENV POLICY=${POLICY}
-# Load-time check at build: the chosen policy constructs (config, URDF, calibration, parser all load).
-RUN python3 -c "import os, sys; sys.path.insert(0, '/app/policy'); import server; server.POLICIES[os.environ['POLICY']]()"
+# Load-time check at build: the chosen policy constructs (config, URDF, calibration, parser all load). v1.5/v1.6/v1.6g
+# also import task 3's module, which their reset() imports on every episode (.dockerignore must let it in).
+RUN python3 -c "import os, sys; sys.path.insert(0, '/app/policy'); import server; server.POLICIES[os.environ['POLICY']](); \
+p = os.environ['POLICY']; p.startswith(('v1.5', 'v1.6')) and __import__('decision_oracle.insert')"
+# v1.6g: fail the build if the Gemma weights are missing or fail their self-test (else the image would run as v1.6).
+RUN if [ "$POLICY" = "v1.6g" ]; then python3 -c "import sys; sys.path.insert(0, '/app/policy'); \
+from instruction_gemma import GemmaInstruction; g = GemmaInstruction(); assert g.enabled, g.why_off; \
+print('Gemma parser OK: load', g.load_s, 's, self-test', g.self_test_s, 's')"; fi
 
 EXPOSE 8000
 CMD ["python3", "/app/policy/server.py", "--port", "8000"]

@@ -7,6 +7,7 @@ One file per topic. Each file covers the question, the findings (with source lin
 | [aalto-challenge-overview.md](aalto-challenge-overview.md) | Plain-language overview of the Aalto challenge: start here |
 | [aalto-discord-notes.md](aalto-discord-notes.md) | Organiser answers from the Aalto Discord channel (real colours, friction, instructions, internet, finals PC), newest first, plus a colour check against the baseline's HSV ranges |
 | [real-data-findings.md](real-data-findings.md) | What's in Aalto's real-data drops: tasks, formats, speed-cap violations (retime before training), the grip signal in `hand_q`, what the data is good for |
+| [hand-offset-real-data.md](hand-offset-real-data.md) | Why the real hand looks 4–6 cm off in Aalto's footage (all three drops, drop 3 with real depth): the robot leans 5.5–12.5° relative to the table, the head camera is within ~2.2° of `calibration.yaml`; per-arm offsets; what v1.4/v1.5/v1.6/ADK must change (fit for perception, arm targets mapped into the arm frame, fit limit above 15°) |
 | [aalto-humanoid.md](aalto-humanoid.md) | Unitree G1 + Dex3 robot, interface, safety filter, scoring, submission, Isaac sim compute, data drops, what it means for the gloves idea |
 | [apis-and-credits.md](apis-and-credits.md) | Every hackerpack credit and API, how to claim it, what's relevant to us, borrowable hardware at the desk |
 | [nemotron-and-pi0.md](nemotron-and-pi0.md) | π0 / π0.5 and Nemotron: what they are, Aalto constraints, NVIDIA resources, options |

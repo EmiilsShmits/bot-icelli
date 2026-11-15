@@ -58,6 +58,12 @@ def _v16():
     return OracleV16()
 
 
+def _v16g():
+    # Needs torch + transformers and policy/weights/gemma-parser-1b (make docker-build POLICY=v1.6g); without them = v1.6.
+    from policies.oracle_v16g import OracleV16G
+    return OracleV16G()
+
+
 def _look():
     from policies.look import LookPolicy
     return LookPolicy()
@@ -73,6 +79,7 @@ POLICIES = {
     "v1.4": _v14,  # v1.3 + grasp check after the lift, and a retry with another grasp (policies/classical_v14.py)
     "v1.5": _v15,  # Aalto's oracle motions on the head camera + Emīls's upgrades, same-side arms, lying-triangle grasp
     "v1.6": _v16,  # v1.5 + Gemini Decision 1 for colour, shape and the instruction (v1.5 = offline fallback); sides off
+    "v1.6g": _v16g,  # v1.6 + the fine-tuned Gemma 3 1B instruction parser in the image: Decision -> Gemma -> rules
     "look": _look,  # never moves: logs v1.4's camera fit, objects and a hand check, for a first real-robot run
 }
 
@@ -84,6 +91,10 @@ def main() -> None:
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    # Before any policy is built: smooth, jerk-limited arm motions (SMOOTH_MOTION=0: off) and planner config overrides
+    # from the environment (AALTO_CFG_OVERRIDES, ARM_XY_OFFSET), for every policy that plans with Aalto's planner.
+    import runtime
+    runtime.install()
     policy = POLICIES[args.policy]()
     logging.getLogger("bot-icelli").info("serving policy %r on :%d", args.policy, args.port)
     serve(policy, port=args.port)

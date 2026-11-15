@@ -1,0 +1,8 @@
+# v1.6g only (policy/Dockerfile installs this when POLICY=v1.6g): the offline Gemma 3 1B instruction parser on the CPU
+# (policy/instruction_gemma.py). The student was trained with torch 2.11 + transformers 5.23
+# (training/instruction_parser/RESULTS.md); 5.23 needs Python >= 3.11 and the image has 3.10, so the newest 5.x for 3.10.
+# CPU-only torch wheel: no CUDA libraries (~0.8 GB instead of ~4 GB). The accuracy in RESULTS.md (v1.6g) is measured
+# inside the image, with these versions.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.11.0+cpu
+transformers==5.20.2
