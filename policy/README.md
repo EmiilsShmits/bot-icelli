@@ -97,7 +97,8 @@ trajectories.
     Gates (Sun ~03:20): final-v16 11/12 (e-072), final-v16g 10/12 (e-070), final-adk 10/12 (e-071), all PASS.
   - **Task 3 (Sun ~03:50):** cylinders only stays the default (cubes 0/16, triangles 1/24 over e-073…e-076; release
     settings make no difference). `LID_PICK_TOL` (2 mm, on): the hand's way down to the block stays within 2 mm of
-    the planned grasp point when the IK can (Aalto's 6 mm otherwise); e-077. Not in the built images yet.
+    the planned grasp point when the IK can (Aalto's 6 mm otherwise); e-077. final-v16 (`6a02fad81f37`) and
+    final-v16g (`3308f1b4489e`) rebuilt from 2de82ce with it (replay PASS, key 53 bytes, not pushed).
   - **Real robot (Sun ~03:20, Aalto's pre-submission video):** our pre-submitted agent's grasps land a hand-width
     beside the cube (`docs/CONTEXT.md` §4.1). Every image here aims in the table-fitted camera frame.
   - **Sat ~20:05:** v1.4 in the venue look 20/27 (e-028); v1.3 with `AALTO_DR=train` 26/40, the baseline 11/40 (e-027). Public on GHCR: v1.4 `sha256:cd8311e9…`, v1.3 `sha256:60ef1b89…`, look `sha256:f4f871b5…` (full lines in `docs/CONTEXT.md` §2). 27 tests pass on the sim machine.
