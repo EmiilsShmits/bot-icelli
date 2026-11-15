@@ -1,5 +1,21 @@
 # Handoff: Samer's overnight Claude session → the next agent (Sun 15 Nov, ~01:05 Helsinki)
 
+> **Update Sun ~05:00: THE IMAGE TO SUBMIT = `bot-icelli/policy:final-v16` on samer-v1-sim, rebuilt from 27b1de9.**
+> - Inside: v1.6 + gravity feed-forward (`arm_tau_ff`, on) + standing-triangle grasp (`V16_TRI=mid`, default since
+>   27b1de9) + task 3 cylinders only with `LID_PICK_TOL`. Camera correction for the leaning robot still off
+>   (`V16_CALIB=bins`, `LEAN_MAP=off`). Image `da8c20903a5e`, 1.46 GB, Gemini key inside (53 bytes); Aalto's replay test
+>   PASS (100 calls, 0 errors); startup log shows gravity feed-forward on. Previous build kept as `final-v16-prev`.
+> - Sim test of this code: Modal tag `best-27b1de9-1000` (venue look + venue colours, sort_fixed, seeds 1000-1002;
+>   compare e-066). Result pending at 05:00.
+> - **Push (a human runs it on samer-v1-sim: it publishes the Gemini key; Claude Code blocks it):**
+>   `docker tag bot-icelli/policy:final-v16 ghcr.io/samer-cyber/bot-icelli-policy:final-v16 && docker push ghcr.io/samer-cyber/bot-icelli-policy:final-v16`
+>   then `docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/samer-cyber/bot-icelli-policy:final-v16` prints
+>   the `ghcr.io/...@sha256:...` line for the form.
+> - **Rebuild from scratch (samer-v1-sim, ~5 min):** `cd ~/bot-icelli && git pull && mv policy/weights /root/w_aside &&
+>   make docker-build POLICY=v1.6 IMAGE=bot-icelli/policy:final-v16 GEMINI_KEY_FILE=/root/adk_key.env;
+>   mv /root/w_aside policy/weights; make docker-check IMAGE=bot-icelli/policy:final-v16 PY=/root/miniforge3/envs/isaac/bin/python`
+>   (weights moved aside keep it at 1.46 GB; the key file holds `GEMINI_API_KEY=<key>`).
+
 > **Update Sun ~04:45: gravity feed-forward (the likely main cause of the real-robot misses), the best system now.**
 > - **Aalto's PR #4** (`arm_tau_ff`, erkka "merged" 04:18; still open on GitHub at 04:35): on the real robot the arm
 >   controller holds ~9.6 Nm at most, so an outstretched arm **sinks 15–18 cm**. A policy may now send feed-forward
