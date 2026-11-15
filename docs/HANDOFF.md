@@ -1,5 +1,20 @@
 # Handoff: Samer's overnight Claude session → the next agent (Sun 15 Nov, ~01:05 Helsinki)
 
+> **Update Sun ~06:05: real-robot test of `final-v16` (05:13 build, `V16_CALIB=lean` + gravity feed-forward) missed:**
+> hand short of the block (and dropped at the near edge of the box instead of its middle), a bit to the robot's right.
+> - That is the uncorrected-lean pattern of `docs/research/hand-offset-real-data.md`. Most likely cause: the arm-based
+>   lean correction (`camera.py`) threw its fit away as "implausible" above 15 cm / 20° of base move, and the robot
+>   now leans ~15–21° (Tiya: a 21° camera pitch lines up in sim/recordings; drop 3: 12–16°). Not yet confirmed:
+>   Samer is getting Aalto's container log (lines `[camera] head pose: tilt`, `[camera] arm pose: {... 'base': ...}`).
+> - **Fixed in 07f533c + 023e453, image `bot-icelli/policy:final-v16-lean` (9ba050338e63, replay test PASS, 123 tests OK):**
+>   limits 35 cm / 35° (`V16_LEAN_MAX_MOVE`, `V16_LEAN_MAX_DEG`); if the arm fit fails or is implausible, lean.py's
+>   calibration-camera mapping takes over (`V16_LEAN_FALLBACK`, default auto); gravity feed-forward uses the measured
+>   lean (`GRAVITY_FF_LEAN=off` to keep straight down); **`ARM_ERR="right=dx,dy,dz;left=..."`** (m, where the hand
+>   lands minus where it should: 3 cm short = dx −0.03, 2 cm to the robot's right = dy −0.02, 2 cm too high = dz +0.02)
+>   corrects a measured landing error on every target, by env or a 2-line derived image. 05:13 image kept as `final-v16-0513`.
+> - Sim check of a 21° lean: Modal tags `lean21-fix` (new code) vs `lean21-bins` (`V16_CALIB=bins`), `--lean 21 --cam-mount 2.4`.
+> - Task 3 on the robot: the lid is on the MIDDLE box per Aalto; set `LID_CENTER` for it or `LID_SHAPES=none` (off).
+
 > **Update Sun ~05:00: THE IMAGE TO SUBMIT = `bot-icelli/policy:final-v16` on samer-v1-sim, rebuilt from 27b1de9.**
 > - Inside: v1.6 + gravity feed-forward (`arm_tau_ff`, on) + standing-triangle grasp (`V16_TRI=mid`, default since
 >   27b1de9) + task 3 cylinders only with `LID_PICK_TOL`. Camera correction for the leaning robot still off
