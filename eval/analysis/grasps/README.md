@@ -149,6 +149,20 @@ Held per planned pick, both arms, angles 0–105° (left-hand terms; right mirro
 
   The right hand still needs ~2 tries per triangle. Its angle order is a mirror of the left's MuJoCo order, not measured in Isaac: worth a per-angle check for the right hand.
 
+### 8. Full episodes in Isaac (FACT): e-082
+v1.6 with `V16_TRI=off` vs `mid`, the same 12 episodes each (sort_fixed + sort_language, seeds 1000–1005), venue look.
+
+| | off | mid |
+|---|---|---|
+| Objects sorted | 36/49 (73 %) | **43/49 (88 %)** |
+| Triangles sorted | 3/10 | 5/10 |
+| Triangle grasps held | 4/16 | 6/17 |
+| Gate | PASS, 0 clips, 30 Hz | PASS, 0 clips, 30 Hz |
+
+- Per episode: mid better 5, worse 1, same 6.
+- Cubes and cylinders also did better with mid, though their grasps are the same: part of the 36 → 43 is run-to-run noise.
+- These layouts have few triangles (10 in 12 episodes), so this run mainly shows the fix is safe in full episodes; e-081 measures the grasp.
+
 ### 3b. Earlier idea (superseded by 4–5)
 - **Mirror the triangle angle for the right hand in Isaac.** Try 105 / 75 for the left hand and −105 / −75 for the right, one standing prism per case, about 20 grasps per arm and angle (Marcus's grasp bench, as in the grip sweep).
   - The Isaac logs have too few right-hand triangle grasps at mirrored angles to say: 40–50° 0/5, 10–20° 3/9.
@@ -158,7 +172,7 @@ Held per planned pick, both arms, angles 0–105° (left-hand terms; right mirro
 
 ## Status
 - **Now:** `V16_TRI=mid` built (off by default), measured in MuJoCo (§6) and Isaac (§7): both agree.
-- **Next:** team decision on turning it on in the v1.6 image; full-episode check (eval-policy) with it on.
+- **Next:** team decision on turning it on in the v1.6 image (full episodes pass the gate with it on, e-082); the right hand's angle order.
 - **Blockers:** none.
 
 ## Gotchas
