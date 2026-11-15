@@ -1,5 +1,21 @@
 # Handoff: Samer's overnight Claude session → the next agent (Sun 15 Nov, ~01:05 Helsinki)
 
+> **Update Sun ~02:30: final candidate images are built on `samer-v1-sim` (main 14e39ce), NOT pushed** (pushing
+> to the public GHCR package publishes the Gemini key inside; Samer's call, as for `presubmit-adk-1`):
+> - `bot-icelli/policy:final-v16` (v1.6 + Emīls's 83d53a7 + smoothing + lean off + task-3 park), `:final-v16g`
+>   (+ retrained Gemma 1B), `bot-icelli/adk:final-adk` (Marcus 1855ff4; his 75f39af "self-calibration" is newer and
+>   untested by us). Aalto's replay test passes on all three.
+> - **Two image bugs found and fixed tonight:** (1) `.dockerignore` lacked `decision_oracle/near_v16.py`,
+>   `crowd_v16.py` and `insert.py` (v1.5/v1.6 import insert at every reset: such an image crashes at the first
+>   episode); (2) the Gemini key went in as the whole `GEMINI_API_KEY= <key>` line (the .env has a space after `=`),
+>   so every Decision 1 call got HTTP 400 and v1.6 silently ran its offline fallback. Now verified from inside the
+>   image: one instruction call 0.26 s, right mapping. The A/B images (e-056…e-059) had no key at all.
+> - Gate runs on sim B (`AALTO_DR=train`, seeds 1000–1002, `~/dr_lane_b.log`): old final-v16 (= offline fallback),
+>   then `final-v16g` + `final-adk` (tmux `gate_next`), then the fixed `final-v16` (tmux `gate_next2`).
+> - Push recipe (on the sim machine, logged in to ghcr.io): `docker tag bot-icelli/policy:final-v16
+>   ghcr.io/samer-cyber/bot-icelli-policy:final-v16 && docker push ghcr.io/samer-cyber/bot-icelli-policy:final-v16`,
+>   then pin the printed `sha256:` digest in Aalto's form (`docs/runbooks/submit.md`).
+
 > **Update Sun ~02:10 (same next session). Results of §0 items 1–4 are in `eval/RESULTS.md` e-056 … e-063 (Emīls took e-050 … e-055 meanwhile):**
 > - **Smoothing A/B (e-056 … e-059): keep it on.** Same score with and without (venue 23/27 vs 23/27, randomised
 >   19/20 vs 19/20, 0 clips), peak arm acceleration ~13 vs 25–58 rad/s², largest one-tick speed change 0.39 vs

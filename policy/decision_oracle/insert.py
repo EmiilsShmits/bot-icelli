@@ -33,6 +33,10 @@ Env:
   LID_GAP      block bottom above the lid top at release, m (default 0.008)
   LID_BINS     bins still on the table besides the lid box, comma-separated (default "right")
   LID_PARK     on | off: both arms wait at PARK between moves (default on)
+  LID_SHAPES   shapes that are put through the lid, comma-separated (default "cylinder"); the others stay on the
+               counter (0 points instead of a likely -1). Modal t3-v16-e (Sun 15 Nov, 3 trials, both fixes above):
+               cylinders 2/2 inserted, triangles 0/5 (2 forced), cubes 0/2 (1 forced): +2, +2, -1 with all shapes,
+               +3, +3, 0 with cylinders only. "cube,cylinder,triangle" tries all three.
 """
 from __future__ import annotations
 
@@ -111,6 +115,7 @@ def settings():
         "gap": float(os.environ.get("LID_GAP", "0.008") or 0.008),
         "bins": [b.strip() for b in os.environ.get("LID_BINS", "right").split(",") if b.strip()],
         "park": os.environ.get("LID_PARK", "on") != "off",
+        "shapes": [v.strip() for v in os.environ.get("LID_SHAPES", "cylinder").split(",") if v.strip() in SHAPES],
     }
 
 
@@ -318,6 +323,8 @@ class InsertPlanner(_LidAware, O._OraclePlanner):
         shape = HOLE_SHAPE.get(bin_name)
         if shape is None or place_xy is not None:
             return super()._plan_side(det, side, bin_name, arm_q, hand_q, place_xy=place_xy)
+        if shape not in settings()["shapes"]:              # left on the counter (0) rather than risk -1 on the lid
+            return Plan(False, side=side, color=det.color, reason=f"insert: {shape} not attempted (LID_SHAPES)")
         hint = np.asarray(self.kin.hint, float)
         a = float(np.arctan2(hint[1], hint[0]))          # finger direction at the grasp (the face the plan uses)
         P = PERIOD.get(shape)
@@ -541,7 +548,8 @@ def configure(pol, task, info):
     pol._insert["refined"] = not (s["refine"] and pol.cam is not None)
     info["mapping"] = dict(MAPPING)
     pol.log(f"[insert] task 3: {pol._insert['lid'].describe()}; release {100 * s['gap']:.1f} cm above the lid; "
-            + ("arms parked out to the sides between moves" if pol._insert["park"] else "arms wait at home"))
+            + ("arms parked out to the sides between moves" if pol._insert["park"] else "arms wait at home")
+            + f"; shapes tried: {','.join(s['shapes']) or 'none'}")
     return info
 
 
